@@ -1,5 +1,12 @@
-const Discord = require("discord.js");
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  Discord,
+  ActionRowBuilder,
+  PermissionsBitField,
+  ButtonBuilder,
+  EmbedBuilder,
+  ChannelType,
+  ButtonStyle,
+} = require("discord.js");
 const buttonCooldown = new Set();
 const Levels = require("discord-xp");
 
@@ -485,29 +492,29 @@ module.exports = {
       let channel = await interaction.guild.channels.create({
         name: `🎫丨𝐓icket丨${interaction.user.username}`,
         parent: "823950661523603466",
-        type: Discord.ChannelType.GuildText,
+        type: ChannelType.GuildText,
         permissionOverwrites: [
           {
             id: interaction.guild.roles.everyone,
-            deny: [Discord.PermissionFlagsBits.ViewChannel],
+            deny: [PermissionsBitField.Flags.ViewChannel],
           },
           {
             id: interaction.user,
             allow: [
-              Discord.PermissionFlagsBits.Sendinteractions,
-              Discord.PermissionFlagsBits.ViewChannel,
+              PermissionsBitField.Flags.SendMessages,
+              PermissionsBitField.Flags.ViewChannel,
             ],
           },
         ],
       });
 
-      const clearembed = new Discord.EmbedBuilder()
+      const clearembed = new EmbedBuilder()
         .setDescription(
           `${interaction.user}\n Merci d'être patient, notre équipe s'occupe de tout !`
         )
         .setColor("Blue");
 
-      const deletebutton = new Discord.ActionRowBuilder().addComponents(
+      const deletebutton = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("DELETE_TICKET")
           .setEmoji("❌")
@@ -521,7 +528,7 @@ module.exports = {
     }
 
     if (interaction.customId === "DELETE_TICKET") {
-      const surbutton = new Discord.ActionRowBuilder()
+      const surbutton = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
             .setCustomId("VALID_DELETE")
