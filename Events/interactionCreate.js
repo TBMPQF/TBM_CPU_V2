@@ -17,7 +17,7 @@ module.exports = {
     if (interaction.isSelectMenu()) {
       let choice = interaction.values[0];
       if (choice == "TANNERIE") {
-        let Tannerie050 = new Discord.EmbedBuilder()
+        let Tannerie050 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
@@ -31,7 +31,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tannerie50100 = new Discord.EmbedBuilder()
+        let Tannerie50100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 50 à 100\`丨🟩⬛⬛`)
@@ -45,7 +45,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tannerie100150 = new Discord.EmbedBuilder()
+        let Tannerie100150 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
@@ -59,7 +59,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tannerie150200 = new Discord.EmbedBuilder()
+        let Tannerie150200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
@@ -79,7 +79,7 @@ module.exports = {
         });
       }
       if (choice == "TISSAGE") {
-        let Tissage050 = new Discord.EmbedBuilder()
+        let Tissage050 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
@@ -93,7 +93,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tissage50100 = new Discord.EmbedBuilder()
+        let Tissage50100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
@@ -107,7 +107,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tissage100150 = new Discord.EmbedBuilder()
+        let Tissage100150 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
@@ -121,7 +121,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Tissage150200 = new Discord.EmbedBuilder()
+        let Tissage150200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
@@ -141,7 +141,7 @@ module.exports = {
         });
       }
       if (choice == "CUISINE") {
-        let Cuisine050 = new Discord.EmbedBuilder()
+        let Cuisine050 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
@@ -155,7 +155,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Cuisine50100 = new Discord.EmbedBuilder()
+        let Cuisine50100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
           .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
@@ -169,7 +169,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Cuisine100150 = new Discord.EmbedBuilder()
+        let Cuisine100150 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
@@ -183,7 +183,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Cuisine150200 = new Discord.EmbedBuilder()
+        let Cuisine150200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
@@ -203,7 +203,7 @@ module.exports = {
         });
       }
       if (choice == "ARTS") {
-        let Arts050 = new Discord.EmbedBuilder()
+        let Arts050 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
@@ -217,7 +217,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Arts50100 = new Discord.EmbedBuilder()
+        let Arts50100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
           .setTitle(`\`Niveau 50 à 100\`丨 🟩🟩⬛`)
@@ -231,7 +231,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Arts100150 = new Discord.EmbedBuilder()
+        let Arts100150 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩⬛`)
@@ -245,7 +245,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Arts150200 = new Discord.EmbedBuilder()
+        let Arts150200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩🟩⬛`)
@@ -265,7 +265,7 @@ module.exports = {
         });
       }
       if (choice == "JOALLERIE") {
-        let Joallerie0100 = new Discord.EmbedBuilder()
+        let Joallerie0100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/46/fiju.png")
           .setTitle(`\`Niveau 0 à 100\`丨 🟩⬛⬛`)
@@ -279,7 +279,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Joallerie100200 = new Discord.EmbedBuilder()
+        let Joallerie100200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/46/fiju.png")
           .setTitle(`\`Niveau 100 à 200\`丨 🟩🟩🟩`)
@@ -299,7 +299,7 @@ module.exports = {
         });
       }
       if (choice == "AMEUBLEMENT") {
-        let Ameublement050 = new Discord.EmbedBuilder()
+        let Ameublement050 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩🟩⬛`)
@@ -313,7 +313,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Ameublement50100 = new Discord.EmbedBuilder()
+        let Ameublement50100 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
           .setTitle(`\`Niveau 50 à 100\`丨 🟩🟩🟩`)
@@ -327,7 +327,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Ameublement100150 = new Discord.EmbedBuilder()
+        let Ameublement100150 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩🟩`)
@@ -341,7 +341,7 @@ module.exports = {
               size: 64,
             }),
           });
-        let Ameublement150200 = new Discord.EmbedBuilder()
+        let Ameublement150200 = new EmbedBuilder()
           .setColor("Gold")
           .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩🟩🟩`)
@@ -373,7 +373,7 @@ module.exports = {
         const dailyXP = Math.floor(Math.random() * 1) + 200;
         Levels.appendXp(interaction.user.id, interaction.guild.id, dailyXP);
 
-        const dailyEmbed = new Discord.EmbedBuilder()
+        const dailyEmbed = new EmbedBuilder()
           .setColor("Gold")
           .setTitle(
             `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+200 𝐗p\` :tada:`
@@ -390,7 +390,7 @@ module.exports = {
         interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
 
         //LOG Pour Daily.
-        const XPLOG = new Discord.EmbedBuilder()
+        const XPLOG = new EmbedBuilder()
           .setColor("Orange")
           .setTitle(
             `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien.`
