@@ -365,6 +365,68 @@ module.exports = {
           ],
         });
       }
+      if (choice == "TAILLEUR") {
+        let Tailleur050 = new EmbedBuilder()
+          .setColor("Gold")
+          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
+          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
+          .setDescription(
+            "\n\n\n**__Étapes de fabrication__** :\n\n 88 x Aigue-marine impure\n 176 x Grain de l'eau\n • 88 x `Aigue-marine impure taillée` (*Table de tailleur de pierre 3*)\n\n Coût net total ~ `319,44` <:coins:1040567610913345576>"
+          )
+          .setFooter({
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            iconURL: interaction.guild.iconURL({
+              dynamic: true,
+              size: 64,
+            }),
+          });
+        let Tailleur50100 = new EmbedBuilder()
+          .setColor("Gold")
+          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
+          .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
+          .setDescription(
+            "\n\n\n**__Étapes de fabrication__** :\n\n 470 x Grain de l'eau\n • 94 x Volute de l'eau (*Réserve dédiée aux arts obscurs 3*)\n • 282 x Aigue-marine impure\n • 188 x Dissolvant pur\n •• 94 x `Aigue-marine` (*Table de tailleur de pierre 3*)\n\n Coût net total ~ `981,36` <:coins:1040567610913345576>"
+          )
+          .setFooter({
+            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            iconURL: interaction.guild.iconURL({
+              dynamic: true,
+              size: 64,
+            }),
+          });
+        let Tailleur100150 = new EmbedBuilder()
+          .setColor("Gold")
+          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
+          .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩⬛`)
+          .setDescription(
+            "\n\n\n**__Étapes de fabrication__** :\n\n 2520 x Grain du feu\n • 504 x Volute du feu (*Réserve dédiée aux arts obscurs 3*)\n •• 126 x Essence du feu\n •• 504 x Rubis\n •• 252 x Dissolvant pur\n ••• 126 x `Rubis éclatant` (*Table de tailleur de pierre 4*)\n\n Coût net total ~ `4576,32` <:coins:1040567610913345576>"
+          )
+          .setFooter({
+            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            iconURL: interaction.guild.iconURL({
+              dynamic: true,
+              size: 64,
+            }),
+          });
+        let Tailleur150200 = new EmbedBuilder()
+          .setColor("Gold")
+          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
+          .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
+          .setDescription(
+            "\n\n\n**__Étapes de fabrication__** :\n\n 380 x Dissolvant pur\n 190 x Quintessence de la terre\n 950 x Ambre éclatant\n • 190 x `Ambre immaculé` (*Table de tailleur de pierre 5*)\n\n Coût net total ~ `17394,50` <:coins:1040567610913345576>"
+          )
+          .setFooter({
+            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            iconURL: interaction.guild.iconURL({
+              dynamic: true,
+              size: 64,
+            }),
+          });
+
+        interaction.reply({
+          embeds: [Tailleur050, Tailleur50100, Tailleur100150, Tailleur150200],
+        });
+      }
     }
 
     //Bouton Daily, pour récupérer son bonus quotidien.
