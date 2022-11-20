@@ -27,8 +27,21 @@ module.exports = {
     if (!message.guild) return;
     if (message.author.bot) return;
 
+    if (
+      message.member.roles.cache.some(
+        (role) => role.name === "✨丨𝐄lite 𝐒ecrète"
+      )
+    ) {
+      const randomAmountOfXp = Math.floor(Math.random() * 499) + 1;
+      const hasLeveledUp = await Levels.appendXp(
+        message.author.id,
+        message.guild.id,
+        randomAmountOfXp
+      );
+    }
+
     if (date.getDay() == 6) {
-      const randomAmountOfXp = Math.floor(Math.random() * 75) + 5;
+      const randomAmountOfXp = Math.floor(Math.random() * 74) + 1;
       const hasLeveledUp = await Levels.appendXp(
         message.author.id,
         message.guild.id,
