@@ -32,7 +32,7 @@ module.exports = {
         (role) => role.name === "✨丨𝐄lite 𝐒ecrète"
       )
     ) {
-      const randomAmountOfXp = Math.floor(Math.random() * 499) + 1;
+      const randomAmountOfXp = Math.floor(Math.random() * 59) + 1;
       const hasLeveledUp = await Levels.appendXp(
         message.author.id,
         message.guild.id,
