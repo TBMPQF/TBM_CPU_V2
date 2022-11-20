@@ -12,11 +12,8 @@ bot.config = require("./config");
 
 global.player = new Player(bot, bot.config.opt.discordPlayer);
 
-const { connect } = require("mongoose");
-connect(bot.config.mongourl, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() =>
+const { connect, mongoose } = require("mongoose");
+connect(bot.config.mongourl).then(() =>
   console.log(
     "\x1b[35m" +
       "La base de donnée " +
@@ -24,6 +21,11 @@ connect(bot.config.mongourl, {
       " est chargée avec succés ! 🗃️"
   )
 );
+
+const schema = new mongoose.Schema();
+
+mongoose.model("Levels", schema);
+mongoose.model("Levels").findOne();
 
 require("./src/events")(bot);
 require("./src/Loaders/loadCommands")(bot);

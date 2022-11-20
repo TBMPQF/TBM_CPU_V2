@@ -77,7 +77,7 @@ module.exports = {
         interaction.reply({
           embeds: [Tannerie050, Tannerie50100, Tannerie100150, Tannerie150200],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "TISSAGE") {
         let Tissage050 = new EmbedBuilder()
@@ -140,7 +140,7 @@ module.exports = {
         interaction.reply({
           embeds: [Tissage050, Tissage50100, Tissage100150, Tissage150200],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "CUISINE") {
         let Cuisine050 = new EmbedBuilder()
@@ -203,7 +203,7 @@ module.exports = {
         interaction.reply({
           embeds: [Cuisine050, Cuisine50100, Cuisine100150, Cuisine150200],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "ARTS") {
         let Arts050 = new EmbedBuilder()
@@ -266,7 +266,7 @@ module.exports = {
         interaction.reply({
           embeds: [Arts050, Arts50100, Arts100150, Arts150200],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "JOALLERIE") {
         let Joallerie0100 = new EmbedBuilder()
@@ -301,7 +301,7 @@ module.exports = {
         interaction.reply({
           embeds: [Joallerie0100, Joallerie100200],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "AMEUBLEMENT") {
         let Ameublement050 = new EmbedBuilder()
@@ -369,7 +369,7 @@ module.exports = {
             Ameublement150200,
           ],
         });
-        setTimeout(() => interaction.deleteReply(), 1800000);
+        setTimeout(() => interaction.deleteReply(), 600000);
       }
       if (choice == "TAILLEUR") {
         let Tailleur050 = new EmbedBuilder()
