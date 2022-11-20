@@ -22,10 +22,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1412 x Peau brute\n • 353 x `Cuir brut` (*Tannerie 3*)\n\n Coût net total ~ `709,53` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n 1412 x Peau brute\n • 353 x `Cuir brut` (*Tannerie 3*)\n\n Coût net total ~ `808,37` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -36,10 +36,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 50 à 100\`丨🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n725 x Tanin mâture\n 11600 x Peau brute\n • 2900 x Cuir brut (*Tannerie 3*)\n •• 725 x `Cuir corroyé` (*Tannerie 3*)\n\n Coût net total ~ `7337,00` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n725 x Tanin mâture\n 11600 x Peau brute\n • 2900 x Cuir brut (*Tannerie 3*)\n •• 725 x `Cuir corroyé` (*Tannerie 3*)\n\n Coût net total ~ `5495,50` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -50,10 +50,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n642 x Tanin mâture\n 3852 x Peau épaisse\n • 1284 x Cuir corroyé (*Tannerie 3*)\n •• 725 x `Cuir épais` (*Tannerie 4*)\n\n Coût net total ~ `9469,50` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n642 x Tanin mâture\n 3852 x Peau épaisse\n • 1284 x Cuir corroyé (*Tannerie 3*)\n •• 725 x `Cuir épais` (*Tannerie 4*)\n\n Coût net total ~ `8326,74` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -64,10 +64,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n1602 x Tanin mâture\n 9609 x Peau épaisse\n • 3203 x Cuir corroyé (*Tannerie 3*)\n • 2082 x Cuir épais (*Tannerie 4*)\n • 8328 x Peau de fer\n • 1041 x Tanin mâture\n •• 1041 x `Cuir imprégné` (*Tannerie 5*)\n\n Coût net total ~ `27830,73` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n1602 x Tanin mâture\n 9609 x Peau épaisse\n • 3203 x Cuir corroyé (*Tannerie 3*)\n • 2082 x Cuir épais (*Tannerie 4*)\n • 8328 x Peau de fer\n • 1041 x Tanin mâture\n •• 1041 x `Cuir imprégné` (*Tannerie 5*)\n\n Coût net total ~ `19081,53` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -85,10 +85,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1336 x Fibres\n • 334 x `Lin` (*Métier à tisser 3*)\n\n Coût net total ~ `1285,90` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n 1336 x Fibres\n • 334 x `Lin` (*Métier à tisser 3*)\n\n Coût net total ~ `390,78` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -99,10 +99,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n2740 x Lin\n 685 x Triplure en tissefer\n • 685 x `Satin` (*Métier à tisser 3*)\n\n Coût net total ~ `4904,60` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n2740 x Lin\n 685 x Triplure en tissefer\n • 685 x `Satin` (*Métier à tisser 3*)\n\n Coût net total ~ `3630,50` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -113,10 +113,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n3642 x Fils de soie\n 1214 x Satin\n 607 x Triplure en tissefer\n • 607 x `Soie` (*Métier à tisser 4*)\n\n Coût net total ~ `5821,13` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n3642 x Fils de soie\n 1214 x Satin\n 607 x Triplure en tissefer\n • 607 x `Soie` (*Métier à tisser 4*)\n\n Coût net total ~ `6792,33` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
@@ -127,10 +127,10 @@ module.exports = {
           .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
           .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
           .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n9083 x Fils de soie\n 3028 x Satin\n 1514 x Triplure en tissefer\n • 1968 x Soie (*Métier à tisser 4*)\n • 984 x Triplure en tissefer\n • 7872 x Souchet (*Métier à tisser 5*)\n •• 984 x `Soie imprégnée` (*Métier à tisser 5*)\n\n Coût net total ~ `24871,74` <:coins:1040567610913345576>"
+            "\n\n\n**__Étapes de fabrication__** :\n\n9083 x Fils de soie\n 3028 x Satin\n 1514 x Triplure en tissefer\n • 1968 x Soie (*Métier à tisser 4*)\n • 984 x Triplure en tissefer\n • 7872 x Souchet (*Métier à tisser 5*)\n •• 984 x `Soie imprégnée` (*Métier à tisser 5*)\n\n Coût net total ~ `26723,17` <:coins:1040567610913345576>"
           )
           .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
+            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
             iconURL: interaction.guild.iconURL({
               dynamic: true,
               size: 64,
