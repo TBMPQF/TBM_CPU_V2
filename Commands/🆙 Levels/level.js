@@ -14,12 +14,13 @@ module.exports = {
 
     const levelEmbed = new EmbedBuilder()
       .setColor("Red")
+      .setTitle(`\`${interaction.user.username}\``)
       .setDescription(
-        `\`${interaction.user.username}\`\n\n𝐓u as : \*\*${users.xp} / ${xpRequired}\*\* XP\n𝐓u es niveau : \*\*${users.level}\*\*`
+        `\n\n𝐓u as : \*\*${users.xp} / ${xpRequired}\*\* XP\n𝐓u es niveau : \*\*${users.level}\*\*`
       )
       .setThumbnail(interaction.user.displayAvatarURL())
       .setFooter({
-        text: `𝐓u as envoyé : undefined messages`,
+        text: `𝐓u as envoyé : undefined messages.`,
       });
 
     return interaction.reply({ embeds: [levelEmbed] });
