@@ -20,7 +20,7 @@ module.exports = {
       )
       .setThumbnail(interaction.user.displayAvatarURL())
       .setFooter({
-        text: `𝐓u as envoyé : undefined messages.`,
+        text: `𝐓u as envoyé : ${users.message} messages.`,
       });
 
     return interaction.reply({ embeds: [levelEmbed] });

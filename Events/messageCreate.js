@@ -1,6 +1,5 @@
 const bot = require("discord.js");
 const Levels = require("discord-xp");
-const date = new Date();
 
 bot.config = require("../config.json");
 
@@ -27,34 +26,13 @@ module.exports = {
     if (!message.guild) return;
     if (message.author.bot) return;
 
-    if (
-      message.member.roles.cache.some(
-        (role) => role.name === "✨丨𝐄lite 𝐒ecrète"
-      )
-    ) {
-      const randomAmountOfXp = Math.floor(Math.random() * 59) + 1;
-      const hasLeveledUp = await Levels.appendXp(
-        message.author.id,
-        message.guild.id,
-        randomAmountOfXp
-      );
-    }
-
-    if (date.getDay() == 6) {
-      const randomAmountOfXp = Math.floor(Math.random() * 74) + 1;
-      const hasLeveledUp = await Levels.appendXp(
-        message.author.id,
-        message.guild.id,
-        randomAmountOfXp
-      );
-    }
-
     const randomAmountOfXp = Math.floor(Math.random() * 49) + 1;
     const hasLeveledUp = await Levels.appendXp(
       message.author.id,
       message.guild.id,
       randomAmountOfXp
     );
+
     if (hasLeveledUp) {
       const user = await Levels.fetch(message.author.id, message.guild.id);
       bot.channels.cache
