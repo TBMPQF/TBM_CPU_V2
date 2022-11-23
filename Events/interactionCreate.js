@@ -12,7 +12,7 @@ const levels = require("discord-xp");
 
 module.exports = {
   name: "interactionCreate",
-  async execute(interaction, bot, user, userId, guildId) {
+  async execute(interaction, bot, user, message) {
     //Tous les embeds de Métiers pour New World
     if (interaction.isSelectMenu()) {
       let choice = interaction.values[0];
@@ -439,9 +439,6 @@ module.exports = {
     //Bouton Daily, pour récupérer son bonus quotidien.
     if (!buttonCooldown.has(interaction.user.id)) {
       if (interaction.customId === "DAILYXP") {
-        const dailyXP = Math.floor(Math.random() * 1) + 200;
-        levels.appendXp(interaction.user.id, interaction.guild.id, dailyXP);
-
         const dailyEmbed = new EmbedBuilder()
           .setColor("Gold")
           .setTitle(
@@ -481,105 +478,111 @@ module.exports = {
         const lieutnantRole =
           interaction.guild.roles.cache.get("813795963805761547");
 
-        const user = await levels.fetch(
-          interaction.user.id,
-          interaction.guild.id
+        const dailyXP = Math.floor(Math.random() * 1) + 200;
+        const hasLeveledUp = await levels.appendXp(
+          interaction.member.id,
+          interaction.guild.id,
+          dailyXP
         );
-        user.lastUpdatedButton = new Date();
-
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** ! - :worm:`
+        if (hasLeveledUp) {
+          const user = await Levels.fetch(
+            interaction.member.id,
+            interaction.guild.id
           );
-        if (user.level == 2) {
           bot.channels.cache
             .get(`717154831823011890`)
             .send(
-              `**     丨**Tu débloques le grade ${premièreclasseRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("811724918630645790"))
-            .then(interaction.member.roles.remove("825023017645899822"));
-        }
-        if (user.level == 5) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795565708115988"))
-            .then(interaction.member.roles.remove("811724918630645790"));
-        }
-        if (user.level == 10) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795488285327362"))
-            .then(interaction.member.roles.remove("813795565708115988"));
-        }
-        if (user.level == 15) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795598943518732"))
-            .then(interaction.member.roles.remove("813795488285327362"));
-        }
-        if (user.level == 20) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795648791904296"))
-            .then(interaction.member.roles.remove("813795598943518732"));
-        }
-        if (user.level == 25) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795701708030014"))
-            .then(interaction.member.roles.remove("813795648791904296"));
-        }
-        if (user.level == 30) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795755080548393"))
-            .then(interaction.member.roles.remove("813795701708030014"));
-        }
-        if (user.level == 35) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795805726113793"))
-            .then(interaction.member.roles.remove("813795755080548393"));
-        }
-        if (user.level == 40) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795871661359124"))
-            .then(interaction.member.roles.remove("813795805726113793"));
-        }
-        if (user.level == 45) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795921480908840"))
-            .then(interaction.member.roles.remove("813795871661359124"));
-        }
-        if (user.level == 50) {
-          interaction.channel
-            .send(
-              `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
-            )
-            .then(interaction.member.roles.add("813795963805761547"))
-            .then(interaction.member.roles.remove("813795921480908840"));
+              `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** ! - :worm:`
+            );
+          if (user.level == 2) {
+            bot.channels.cache
+              .get(`717154831823011890`)
+              .send(
+                `**     丨**Tu débloques le grade ${premièreclasseRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("811724918630645790"))
+              .then(interaction.member.roles.remove("825023017645899822"));
+          }
+          if (user.level == 5) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795565708115988"))
+              .then(interaction.member.roles.remove("811724918630645790"));
+          }
+          if (user.level == 10) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795488285327362"))
+              .then(interaction.member.roles.remove("813795565708115988"));
+          }
+          if (user.level == 15) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795598943518732"))
+              .then(interaction.member.roles.remove("813795488285327362"));
+          }
+          if (user.level == 20) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795648791904296"))
+              .then(interaction.member.roles.remove("813795598943518732"));
+          }
+          if (user.level == 25) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795701708030014"))
+              .then(interaction.member.roles.remove("813795648791904296"));
+          }
+          if (user.level == 30) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795755080548393"))
+              .then(interaction.member.roles.remove("813795701708030014"));
+          }
+          if (user.level == 35) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795805726113793"))
+              .then(interaction.member.roles.remove("813795755080548393"));
+          }
+          if (user.level == 40) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795871661359124"))
+              .then(interaction.member.roles.remove("813795805726113793"));
+          }
+          if (user.level == 45) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795921480908840"))
+              .then(interaction.member.roles.remove("813795871661359124"));
+          }
+          if (user.level == 50) {
+            interaction.channel
+              .send(
+                `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
+              )
+              .then(interaction.member.roles.add("813795963805761547"))
+              .then(interaction.member.roles.remove("813795921480908840"));
+          }
         }
 
         //LOG Pour Daily.

@@ -8,6 +8,9 @@ module.exports = {
   async execute(message, bot) {
     Levels.setURL(bot.config.mongourl);
 
+    const sendSMS = Math.floor(Math.random() * 1) + 1;
+    Levels.appendSMS(message.author.id, message.guild.id, sendSMS);
+
     const premièreclasseRole =
       message.guild.roles.cache.get("811724918630645790");
     const caporalRole = message.guild.roles.cache.get("813795565708115988");
