@@ -1,4 +1,10 @@
 const bot = require("discord.js");
+const {
+  ActionRowBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  ButtonBuilder,
+} = require("discord.js");
 const Levels = require("discord-xp");
 
 bot.config = require("../config.json");
@@ -134,6 +140,40 @@ module.exports = {
           .then(message.member.roles.add("813795963805761547"))
           .then(message.member.roles.remove("813795921480908840"));
       }
+    }
+
+    if (message.channel.id === "1045073140948152371") {
+      let suggEmbed = new EmbedBuilder()
+        .setColor("DarkVividPink")
+        .setTitle("丨𝐒uggestion")
+        .setDescription(`${message.content}`)
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .addFields({
+          name: "𝐏roposé par :",
+          value: `${message.author}`,
+          inline: true,
+        });
+      const buttonY = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId("ACCEPTSUGG")
+            .setEmoji("✅")
+            .setStyle(ButtonStyle.Success)
+        )
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId("NOPSUGG")
+            .setEmoji("❌")
+            .setStyle(ButtonStyle.Danger)
+        );
+
+      bot.channels.cache
+        .get("1045073140948152371")
+        .send({ embeds: [suggEmbed], components: [buttonY] })
+        .then((msg) => {
+          msg.startThread({ name: `Suggestion de ${message.author.username}` });
+        });
+      await message.delete();
     }
   },
 };
