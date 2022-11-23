@@ -8,9 +8,6 @@ module.exports = {
   async execute(message, bot) {
     Levels.setURL(bot.config.mongourl);
 
-    const sendSMS = Math.floor(Math.random() * 1) + 1;
-    Levels.appendSMS(message.author.id, message.guild.id, sendSMS);
-
     const premièreclasseRole =
       message.guild.roles.cache.get("811724918630645790");
     const caporalRole = message.guild.roles.cache.get("813795565708115988");
@@ -29,6 +26,11 @@ module.exports = {
     if (!message.guild) return;
     if (message.author.bot) return;
 
+    // Compteur de message.
+    const sendSMS = Math.floor(Math.random() * 1) + 1;
+    Levels.appendSMS(message.author.id, message.guild.id, sendSMS);
+
+    // Ajout d'XP + obtention de niveaux ainsi que de rôles.
     const randomAmountOfXp = Math.floor(Math.random() * 49) + 1;
     const hasLeveledUp = await Levels.appendXp(
       message.author.id,
