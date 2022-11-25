@@ -748,6 +748,23 @@ module.exports = {
     if (interaction.customId === "VALID_DELETE") {
       await interaction.guild.channels.delete(interaction.channel);
     }
+
+    // Boutton suggestion
+    if (interaction.customId === "ACCEPTSUGG") {
+      await interaction.reply({
+        content:
+          "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
+        ephemeral: true,
+      });
+    }
+    if (interaction.customId === "NOPSUGG") {
+      await interaction.reply({
+        content:
+          "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
+        ephemeral: true,
+      });
+    }
+
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;

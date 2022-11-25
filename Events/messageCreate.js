@@ -157,13 +157,13 @@ module.exports = {
         .addComponents(
           new ButtonBuilder()
             .setCustomId("ACCEPTSUGG")
-            .setEmoji("✅")
+            .setEmoji("✔️")
             .setStyle(ButtonStyle.Success)
         )
         .addComponents(
           new ButtonBuilder()
             .setCustomId("NOPSUGG")
-            .setEmoji("❌")
+            .setEmoji("✖️")
             .setStyle(ButtonStyle.Danger)
         );
 
