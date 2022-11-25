@@ -13,7 +13,7 @@ module.exports = {
       .setDescription(`Ping actuel : \`${bot.ws.ping}\` ms 🛰️`)
       .setColor("Orange")
       .setFooter({
-        text: `Cordialement l'équipe ${message.guild.name}`,
+        text: `Cordialement, l'équipe ${message.guild.name}`,
         iconURL: message.guild.iconURL(),
       });
     message.reply({ embeds: [infoXPEmbed] });

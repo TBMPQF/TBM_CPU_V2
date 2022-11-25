@@ -16,9 +16,14 @@ module.exports = {
   async execute(bot, message, args) {
     const RoleEmbed = new Discord.EmbedBuilder()
       .setColor("#b3c7ff")
+      .setTitle(`丨𝐂hoisis tes rôles 🎭`)
       .setDescription(
-        `𝐒éléctionne tes \`rôles\` pour avoir accès aux salons dédiés !`
-      );
+        `𝐓u peux à présent sélectionner tes rôles pour avoir accès aux salons dédiés et ainsi communiquer avec la communauté de ton jeu préféré !\n 𝐀 tout moment si ton envie de changer de jeu te vient, tu peux modifier tes rôles préalablement sélectionnés.`
+      )
+      .setFooter({
+        text: `Cordialement, l'équipe ${message.guild.name}`,
+        iconURL: message.guild.iconURL(),
+      });
 
     const SelectMenu = new Discord.ActionRowBuilder().addComponents(
       new Discord.SelectMenuBuilder()

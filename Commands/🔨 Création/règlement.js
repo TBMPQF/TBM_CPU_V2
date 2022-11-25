@@ -24,7 +24,7 @@ module.exports = {
       )
       .setThumbnail(message.guild.iconURL())
       .setFooter({
-        text: `Cordialement l'équipe ${message.guild.name}`,
+        text: `Cordialement, l'équipe ${message.guild.name}`,
         iconURL: message.guild.iconURL(),
       });
 
