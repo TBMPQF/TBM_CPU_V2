@@ -18,6 +18,7 @@
     "ffmpeg-static": "^5.0.1",
     "mongoose": "^6.7.1",
     "opusscript": "^0.0.8",
+    "python": "^0.0.4",
     "rest": "^2.0.0"
   }
 }

@@ -485,7 +485,7 @@ module.exports = {
           dailyXP
         );
         if (hasLeveledUp) {
-          const user = await Levels.fetch(
+          const user = await levels.fetch(
             interaction.member.id,
             interaction.guild.id
           );
