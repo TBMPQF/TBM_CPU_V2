@@ -492,7 +492,7 @@ module.exports = {
           bot.channels.cache
             .get(`717154831823011890`)
             .send(
-              `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** ! - :worm:`
+              `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** en récupérant ton bonus quotidien ! - :worm:`
             );
           if (user.level == 2) {
             bot.channels.cache

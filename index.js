@@ -18,7 +18,7 @@ connect(bot.config.mongourl).then(() =>
     "\x1b[35m" +
       "La base de donnée " +
       "\x1b[31m" +
-      " est chargée avec succés ! 🗃️"
+      "est chargée avec succés ! 🗃️"
   )
 );
 
