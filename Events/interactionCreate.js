@@ -504,7 +504,8 @@ module.exports = {
               .then(interaction.member.roles.remove("825023017645899822"));
           }
           if (user.level == 5) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
               )
@@ -512,7 +513,8 @@ module.exports = {
               .then(interaction.member.roles.remove("811724918630645790"));
           }
           if (user.level == 10) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
               )
@@ -520,7 +522,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795565708115988"));
           }
           if (user.level == 15) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
               )
@@ -528,7 +531,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795488285327362"));
           }
           if (user.level == 20) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
               )
@@ -536,7 +540,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795598943518732"));
           }
           if (user.level == 25) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
               )
@@ -544,7 +549,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795648791904296"));
           }
           if (user.level == 30) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
               )
@@ -552,7 +558,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795701708030014"));
           }
           if (user.level == 35) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
               )
@@ -560,7 +567,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795755080548393"));
           }
           if (user.level == 40) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
               )
@@ -568,7 +576,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795805726113793"));
           }
           if (user.level == 45) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
               )
@@ -576,7 +585,8 @@ module.exports = {
               .then(interaction.member.roles.remove("813795871661359124"));
           }
           if (user.level == 50) {
-            interaction.channel
+            bot.channels.cache
+              .get(`717154831823011890`)
               .send(
                 `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
               )
@@ -756,6 +766,22 @@ module.exports = {
           "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
         ephemeral: true,
       });
+      const ACCEPTSUGGLOG = new EmbedBuilder()
+        .setColor("Green")
+        .setTitle(
+          `\`${interaction.user.username}\` 𝐕ient de réagir positivement à la suggestion.`
+        )
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
+      bot.channels.cache
+        .get("838440585341566996")
+        .send({ embeds: [ACCEPTSUGGLOG] });
     }
     if (interaction.customId === "NOPSUGG") {
       await interaction.reply({
@@ -763,6 +789,22 @@ module.exports = {
           "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
         ephemeral: true,
       });
+      const NOPSUGGLOG = new EmbedBuilder()
+        .setColor("Red")
+        .setTitle(
+          `\`${interaction.user.username}\` 𝐕ient de réagir négativement à la suggestion.`
+        )
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
+      bot.channels.cache
+        .get("838440585341566996")
+        .send({ embeds: [NOPSUGGLOG] });
     }
 
     if (interaction.channel === null) return;
