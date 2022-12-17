@@ -1,9 +1,9 @@
-const { PermissionFlagsBits } = require("discord.js");
+const Discord = require("discord.js");
 
 module.exports = {
   name: "say",
   description: "丨Parle à la place du Bot.",
-  permission: PermissionFlagsBits.ManageGuild,
+  permission: Discord.PermissionFlagsBits.ManageGuild,
   category: "⚔️ Modération",
   dm: false,
   options: [

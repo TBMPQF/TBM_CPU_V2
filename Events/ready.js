@@ -9,7 +9,7 @@ module.exports = {
 
     bot.channels.cache
       .get(`838440585341566996`)
-      .send(`**Je viens tout juste de démarrer.**`);
+      .send(`**Je viens tout juste de redémarrer.**`);
 
     bot.user.setPresence({
       activities: [{ name: bot.config.activity, type: ActivityType.Watching }],
