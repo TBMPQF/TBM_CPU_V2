@@ -61,7 +61,8 @@ module.exports = {
           .then(message.member.roles.remove("825023017645899822"));
       }
       if (user.level == 5) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
           )
@@ -69,7 +70,8 @@ module.exports = {
           .then(message.member.roles.remove("811724918630645790"));
       }
       if (user.level == 10) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
           )
@@ -77,7 +79,8 @@ module.exports = {
           .then(message.member.roles.remove("813795565708115988"));
       }
       if (user.level == 15) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
           )
@@ -85,7 +88,8 @@ module.exports = {
           .then(message.member.roles.remove("813795488285327362"));
       }
       if (user.level == 20) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
           )
@@ -93,7 +97,8 @@ module.exports = {
           .then(message.member.roles.remove("813795598943518732"));
       }
       if (user.level == 25) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
           )
@@ -101,7 +106,8 @@ module.exports = {
           .then(message.member.roles.remove("813795648791904296"));
       }
       if (user.level == 30) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
           )
@@ -109,7 +115,8 @@ module.exports = {
           .then(message.member.roles.remove("813795701708030014"));
       }
       if (user.level == 35) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
           )
@@ -117,7 +124,8 @@ module.exports = {
           .then(message.member.roles.remove("813795755080548393"));
       }
       if (user.level == 40) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
           )
@@ -125,7 +133,8 @@ module.exports = {
           .then(message.member.roles.remove("813795805726113793"));
       }
       if (user.level == 45) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
           )
@@ -133,7 +142,8 @@ module.exports = {
           .then(message.member.roles.remove("813795871661359124"));
       }
       if (user.level == 50) {
-        message.channel
+        bot.channels.cache
+          .get(`717154831823011890`)
           .send(
             `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
           )

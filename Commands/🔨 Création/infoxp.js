@@ -3,7 +3,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "infoxp",
   description: "丨𝐄nvoi l'embed d'information d'XP.",
-  permission: Discord.PermissionFlagsBits.ManageGuild,
   category: "🔨 Création",
   dm: false,
 

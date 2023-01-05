@@ -9,7 +9,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "règlement",
   description: "丨𝐄nvoi l'embed du règlement.",
-  permission: PermissionFlagsBits.ManageGuild,
   dm: false,
   category: "🔨 Création",
 

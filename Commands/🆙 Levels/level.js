@@ -4,7 +4,6 @@ const Levels = require("discord-xp");
 module.exports = {
   name: "level",
   description: "丨Affiche ton niveau d'expérience.",
-  permission: "Aucune",
   category: "🆙 Levels",
   dm: false,
 

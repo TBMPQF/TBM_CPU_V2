@@ -9,7 +9,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "rôle",
   description: "丨𝐄nvoi l'embed des 𝐑ôles.",
-  permission: PermissionFlagsBits.ManageGuild,
   dm: false,
   category: "🔨 Création",
 

@@ -807,6 +807,50 @@ module.exports = {
         .send({ embeds: [NOPSUGGLOG] });
     }
 
+    // Actualisation du ping
+    if (interaction.customId === "ping") {
+      let reloadPing = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("ping")
+          .setEmoji("🔄")
+          .setLabel("Actualiser")
+          .setStyle(ButtonStyle.Success)
+      );
+      const pingUser = Date.now() - interaction.createdTimestamp;
+      let emojiUser;
+      if (pingUser < 200) {
+        emojiUser = "🟢";
+      } else if (pingUser < 400 && pingUser > 200) {
+        emojiUser = "🟠";
+      } else if (pingUser > 400) {
+        emojiUser = "🔴";
+      }
+      // Ping de l'API de discord
+      const APIPing = bot.ws.ping;
+      let APIemoji;
+      if (APIPing < 200) {
+        APIemoji = "🟢";
+      } else if (APIPing < 400 && APIPing > 200) {
+        APIemoji = "🟠";
+      } else if (APIPing > 400) {
+        APIemoji = "🔴";
+      }
+
+      let PingEmbed = new EmbedBuilder()
+        .setDescription(
+          `
+          \`${emojiUser}\`丨Votre ping : **${pingUser}ms**
+          \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
+        )
+        .setColor("#b3c7ff");
+
+      await interaction.deferUpdate();
+      await interaction.editReply({
+        embeds: [PingEmbed],
+        components: [reloadPing],
+      });
+    }
+
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;

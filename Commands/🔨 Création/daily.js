@@ -9,7 +9,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "daily",
   description: "丨𝐄nvoi l'embed du daily.",
-  permission: PermissionFlagsBits.ManageGuild,
   dm: false,
   category: "🔨 Création",
 

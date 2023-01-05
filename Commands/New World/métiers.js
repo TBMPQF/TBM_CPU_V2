@@ -9,7 +9,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "métiers",
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
-  permission: PermissionFlagsBits.ManageGuild,
   dm: false,
   category: "New World",
 

@@ -9,7 +9,6 @@ const Discord = require("discord.js");
 module.exports = {
   name: "ticket",
   description: "丨𝐄nvoi l'embed du système de ticket.",
-  permission: PermissionFlagsBits.ManageGuild,
   dm: false,
   category: "🔨 Création",
 
