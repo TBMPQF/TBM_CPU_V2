@@ -38,7 +38,7 @@ module.exports = {
     let PingEmbed = new Discord.EmbedBuilder()
       .setDescription(
         `
-            \`${emojiUser}\`丨Votre ping : **${pingUser}ms**
+            \`${emojiUser}\`丨Ton ping : **${pingUser}ms** :fish: 
             \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
       )
       .setColor("#b3c7ff");
@@ -46,6 +46,7 @@ module.exports = {
     await message.reply({
       embeds: [PingEmbed],
       components: [reloadPing],
+      ephemeral: true,
     });
   },
 };

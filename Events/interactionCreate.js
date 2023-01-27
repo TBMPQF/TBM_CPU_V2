@@ -9,6 +9,7 @@ const {
 } = require("discord.js");
 const buttonCooldown = new Set();
 const levels = require("discord-xp");
+const ownerId = "179317321100296194";
 
 module.exports = {
   name: "interactionCreate",
@@ -839,7 +840,7 @@ module.exports = {
       let PingEmbed = new EmbedBuilder()
         .setDescription(
           `
-          \`${emojiUser}\`丨Votre ping : **${pingUser}ms**
+          \`${emojiUser}\`丨Votre ping : **${pingUser}ms** :fish:
           \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
         )
         .setColor("#b3c7ff");
@@ -848,6 +849,7 @@ module.exports = {
       await interaction.editReply({
         embeds: [PingEmbed],
         components: [reloadPing],
+        ephemeral: true,
       });
     }
 
