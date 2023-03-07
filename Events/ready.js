@@ -12,7 +12,7 @@ module.exports = {
       .send(`**Je viens tout juste de redémarrer.**`);
 
     bot.user.setPresence({
-      activities: [{ name: bot.config.activity, type: ActivityType.Watching }],
+      activities: [{ name: bot.config.activity, type: ActivityType.Playing }],
       status: "dnd",
     });
   },

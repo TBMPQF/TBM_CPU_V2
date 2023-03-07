@@ -45,6 +45,11 @@ module.exports = {
             value: "ROCKET",
           },
           {
+            label: "丨𝐒ons 𝐎f the 𝐅orest",
+            emoji: "1078754107470393417",
+            value: "FOREST",
+          },
+          {
             label: "丨𝐂all of 𝐃uty",
             emoji: "1038568804650844240",
             value: "CALLOF",
@@ -53,11 +58,6 @@ module.exports = {
             label: "丨𝐌inecraft",
             emoji: "813799505077076008",
             value: "MINECRAFT",
-          },
-          {
-            label: "丨7 𝐃ays to 𝐃ie",
-            emoji: "813800088916197416",
-            value: "7DAYS",
           }
         )
     );
