@@ -1,8 +1,8 @@
 config.json
 package-lock.json
-/Commands/Création/daily.js
-/Commands/Création/infoxp.js
-/Commands/Création/règlement.js
-/Commands/Création/rôle.js
-/Commands/Création/ticket.js
-/Commands/Création/say.js
+./Commands/Création/daily.js
+./Commands/Création/infoxp.js
+./Commands/Création/règlement.js
+./Commands/Création/rôle.js
+./Commands/Création/ticket.js
+./Commands/Création/say.js
