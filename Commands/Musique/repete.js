@@ -4,7 +4,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "repete",
   description: "丨Répète la musique en cours de lecture.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
 
