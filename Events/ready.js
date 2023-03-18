@@ -1,4 +1,4 @@
-const { ActivityType } = require("discord.js");
+const { ActivityType, EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "ready",
@@ -12,12 +12,22 @@ module.exports = {
       .send(`**Je viens tout juste de redémarrer.**`);
 
     setInterval(() => {
+      const DailyInterval = new EmbedBuilder()
+        .setDescription(`@here. N'oubliez pas de récupérer votre \`Daily\` ! `)
+        .setColor("Red")
+        .setFooter({
+          text: `丨`,
+          iconURL: `${member.user.displayAvatarURL({
+            dynamic: true,
+            size: 512,
+          })}`,
+        })
+        .setTimestamp();
+
       bot.channels.cache
-        .get(`717144491525406791`)
-        .send(
-          `@everyone. Bonjour à tous, n'oubliez pas de prendre votre \`Daily\``
-        );
-    }, 14400000);
+        .get("811631297218347091")
+        .send({ embeds: [DailyInterval] });
+    }, 43200000);
 
     bot.user.setPresence({
       activities: [{ name: bot.config.activity, type: ActivityType.Playing }],

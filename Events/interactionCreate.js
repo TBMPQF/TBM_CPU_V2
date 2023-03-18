@@ -627,24 +627,8 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("811662603713511425");
-          const REMOVEAPEX = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐀pex 𝐋egends.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVEAPEX], ephemeral: true });
         } else {
           member.roles.add("811662603713511425");
-          const ADDAPEX = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐀pex 𝐋egends.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDAPEX], ephemeral: true });
           interaction.deferUpdate();
         }
       } else if (choice == "NEWORLD") {
@@ -654,24 +638,9 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("907320710559576105");
-          const REMOVENEWWORLD = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐍ew 𝐖orld.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVENEWWORLD], ephemeral: true });
         } else {
           member.roles.add("907320710559576105");
-          const ADDNEWWORLD = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐍ew 𝐖orld.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDNEWWORLD], ephemeral: true });
+
           interaction.deferUpdate();
         }
       } else if (choice == "FOREST") {
@@ -681,24 +650,9 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("1078754580113920020");
-          const REMOVEFOREST = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐒ons 𝐎f the 𝐅orest.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVEFOREST], ephemeral: true });
         } else {
           member.roles.add("1078754580113920020");
-          const ADDFOREST = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐒ons 𝐎f the 𝐅orest.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDFOREST], ephemeral: true });
+
           interaction.deferUpdate();
         }
       } else if (choice == "ROCKET") {
@@ -708,24 +662,9 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("811663563558092841");
-          const REMOVEROCKET = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐑ocket 𝐋eague.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVEROCKET], ephemeral: true });
         } else {
           member.roles.add("811663563558092841");
-          const ADDROCKET = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐑ocket 𝐋eague.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDROCKET], ephemeral: true });
+
           interaction.deferUpdate();
         }
       } else if (choice == "CALLOF") {
@@ -735,24 +674,9 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("813800188317663254");
-          const REMOVECALLOF = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐂all of 𝐃uty.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVECALLOF], ephemeral: true });
         } else {
           member.roles.add("813800188317663254");
-          const ADDCALLOF = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐂all of 𝐃uty.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDCALLOF], ephemeral: true });
+
           interaction.deferUpdate();
         }
       } else if (choice == "MINECRAFT") {
@@ -762,24 +686,9 @@ module.exports = {
           interaction.deferUpdate();
 
           member.roles.remove("811663653140168741");
-          const REMOVEMINECRAFT = new EmbedBuilder()
-            .setColor("Red")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de perdre le rôle 𝐌inecraft.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [REMOVEMINECRAFT], ephemeral: true });
         } else {
           member.roles.add("811663653140168741");
-          const ADDMINECRAFT = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de prendre le rôle 𝐌inecraft.`
-            );
-          bot.channels.cache
-            .get("811652152467783690")
-            .send({ embeds: [ADDMINECRAFT], ephemeral: true });
+
           interaction.deferUpdate();
         }
       }
