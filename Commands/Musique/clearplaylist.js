@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "clearplaylist",
   description: "丨Supprime la liste d'attente.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
 

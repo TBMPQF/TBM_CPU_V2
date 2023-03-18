@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "progression",
   description: "丨Voir la progression de la musique.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
 

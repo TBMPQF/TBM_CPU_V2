@@ -10,7 +10,7 @@ module.exports = {
   name: "ticket",
   description: "丨𝐄nvoi l'embed du système de ticket.",
   dm: false,
-  category: "🔨 Création",
+  category: "Création",
 
   async execute(bot, message, args) {
     const TicketEmbed = new Discord.EmbedBuilder()

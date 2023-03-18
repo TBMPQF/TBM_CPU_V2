@@ -10,7 +10,7 @@ module.exports = {
   name: "rôle",
   description: "丨𝐄nvoi l'embed des 𝐑ôles.",
   dm: false,
-  category: "🔨 Création",
+  category: "Création",
 
   async execute(bot, message, args) {
     const RoleEmbed = new Discord.EmbedBuilder()

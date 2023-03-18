@@ -3,7 +3,7 @@ const Discord = require("discord.js");
 module.exports = {
   name: "infoxp",
   description: "丨𝐄nvoi l'embed d'information d'XP.",
-  category: "🔨 Création",
+  category: "Création",
   dm: false,
 
   async execute(bot, message, args) {

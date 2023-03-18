@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "back",
   description: "丨Revenir à l'ancienne musique.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
 

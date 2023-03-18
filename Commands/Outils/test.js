@@ -3,7 +3,7 @@ const Discord = require("discord.js");
 module.exports = {
   name: "test",
   description: "丨Affiche la latence du serveur",
-  category: "⚙️ Outils",
+  category: "Outils",
   dm: false,
 
   async execute(bot, message) {

@@ -4,7 +4,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "play",
   description: "丨Écoute une musique.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
   options: [

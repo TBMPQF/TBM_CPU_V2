@@ -3,7 +3,7 @@ const Discord = require("discord.js");
 module.exports = {
   name: "say",
   description: "丨Parle à la place du Bot.",
-  category: "⚔️ Modération",
+  category: "Modération",
   dm: false,
   options: [
     {

@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "resume",
   description: "丨Relancer la musique.",
-  category: "🔊 Music",
+  category: "Music",
   permission: "Aucune",
   dm: false,
 
