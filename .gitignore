@@ -1,9 +1,8 @@
 config.json
 package-lock.json
-daily.js
-infoxp.js
-règlement.js
-rôle.js
-ticket.js
-say.js
-Commands/Création
+/Commands/Création/daily.js
+/Commands/Création/infoxp.js
+/Commands/Création/règlement.js
+/Commands/Création/rôle.js
+/Commands/Création/ticket.js
+/Commands/Création/say.js
