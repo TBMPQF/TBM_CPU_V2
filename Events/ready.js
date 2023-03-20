@@ -32,7 +32,7 @@ module.exports = {
         .send({ embeds: [DailyInterval] });
 
       bot.channels.cache.get("818640158693392405").bulkDelete(1);
-    }, 5000);
+    }, 14200000);
 
     bot.user.setPresence({
       activities: [{ name: bot.config.activity, type: ActivityType.Playing }],
