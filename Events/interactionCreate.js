@@ -600,7 +600,7 @@ module.exports = {
         const XPLOG = new EmbedBuilder()
           .setColor("Orange")
           .setTitle(
-            `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien.`
+            `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
           )
           .setFooter({
             text: `丨`,
