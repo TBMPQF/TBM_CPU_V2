@@ -3,7 +3,6 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "pause",
   description: "丨Mettre la musique en pause.",
-  category: "Music",
   permission: "Aucune",
   dm: false,
 

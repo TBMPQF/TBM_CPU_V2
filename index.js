@@ -27,8 +27,8 @@ const schema = new mongoose.Schema();
 mongoose.model("Levels", schema);
 mongoose.model("Levels").findOne();
 
-require("./src/events")(bot);
-require("./src/Loaders/loadCommands")(bot);
-require("./src/Loaders/loadEvents")(bot);
+require("./handlers/eventsmusic")(bot);
+require("./handlers/loaders/loadCommands")(bot);
+require("./handlers/loaders/loadEvents")(bot);
 
 bot.login(bot.config.token);

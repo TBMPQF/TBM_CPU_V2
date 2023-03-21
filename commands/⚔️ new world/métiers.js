@@ -10,7 +10,6 @@ module.exports = {
   name: "métiers",
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
   dm: false,
-  category: "New World",
 
   async execute(bot, message, args) {
     const MetierNW = new Discord.EmbedBuilder()

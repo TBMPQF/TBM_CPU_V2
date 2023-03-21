@@ -10,7 +10,7 @@ module.exports = async (bot) => {
       .filter((f) => f.endsWith(".js"));
 
     for (const file of commandFiles) {
-      const command = require(`../../commands/${folder}/${file}`);
+      const command = require(`./../../commands/${folder}/${file}`);
       bot.commands.set(command.name, command);
       console.log(
         "\x1b[31m" +

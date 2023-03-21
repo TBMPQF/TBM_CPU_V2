@@ -3,7 +3,6 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "nowplaying",
   description: "丨Infos sur la musique en cours de lecture.",
-  category: "Music",
   permission: "Aucune",
   dm: false,
 

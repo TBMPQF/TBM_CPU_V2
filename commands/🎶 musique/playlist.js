@@ -3,7 +3,6 @@ const { EmbedBuilder } = require("discord.js");
 module.exports = {
   name: "playlist",
   description: "丨Voir la playlist.",
-  category: "Music",
   permission: "Aucune",
   dm: false,
 
