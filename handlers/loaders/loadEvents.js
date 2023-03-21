@@ -2,7 +2,7 @@ const fs = require("fs");
 
 module.exports = async (bot) => {
   const eventFiles = fs
-    .readdirSync("./Events/")
+    .readdirSync("./events/")
     .filter((f) => f.endsWith(".js"));
   for (const file of eventFiles) {
     const event = require(`../../events/${file}`);
@@ -30,11 +30,11 @@ module.exports = async (bot) => {
   }
 
   const eventSubFolders = fs
-    .readdirSync("./Events/")
+    .readdirSync("./events/")
     .filter((f) => !f.endsWith(".js"));
   eventSubFolders.forEach((folder) => {
     const commandFiles = fs
-      .readdirSync(`./Events/${folder}/`)
+      .readdirSync(`./events/${folder}/`)
       .filter((f) => f.endsWith(".js"));
 
     for (const file of commandFiles) {
