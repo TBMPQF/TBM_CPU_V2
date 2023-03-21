@@ -5,7 +5,7 @@ module.exports = async (bot) => {
     .readdirSync("./Events/")
     .filter((f) => f.endsWith(".js"));
   for (const file of eventFiles) {
-    const event = require(`../../Events/${file}`);
+    const event = require(`../../events/${file}`);
     if (event.once) {
       console.log(
         "\x1b[32m" +
@@ -38,7 +38,7 @@ module.exports = async (bot) => {
       .filter((f) => f.endsWith(".js"));
 
     for (const file of commandFiles) {
-      const event = require(`../../Events/${folder}/${file}`);
+      const event = require(`../../events/${folder}/${file}`);
       if (event.once) {
         console.log(
           "\x1b[32m" +
