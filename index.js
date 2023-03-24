@@ -1,10 +1,5 @@
 const { Player } = require("discord-player");
-const {
-  Client,
-  IntentsBitField,
-  PermissionFlagsBits,
-  Collection,
-} = require("discord.js");
+const { Client, IntentsBitField, Collection } = require("discord.js");
 const bot = new Client({ intents: new IntentsBitField(3276799) });
 
 bot.commands = new Collection();
