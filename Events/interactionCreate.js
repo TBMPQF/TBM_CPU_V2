@@ -621,76 +621,85 @@ module.exports = {
       let choice = interaction.values[0];
       const member = interaction.member;
       if (choice == "APEX") {
-        if (
-          member.roles.cache.some((role) => role.id == "811662603713511425")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("811662603713511425");
-        } else {
-          member.roles.add("811662603713511425");
-          interaction.deferUpdate();
-        }
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "811662603713511425")
+          ) {
+            member.roles.remove("811662603713511425");
+            interaction.editReply({
+              content: "Votre rôle `Apex Legends` a été supprimé.",
+            });
+          } else {
+            member.roles.add("811662603713511425");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `Apex Legends`.",
+            });
+          }
+        });
       } else if (choice == "NEWORLD") {
-        if (
-          member.roles.cache.some((role) => role.id == "907320710559576105")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("907320710559576105");
-        } else {
-          member.roles.add("907320710559576105");
-
-          interaction.deferUpdate();
-        }
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "907320710559576105")
+          ) {
+            member.roles.remove("907320710559576105");
+            interaction.editReply({
+              content: "Votre rôle `New World` a été supprimé.",
+            });
+          } else {
+            member.roles.add("907320710559576105");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `New World`.",
+            });
+          }
+        });
       } else if (choice == "FOREST") {
-        if (
-          member.roles.cache.some((role) => role.id == "1078754580113920020")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("1078754580113920020");
-        } else {
-          member.roles.add("1078754580113920020");
-
-          interaction.deferUpdate();
-        }
-      } else if (choice == "ROCKET") {
-        if (
-          member.roles.cache.some((role) => role.id == "811663563558092841")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("811663563558092841");
-        } else {
-          member.roles.add("811663563558092841");
-
-          interaction.deferUpdate();
-        }
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "1078754580113920020")
+          ) {
+            member.roles.remove("1078754580113920020");
+            interaction.editReply({
+              content: "Votre rôle `Sons of The Forest` a été supprimé.",
+            });
+          } else {
+            member.roles.add("1078754580113920020");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `Sons of The Forest`.",
+            });
+          }
+        });
       } else if (choice == "CALLOF") {
-        if (
-          member.roles.cache.some((role) => role.id == "813800188317663254")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("813800188317663254");
-        } else {
-          member.roles.add("813800188317663254");
-
-          interaction.deferUpdate();
-        }
-      } else if (choice == "MINECRAFT") {
-        if (
-          member.roles.cache.some((role) => role.id == "811663653140168741")
-        ) {
-          interaction.deferUpdate();
-
-          member.roles.remove("811663653140168741");
-        } else {
-          member.roles.add("811663653140168741");
-
-          interaction.deferUpdate();
-        }
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "813800188317663254")
+          ) {
+            member.roles.remove("813800188317663254");
+            interaction.editReply({
+              content: "Votre rôle `Call of Duty` a été supprimé.",
+            });
+          } else {
+            member.roles.add("813800188317663254");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `Call of Duty`.",
+            });
+          }
+        });
+      } else if (choice == "ROCKET") {
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "811663563558092841")
+          ) {
+            member.roles.remove("811663563558092841");
+            interaction.editReply({
+              content: "Votre rôle `Rocket League` a été supprimé.",
+            });
+          } else {
+            member.roles.add("811663563558092841");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `Rocket League`.",
+            });
+          }
+        });
       }
     }
 
