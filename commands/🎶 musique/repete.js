@@ -7,7 +7,7 @@ module.exports = {
   permission: "Aucune",
   dm: false,
 
-  async execute(bot, interaction) {
+  async execute(interaction) {
     const queue = player.getQueue(interaction.guild.id);
 
     const NULL = new EmbedBuilder()
@@ -19,11 +19,7 @@ module.exports = {
       .setDescription(
         `Vous devez d'abord désactiver la file d'attente en cours en mode boucle... ❌`
       )
-      .setTimestamp()
-      .setFooter({
-        text: bot.config.clients.name,
-        iconURL: bot.config.clients.logo,
-      });
+      .setTimestamp();
 
     if (!queue || !queue.playing) return interaction.reply({ embeds: [NULL] });
 

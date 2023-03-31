@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require("discord.js");
-const Discord = require("discord.js");
 
 module.exports = {
   name: "skip",
@@ -7,7 +6,7 @@ module.exports = {
   permission: "Aucune",
   dm: false,
 
-  async execute(bot, interaction) {
+  async execute(interaction) {
     const queue = player.getQueue(interaction.guild.id);
 
     const NULL = new EmbedBuilder()

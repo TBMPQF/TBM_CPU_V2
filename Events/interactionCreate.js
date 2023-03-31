@@ -1,5 +1,4 @@
 const {
-  Discord,
   ActionRowBuilder,
   PermissionsBitField,
   ButtonBuilder,
@@ -7,13 +6,11 @@ const {
   ChannelType,
   ButtonStyle,
 } = require("discord.js");
-const buttonCooldown = new Set();
 const levels = require("discord-xp");
-const ownerId = "179317321100296194";
 
 module.exports = {
   name: "interactionCreate",
-  async execute(interaction, bot, user, message) {
+  async execute(interaction, bot) {
     //Tous les embeds de Métiers pour New World
     if (interaction.isSelectMenu()) {
       let choice = interaction.values[0];
@@ -438,183 +435,218 @@ module.exports = {
     }
 
     //Bouton Daily, pour récupérer son bonus quotidien.
-    if (!buttonCooldown.has(interaction.user.id)) {
-      if (interaction.customId === "DAILYXP") {
-        const dailyEmbed = new EmbedBuilder()
-          .setColor("Gold")
-          .setTitle(
-            `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+200 𝐗p\` :tada:`
-          )
-          .setFooter({
-            text: `丨`,
-            iconURL: interaction.user.displayAvatarURL({
-              dynamic: true,
-              size: 64,
-            }),
-          })
-          .setTimestamp();
+    if (interaction.customId === "DAILYXP") {
+      const dailyEmbed = new EmbedBuilder()
+        .setColor("Gold")
+        .setTitle(
+          `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+200 𝐗p\` :tada:`
+        )
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
 
-        interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
+      const MongoClient = require("mongodb").MongoClient;
+      const uri =
+        "mongodb://botdiscord:WEUYX3dYaFxYDgGO@ac-rs1pq02-shard-00-00.knflvie.mongodb.net:27017,ac-rs1pq02-shard-00-01.knflvie.mongodb.net:27017,ac-rs1pq02-shard-00-02.knflvie.mongodb.net:27017/?ssl=true&replicaSet=atlas-6eslx8-shard-0&authSource=admin&retryWrites=true&w=majority";
+      const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      client.connect((err) => {
+        const collection = client.db("Daily").collection("Time_Daily");
 
-        const premièreclasseRole =
-          interaction.guild.roles.cache.get("811724918630645790");
-        const caporalRole =
-          interaction.guild.roles.cache.get("813795565708115988");
-        const caporalchefRole =
-          interaction.guild.roles.cache.get("813795488285327362");
-        const sergentRole =
-          interaction.guild.roles.cache.get("813795598943518732");
-        const sergentchefRole =
-          interaction.guild.roles.cache.get("813795648791904296");
-        const adjudantRole =
-          interaction.guild.roles.cache.get("813795701708030014");
-        const adjudantchefRole =
-          interaction.guild.roles.cache.get("813795755080548393");
-        const majorRole =
-          interaction.guild.roles.cache.get("813795805726113793");
-        const aspirantRole =
-          interaction.guild.roles.cache.get("813795871661359124");
-        const souslieutnantRole =
-          interaction.guild.roles.cache.get("813795921480908840");
-        const lieutnantRole =
-          interaction.guild.roles.cache.get("813795963805761547");
+        collection.findOne({ id: interaction.user.id }, (err, result) => {
+          if (err) throw err;
 
-        const dailyXP = Math.floor(Math.random() * 1) + 200;
-        const hasLeveledUp = await levels.appendXp(
+          if (result) {
+            collection.updateOne(
+              { id: interaction.user.id },
+              {
+                $set: { date: new Date(), username: interaction.user.username },
+              },
+              (err, result) => {
+                if (err) throw err;
+                client.close();
+              }
+            );
+          } else {
+            collection.insertOne(
+              {
+                id: interaction.user.id,
+                date: new Date(),
+                username: interaction.user.username,
+              },
+              (err, result) => {
+                if (err) throw err;
+                client.close();
+              }
+            );
+          }
+        });
+      });
+
+      interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
+
+      const premièreclasseRole =
+        interaction.guild.roles.cache.get("811724918630645790");
+      const caporalRole =
+        interaction.guild.roles.cache.get("813795565708115988");
+      const caporalchefRole =
+        interaction.guild.roles.cache.get("813795488285327362");
+      const sergentRole =
+        interaction.guild.roles.cache.get("813795598943518732");
+      const sergentchefRole =
+        interaction.guild.roles.cache.get("813795648791904296");
+      const adjudantRole =
+        interaction.guild.roles.cache.get("813795701708030014");
+      const adjudantchefRole =
+        interaction.guild.roles.cache.get("813795755080548393");
+      const majorRole = interaction.guild.roles.cache.get("813795805726113793");
+      const aspirantRole =
+        interaction.guild.roles.cache.get("813795871661359124");
+      const souslieutnantRole =
+        interaction.guild.roles.cache.get("813795921480908840");
+      const lieutnantRole =
+        interaction.guild.roles.cache.get("813795963805761547");
+
+      const dailyXP = Math.floor(Math.random() * 1) + 200;
+      const hasLeveledUp = await levels.appendXp(
+        interaction.member.id,
+        interaction.guild.id,
+        dailyXP
+      );
+      if (hasLeveledUp) {
+        const user = await levels.fetch(
           interaction.member.id,
-          interaction.guild.id,
-          dailyXP
+          interaction.guild.id
         );
-        if (hasLeveledUp) {
-          const user = await levels.fetch(
-            interaction.member.id,
-            interaction.guild.id
+        bot.channels.cache
+          .get(`717154831823011890`)
+          .send(
+            `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** en récupérant ton bonus quotidien ! - :worm:`
           );
+        if (user.level == 2) {
           bot.channels.cache
             .get(`717154831823011890`)
             .send(
-              `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** en récupérant ton bonus quotidien ! - :worm:`
-            );
-          if (user.level == 2) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${premièreclasseRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("811724918630645790"))
-              .then(interaction.member.roles.remove("825023017645899822"));
-          }
-          if (user.level == 5) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795565708115988"))
-              .then(interaction.member.roles.remove("811724918630645790"));
-          }
-          if (user.level == 10) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795488285327362"))
-              .then(interaction.member.roles.remove("813795565708115988"));
-          }
-          if (user.level == 15) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795598943518732"))
-              .then(interaction.member.roles.remove("813795488285327362"));
-          }
-          if (user.level == 20) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795648791904296"))
-              .then(interaction.member.roles.remove("813795598943518732"));
-          }
-          if (user.level == 25) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795701708030014"))
-              .then(interaction.member.roles.remove("813795648791904296"));
-          }
-          if (user.level == 30) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795755080548393"))
-              .then(interaction.member.roles.remove("813795701708030014"));
-          }
-          if (user.level == 35) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795805726113793"))
-              .then(interaction.member.roles.remove("813795755080548393"));
-          }
-          if (user.level == 40) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795871661359124"))
-              .then(interaction.member.roles.remove("813795805726113793"));
-          }
-          if (user.level == 45) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795921480908840"))
-              .then(interaction.member.roles.remove("813795871661359124"));
-          }
-          if (user.level == 50) {
-            bot.channels.cache
-              .get(`717154831823011890`)
-              .send(
-                `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
-              )
-              .then(interaction.member.roles.add("813795963805761547"))
-              .then(interaction.member.roles.remove("813795921480908840"));
-          }
+              `**     丨**Tu débloques le grade ${premièreclasseRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("811724918630645790"))
+            .then(interaction.member.roles.remove("825023017645899822"));
         }
-
-        //LOG Pour Daily.
-        const XPLOG = new EmbedBuilder()
-          .setColor("Orange")
-          .setTitle(
-            `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
-          )
-          .setFooter({
-            text: `丨`,
-            iconURL: interaction.user.displayAvatarURL({
-              dynamic: true,
-              size: 64,
-            }),
-          })
-          .setTimestamp();
-        bot.channels.cache.get("838440585341566996").send({ embeds: [XPLOG] });
+        if (user.level == 5) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795565708115988"))
+            .then(interaction.member.roles.remove("811724918630645790"));
+        }
+        if (user.level == 10) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795488285327362"))
+            .then(interaction.member.roles.remove("813795565708115988"));
+        }
+        if (user.level == 15) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795598943518732"))
+            .then(interaction.member.roles.remove("813795488285327362"));
+        }
+        if (user.level == 20) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795648791904296"))
+            .then(interaction.member.roles.remove("813795598943518732"));
+        }
+        if (user.level == 25) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795701708030014"))
+            .then(interaction.member.roles.remove("813795648791904296"));
+        }
+        if (user.level == 30) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795755080548393"))
+            .then(interaction.member.roles.remove("813795701708030014"));
+        }
+        if (user.level == 35) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795805726113793"))
+            .then(interaction.member.roles.remove("813795755080548393"));
+        }
+        if (user.level == 40) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795871661359124"))
+            .then(interaction.member.roles.remove("813795805726113793"));
+        }
+        if (user.level == 45) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795921480908840"))
+            .then(interaction.member.roles.remove("813795871661359124"));
+        }
+        if (user.level == 50) {
+          bot.channels.cache
+            .get(`717154831823011890`)
+            .send(
+              `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
+            )
+            .then(interaction.member.roles.add("813795963805761547"))
+            .then(interaction.member.roles.remove("813795921480908840"));
+        }
       }
+
+      //LOG Pour Daily.
+      const XPLOG = new EmbedBuilder()
+        .setColor("Orange")
+        .setTitle(
+          `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
+        )
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
+      bot.channels.cache.get("838440585341566996").send({ embeds: [XPLOG] });
     }
-    buttonCooldown.add(interaction.user.id);
-    setTimeout(() => buttonCooldown.delete(interaction.user.id), 82800_000);
 
     //SelectMenu pour le channel rôle, sélecteur de jeux.
     if (interaction.isSelectMenu()) {

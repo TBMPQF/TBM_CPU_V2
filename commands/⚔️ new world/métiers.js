@@ -1,9 +1,3 @@
-const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionFlagsBits,
-} = require("discord.js");
 const Discord = require("discord.js");
 
 module.exports = {
@@ -11,7 +5,7 @@ module.exports = {
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
   dm: false,
 
-  async execute(bot, message, args) {
+  async execute(message) {
     const MetierNW = new Discord.EmbedBuilder()
       .setColor("#b3c7ff")
       .setTitle("`丨𝐌étiers 𝐍ew 𝐖orld丨`")

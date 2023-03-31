@@ -14,7 +14,7 @@ module.exports = {
     },
   ],
 
-  async execute(bot, interaction) {
+  async execute(interaction) {
     let joueursH = interaction.options.getString("choice");
 
     let joueursB1 = ["pierre", "feuille", "ciseaux"];

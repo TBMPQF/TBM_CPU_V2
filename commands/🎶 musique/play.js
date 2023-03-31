@@ -14,7 +14,7 @@ module.exports = {
     },
   ],
 
-  async execute(bot, interaction) {
+  async execute(interaction) {
     const args = interaction.options.getString("music");
 
     const res = await player.search(args, {
