@@ -9,14 +9,12 @@ const {
 const levels = require("discord-xp");
 const User = require("../models/daily");
 const mongoose = require("mongoose");
+const config = require("../config");
 
-mongoose.connect(
-  "mongodb://botdiscord:WEUYX3dYaFxYDgGO@ac-rs1pq02-shard-00-00.knflvie.mongodb.net:27017,ac-rs1pq02-shard-00-01.knflvie.mongodb.net:27017,ac-rs1pq02-shard-00-02.knflvie.mongodb.net:27017/?ssl=true&replicaSet=atlas-6eslx8-shard-0&authSource=admin&retryWrites=true&w=majority",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
-);
+mongoose.connect(config.mongourl, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 module.exports = {
   name: "interactionCreate",
