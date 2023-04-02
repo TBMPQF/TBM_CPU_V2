@@ -152,6 +152,7 @@ module.exports = {
       }
     }
 
+    //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {
       let suggEmbed = new EmbedBuilder()
         .setColor("DarkVividPink")
