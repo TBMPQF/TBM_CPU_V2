@@ -617,6 +617,23 @@ module.exports = {
               })
               .setTimestamp();
             interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
+            //LOG Pour Daily.
+            const XPLOG = new EmbedBuilder()
+              .setColor("Orange")
+              .setTitle(
+                `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
+              )
+              .setFooter({
+                text: `丨`,
+                iconURL: interaction.user.displayAvatarURL({
+                  dynamic: true,
+                  size: 64,
+                }),
+              })
+              .setTimestamp();
+            bot.channels.cache
+              .get("838440585341566996")
+              .send({ embeds: [XPLOG] });
           } else {
             // On calcule le temps restant jusqu'au prochain daily
             const timeUntilNextDaily = Math.round(23 - hoursSinceLastDaily);
@@ -789,22 +806,6 @@ module.exports = {
           interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
         }
       });
-
-      //LOG Pour Daily.
-      const XPLOG = new EmbedBuilder()
-        .setColor("Orange")
-        .setTitle(
-          `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
-        )
-        .setFooter({
-          text: `丨`,
-          iconURL: interaction.user.displayAvatarURL({
-            dynamic: true,
-            size: 64,
-          }),
-        })
-        .setTimestamp();
-      bot.channels.cache.get("838440585341566996").send({ embeds: [XPLOG] });
     }
 
     //SelectMenu pour le channel rôle, sélecteur de jeux.
