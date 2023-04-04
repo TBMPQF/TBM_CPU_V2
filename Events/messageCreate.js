@@ -159,11 +159,15 @@ module.exports = {
         .setTitle("丨𝐒uggestion")
         .setDescription(`${message.content}`)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .addFields({
-          name: "𝐏roposé par :",
-          value: `${message.author}`,
-          inline: true,
-        });
+        .addFields(
+          {
+            name: "𝐏roposé par :",
+            value: `${message.author}`,
+            inline: true,
+          },
+          { name: "𝐏our", value: "0", inline: true },
+          { name: "𝐂ontre", value: "0", inline: true }
+        );
       const buttonY = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
@@ -182,7 +186,7 @@ module.exports = {
         .get("1045073140948152371")
         .send({ embeds: [suggEmbed], components: [buttonY] })
         .then((msg) => {
-          msg.startThread({ name: `Suggestion de ${message.author.username}` });
+          msg.startThread({ name: `𝐒uggestion de ${message.author.username}` });
         });
       await message.delete();
     }

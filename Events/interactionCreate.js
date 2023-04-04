@@ -624,7 +624,7 @@ module.exports = {
               .setTitle(
                 `\`${
                   interaction.user.username
-                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu ! :fire: \`${
                   user.dailyStreak + 1
                 }\` :fire:`
               )
@@ -997,7 +997,7 @@ module.exports = {
       const ACCEPTSUGGLOG = new EmbedBuilder()
         .setColor("Green")
         .setTitle(
-          `\`${interaction.user.username}\` 𝐕ient de réagir positivement à la suggestion.`
+          `:ok: \`${interaction.user.username}\` 𝐕ient de réagir positivement à une suggestion.`
         )
         .setFooter({
           text: `丨`,
@@ -1020,7 +1020,7 @@ module.exports = {
       const NOPSUGGLOG = new EmbedBuilder()
         .setColor("Red")
         .setTitle(
-          `\`${interaction.user.username}\` 𝐕ient de réagir négativement à la suggestion.`
+          `:x: \`${interaction.user.username}\` 𝐕ient de réagir négativement à une suggestion.`
         )
         .setFooter({
           text: `丨`,
