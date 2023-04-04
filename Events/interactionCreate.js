@@ -452,7 +452,7 @@ module.exports = {
         if (err) console.error(err);
 
         if (user) {
-          const lastDaily = user.lastDaily;
+          const lastDaily = user.lastClaimed;
           const hoursSinceLastDaily = (now - lastDaily) / (1000 * 60 * 60);
 
           if (hoursSinceLastDaily >= 23) {
@@ -597,9 +597,13 @@ module.exports = {
               }
             }
 
-            User.updateOne({ userId }, { $set: { lastDaily: now } }, (err) => {
-              if (err) console.error(err);
-            });
+            User.updateOne(
+              { userId },
+              { $set: { lastClaimed: now } },
+              (err) => {
+                if (err) console.error(err);
+              }
+            );
 
             const dailyEmbed = new EmbedBuilder()
               .setColor("Gold")
@@ -636,7 +640,7 @@ module.exports = {
             // On calcule le temps restant jusqu'au prochain daily
             const timeUntilNextDaily = Math.round(23 - hoursSinceLastDaily);
             interaction.reply({
-              content: `Tu dois attendre encore ${timeUntilNextDaily} heures avant de pouvoir récupérer ton daily !`,
+              content: `Tu dois attendre encore \`${timeUntilNextDaily} heures\` avant de pouvoir récupérer ton daily !`,
               ephemeral: true,
             });
           }
