@@ -480,10 +480,14 @@ module.exports = {
               interaction.guild.roles.cache.get("813795963805761547");
 
             const dailyXP = 200;
+            const completedWeeks = Math.floor(user.dailyStreak / 7);
+            const bonusPercentage = completedWeeks * 2;
+            const bonusXP = dailyXP * (bonusPercentage / 100);
+            const totalXP = dailyXP + bonusXP;
             const hasLeveledUp = await levels.appendXp(
               interaction.member.id,
               interaction.guild.id,
-              dailyXP
+              totalXP
             );
 
             if (hasLeveledUp) {
@@ -491,11 +495,18 @@ module.exports = {
                 interaction.member.id,
                 interaction.guild.id
               );
-              bot.channels.cache
-                .get(`717154831823011890`)
-                .send(
-                  `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** en récupérant ton bonus quotidien ! - :worm:`
-                );
+              const channel = bot.channels.cache.get("717154831823011890");
+              if (!channel) {
+                console.error("Le canal n'a pas été trouvé !");
+              } else {
+                channel
+                  .send(
+                    `**${interaction.user}丨**Tu viens de passer au niveau **\`${user.level}\`** en récupérant ton bonus quotidien ! - :worm:`
+                  )
+                  .catch((error) => {
+                    console.error("Erreur lors de l'envoi du message :", error);
+                  });
+              }
               if (user.level == 2) {
                 bot.channels.cache
                   .get(`717154831823011890`)
@@ -505,6 +516,7 @@ module.exports = {
                   .then(interaction.member.roles.add("811724918630645790"))
                   .then(interaction.member.roles.remove("825023017645899822"));
               }
+
               if (user.level == 5) {
                 bot.channels.cache
                   .get(`717154831823011890`)
@@ -597,9 +609,11 @@ module.exports = {
               }
             }
 
+            const updatedStreak =
+              hoursSinceLastDaily < 47 ? user.dailyStreak + 1 : 1;
             User.updateOne(
               { userId },
-              { $set: { lastClaimed: now } },
+              { $set: { lastClaimed: now, dailyStreak: updatedStreak } },
               (err) => {
                 if (err) console.error(err);
               }
@@ -608,7 +622,11 @@ module.exports = {
             const dailyEmbed = new EmbedBuilder()
               .setColor("Gold")
               .setTitle(
-                `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${dailyXP} 𝐗p\` :tada:`
+                `\`${
+                  interaction.user.username
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
+                  user.dailyStreak + 1
+                }\` :fire:`
               )
               .setFooter({
                 text: `丨`,
