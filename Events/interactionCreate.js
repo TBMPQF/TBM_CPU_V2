@@ -616,17 +616,13 @@ module.exports = {
               { $set: { lastClaimed: now, dailyStreak: updatedStreak } },
               (err) => {
                 if (err) console.error(err);
-              }
-            );
-
-            const dailyEmbed = new EmbedBuilder()
+                if (updatedStreak === 1) {
+                  const dailyEmbed = new EmbedBuilder()
               .setColor("Gold")
               .setTitle(
                 `\`${
                   interaction.user.username
-                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu ! :fire: \`${
-                  user.dailyStreak + 1
-                }\` :fire:`
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u as perdu toute tes flammes \`1\` :fire:`
               )
               .setFooter({
                 text: `丨`,
@@ -654,6 +650,29 @@ module.exports = {
             bot.channels.cache
               .get("838440585341566996")
               .send({ embeds: [XPLOG] });
+                } else {
+                  const daily1Embed = new EmbedBuilder()
+              .setColor("Gold")
+              .setTitle(
+                `\`${
+                  interaction.user.username
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
+                  user.dailyStreak + 1
+                }\` :fire:`
+              )
+              .setFooter({
+                text: `丨`,
+                iconURL: interaction.user.displayAvatarURL({
+                  dynamic: true,
+                  size: 64,
+                }),
+              })
+              .setTimestamp();
+            interaction.reply({ embeds: [daily1Embed], ephemeral: true });
+                }
+              }
+            )
+            
           } else {
             // On calcule le temps restant jusqu'au prochain daily
             const timeUntilNextDaily = Math.round(23 - hoursSinceLastDaily);
@@ -808,22 +827,41 @@ module.exports = {
                 .then(interaction.member.roles.add("813795963805761547"))
                 .then(interaction.member.roles.remove("813795921480908840"));
             }
+            const daily1Embed = new EmbedBuilder()
+              .setColor("Gold")
+              .setTitle(
+                `\`${
+                  interaction.user.username
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
+                  user.dailyStreak + 1
+                }\` :fire:`
+              )
+              .setFooter({
+                text: `丨`,
+                iconURL: interaction.user.displayAvatarURL({
+                  dynamic: true,
+                  size: 64,
+                }),
+              })
+              .setTimestamp();
+            interaction.reply({ embeds: [daily1Embed], ephemeral: true });
+            const XPLOG = new EmbedBuilder()
+              .setColor("Orange")
+              .setTitle(
+                `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
+              )
+              .setFooter({
+                text: `丨`,
+                iconURL: interaction.user.displayAvatarURL({
+                  dynamic: true,
+                  size: 64,
+                }),
+              })
+              .setTimestamp();
+            await bot.channels.cache
+              .get("838440585341566996")
+              .send({ embeds: [XPLOG] });
           }
-
-          const dailyEmbed = new EmbedBuilder()
-            .setColor("Gold")
-            .setTitle(
-              `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${dailyXP} 𝐗p\` :tada:`
-            )
-            .setFooter({
-              text: `丨`,
-              iconURL: interaction.user.displayAvatarURL({
-                dynamic: true,
-                size: 64,
-              }),
-            })
-            .setTimestamp();
-          interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
         }
       });
     }

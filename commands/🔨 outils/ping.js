@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder, Discord } = require("discord.js");
 
 module.exports = {
   name: "ping",
@@ -6,46 +6,14 @@ module.exports = {
   dm: false,
 
   async execute(bot, message) {
-    let reloadPing = new Discord.ActionRowBuilder().addComponents(
-      new Discord.ButtonBuilder()
-        .setCustomId("ping")
-        .setEmoji("🔄")
-        .setLabel("Actualiser")
-        .setStyle(Discord.ButtonStyle.Success)
-    );
-    // Ping du membre qui requête la commande
-    const pingUser = Date.now() - message.createdTimestamp;
-    let emojiUser;
-    if (pingUser <= 200) {
-      emojiUser = "🟢";
-    } else if (pingUser <= 400 && pingUser >= 200) {
-      emojiUser = "🟠";
-    } else if (pingUser >= 400) {
-      emojiUser = "🔴";
-    }
-    // Ping de l'API de discord
-    const APIPing = bot.ws.ping;
-    let APIemoji;
-    if (APIPing <= 200) {
-      APIemoji = "🟢";
-    } else if (APIPing <= 400 && APIPing >= 200) {
-      APIemoji = "🟠";
-    } else if (APIPing >= 400) {
-      APIemoji = "🔴";
-    }
-
-    let PingEmbed = new Discord.EmbedBuilder()
+    const channel = message.guild.channels.cache.get("818640158693392405");
+    const TicketEmbed = new EmbedBuilder()
+      .setColor("Orange")
+      .setTitle(`――――――∈ Nouveau Système de Daily ! ∋――――――`)
       .setDescription(
-        `
-            \`${emojiUser}\`丨Ton ping : **${pingUser}ms** :fish: 
-            \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
-      )
-      .setColor("#b3c7ff");
+        `\nLe <#${channel.id}>`
+      );
 
-    await message.reply({
-      embeds: [PingEmbed],
-      components: [reloadPing],
-      ephemeral: true,
-    });
+    message.reply({ embeds: [TicketEmbed] });
   },
 };
