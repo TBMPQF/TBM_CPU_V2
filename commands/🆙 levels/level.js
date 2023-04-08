@@ -12,8 +12,7 @@ module.exports = {
     const xpRequired = Levels.xpFor(users.level + 1);
     const currentXP = users.xp;
 
-    const level = await Levels.fetch(user.id, interaction.guild.id, true);
-    const percentage = Math.round((level.xp / xpRequired) * 100);
+    const percentage = Math.round((users.xp - Levels.xpFor(users.level)) / (xpRequired - Levels.xpFor(users.level)) * 100);
 
     const progressBar = getProgressBar(percentage);
 
