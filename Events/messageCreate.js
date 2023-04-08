@@ -9,34 +9,68 @@ const Levels = require("discord-xp");
 
 bot.config = require("../config.json");
 
+const ROLE_LEVELS = {
+  PREMIERE_CLASSE: 2,
+  CAPORAL: 5,
+  CAPORAL_CHEF: 10,
+  SERGENT: 15,
+  SERGENT_CHEF: 20,
+  ADJUDANT: 25,
+  ADJUDANT_CHEF: 30,
+  MAJOR: 35,
+  ASPIRANT: 40,
+  SOUS_LIEUTENANT: 45,
+  LIEUTENANT: 50,
+};
+
+function assignRole(level, member) {
+  const { roles } = member.guild;
+
+  const roleMapping = [
+    { level: ROLE_LEVELS.PREMIERE_CLASSE, roleId: "811724918630645790" },
+    { level: ROLE_LEVELS.CAPORAL, roleId: "813795565708115988" },
+    { level: ROLE_LEVELS.CAPORAL_CHEF, roleId: "813795488285327362" },
+    { level: ROLE_LEVELS.SERGENT, roleId: "813795598943518732" },
+    { level: ROLE_LEVELS.SERGENT_CHEF, roleId: "813795648791904296" },
+    { level: ROLE_LEVELS.ADJUDANT, roleId: "813795701708030014" },
+    { level: ROLE_LEVELS.ADJUDANT_CHEF, roleId: "813795755080548393" },
+    { level: ROLE_LEVELS.MAJOR, roleId: "813795805726113793" },
+    { level: ROLE_LEVELS.ASPIRANT, roleId: "813795871661359124" },
+    { level: ROLE_LEVELS.SOUS_LIEUTENANT, roleId: "813795921480908840" },
+    { level: ROLE_LEVELS.LIEUTENANT, roleId: "813795963805761547" },
+  ];
+
+  const newRole = roleMapping.find((role) => role.level === level);
+
+  if (newRole) {
+    const currentRoleIndex = roleMapping.findIndex((role) => role.level === level);
+    const previousRole = currentRoleIndex > 0 ? roleMapping[currentRoleIndex - 1] : null;
+
+    member.roles.add(newRole.roleId).catch((error) =>
+      console.error("Erreur lors de l'ajout du rôle :", error)
+    );
+    if (previousRole) {
+      member.roles.remove(previousRole.roleId).catch((error) =>
+        console.error("Erreur lors de la suppression du rôle :", error)
+      );
+    }
+    return roles.cache.get(newRole.roleId).name;
+  }
+
+  return null;
+}
+
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
     Levels.setURL(bot.config.mongourl);
 
-    const premièreclasseRole =
-      message.guild.roles.cache.get("811724918630645790");
-    const caporalRole = message.guild.roles.cache.get("813795565708115988");
-    const caporalchefRole = message.guild.roles.cache.get("813795488285327362");
-    const sergentRole = message.guild.roles.cache.get("813795598943518732");
-    const sergentchefRole = message.guild.roles.cache.get("813795648791904296");
-    const adjudantRole = message.guild.roles.cache.get("813795701708030014");
-    const adjudantchefRole =
-      message.guild.roles.cache.get("813795755080548393");
-    const majorRole = message.guild.roles.cache.get("813795805726113793");
-    const aspirantRole = message.guild.roles.cache.get("813795871661359124");
-    const souslieutnantRole =
-      message.guild.roles.cache.get("813795921480908840");
-    const lieutnantRole = message.guild.roles.cache.get("813795963805761547");
-
     if (!message.guild) return;
     if (message.author.bot) return;
 
-    // Compteur de message.
     const sendSMS = Math.floor(Math.random() * 1) + 1;
     Levels.appendSMS(message.author.id, message.guild.id, sendSMS);
 
-    // Ajout d'XP + obtention de niveaux ainsi que de rôles.
     const randomAmountOfXp = Math.floor(Math.random() * 49) + 1;
     const hasLeveledUp = await Levels.appendXp(
       message.author.id,
@@ -51,106 +85,14 @@ module.exports = {
         .send(
           `**${message.author}丨**Tu viens de passer au niveau **\`${user.level}\`** ! - :worm:`
         );
-      if (user.level == 2) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${premièreclasseRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("811724918630645790"))
-          .then(message.member.roles.remove("825023017645899822"));
-      }
-      if (user.level == 5) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${caporalRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795565708115988"))
-          .then(message.member.roles.remove("811724918630645790"));
-      }
-      if (user.level == 10) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${caporalchefRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795488285327362"))
-          .then(message.member.roles.remove("813795565708115988"));
-      }
-      if (user.level == 15) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${sergentRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795598943518732"))
-          .then(message.member.roles.remove("813795488285327362"));
-      }
-      if (user.level == 20) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${sergentchefRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795648791904296"))
-          .then(message.member.roles.remove("813795598943518732"));
-      }
-      if (user.level == 25) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${adjudantRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795701708030014"))
-          .then(message.member.roles.remove("813795648791904296"));
-      }
-      if (user.level == 30) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${adjudantchefRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795755080548393"))
-          .then(message.member.roles.remove("813795701708030014"));
-      }
-      if (user.level == 35) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${majorRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795805726113793"))
-          .then(message.member.roles.remove("813795755080548393"));
-      }
-      if (user.level == 40) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${aspirantRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795871661359124"))
-          .then(message.member.roles.remove("813795805726113793"));
-      }
-      if (user.level == 45) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le grade ${souslieutnantRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795921480908840"))
-          .then(message.member.roles.remove("813795871661359124"));
-      }
-      if (user.level == 50) {
-        bot.channels.cache
-          .get(`717154831823011890`)
-          .send(
-            `**     丨**Tu débloques le dernier et glorieux grade ${lieutnantRole}. Félicitation ! :tada:`
-          )
-          .then(message.member.roles.add("813795963805761547"))
-          .then(message.member.roles.remove("813795921480908840"));
+      const newRoleName = assignRole(user.level, message.member);
+      if (newRoleName) {
+        bot.channels.cache.get(`717154831823011890`).send(
+          `**     丨**Tu débloques le grade ${newRoleName}. Félicitation ! :tada:`
+        );
       }
     }
+  
 
     //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {
