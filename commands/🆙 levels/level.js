@@ -9,6 +9,11 @@ module.exports = {
   async execute(bot, interaction) {
     const user = interaction.user;
     const users = await Levels.fetch(user.id, interaction.guild.id);
+
+    if (!users) {
+      return interaction.reply("Tu veux que j'affiche quoi ? Ton pauvre petit niveau 0 ?");
+    }
+
     const xpRequired = Levels.xpFor(users.level + 1);
     const currentXP = users.xp;
 

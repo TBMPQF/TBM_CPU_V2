@@ -20,7 +20,7 @@ module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
     //Tous les embeds de Métiers pour New World
-    if (interaction.isSelectMenu()) {
+    if (interaction.isStringSelectMenu()) {
       let choice = interaction.values[0];
       if (choice == "TANNERIE") {
         let Tannerie050 = new EmbedBuilder()
@@ -867,7 +867,7 @@ module.exports = {
     }
 
     //SelectMenu pour le channel rôle, sélecteur de jeux.
-    if (interaction.isSelectMenu()) {
+    if (interaction.isStringSelectMenu()) {
       let choice = interaction.values[0];
       const member = interaction.member;
       if (choice == "APEX") {
@@ -959,6 +959,9 @@ module.exports = {
       interaction.member.roles.add("811662602530717738");
     }
 
+    const StreamCordBOTId = '375805687529209857';
+    const DisboardBOTId = '302050872383242240';
+    const AdminRoleID = '717122082663694506';
     if (interaction.customId === "CREATE_CHANNEL") {
       interaction.deferUpdate();
       let channel = await interaction.guild.channels.create({
@@ -977,6 +980,21 @@ module.exports = {
               PermissionsBitField.Flags.ViewChannel,
             ],
           },
+          {
+            id: StreamCordBOTId,
+            deny: [PermissionsBitField.Flags.ViewChannel],
+          },
+          {
+            id: DisboardBOTId,
+            deny: [PermissionsBitField.Flags.ViewChannel],
+          },
+          {
+            id: AdminRoleID,
+            allow: [
+              PermissionsBitField.Flags.SendMessages,
+              PermissionsBitField.Flags.ViewChannel,
+        ],
+      },
         ],
       });
 

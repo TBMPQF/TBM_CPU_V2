@@ -3,9 +3,8 @@ const Discord = require("discord.js");
 module.exports = {
   name: "métiers",
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
-  dm: false,
 
-  async execute(message) {
+  async execute(interaction) {
     const MetierNW = new Discord.EmbedBuilder()
       .setColor("#b3c7ff")
       .setTitle("`丨𝐌étiers 𝐍ew 𝐖orld丨`")
@@ -81,9 +80,16 @@ module.exports = {
           }
         )
     );
-    message.reply({
-      embeds: [MetierNW],
-      components: [SelectMenu],
-    });
+    if (typeof interaction.reply === 'function') {
+      interaction.reply({
+        embeds: [MetierNW],
+        components: [SelectMenu],
+      });
+    } else {
+      interaction.channel.send({
+        embed: MetierNW,
+        components: [SelectMenu],
+      });
+    }
   },
 };
