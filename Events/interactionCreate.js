@@ -454,6 +454,7 @@ module.exports = {
         if (user) {
           const lastDaily = user.lastClaimed;
           const hoursSinceLastDaily = (now - lastDaily) / (1000 * 60 * 60);
+          const minutesSinceLastDaily = (now - lastDaily) / (1000 * 60);
 
           if (hoursSinceLastDaily >= 23) {
             const premièreclasseRole =
@@ -676,8 +677,11 @@ module.exports = {
           } else {
             // On calcule le temps restant jusqu'au prochain daily
             const timeUntilNextDaily = Math.round(23 - hoursSinceLastDaily);
+            const minutesUntilNextDaily = Math.round((23 * 60) - minutesSinceLastDaily);
+            const minutesRemaining = minutesUntilNextDaily % 60;
+            const minutesRemainingPadded = String(minutesRemaining).padStart(2, '0');
             interaction.reply({
-              content: `Tu dois attendre encore \`${timeUntilNextDaily} heures\` avant de pouvoir récupérer ton daily !`,
+              content: `Tu dois attendre encore \`${timeUntilNextDaily}h${minutesRemainingPadded}\` avant de pouvoir récupérer ton daily !`,
               ephemeral: true,
             });
           }

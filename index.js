@@ -19,7 +19,7 @@ const schema = new mongoose.Schema();
 mongoose.model("Levels", schema);
 mongoose.model("Levels").findOne();
 
+bot.login(bot.config.token);
+
 require("./handlers/loaders/loadCommands")(bot);
 require("./handlers/loaders/loadEvents")(bot);
-
-bot.login(bot.config.token);
