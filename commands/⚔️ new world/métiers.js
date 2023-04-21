@@ -3,6 +3,8 @@ const Discord = require("discord.js");
 module.exports = {
   name: "métiers",
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
+  dm: false,
+  permission: 'Aucune',
 
   async execute(interaction) {
     const MetierNW = new Discord.EmbedBuilder()

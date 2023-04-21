@@ -5,11 +5,12 @@ module.exports = {
   name: "chifoumi",
   description: "丨Jeux pierre, feuille, ciseaux",
   dm: false,
+  permission: 'Aucune',
   options: [
     {
       type: 3,
       name: "choice",
-      description: "Jeux pierre, feuille, ciseaux",
+      description: "pierre, feuille ou ciseaux ?",
       required: true,
     },
   ],

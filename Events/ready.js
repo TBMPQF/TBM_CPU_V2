@@ -1,4 +1,5 @@
 const { ActivityType, EmbedBuilder } = require("discord.js");
+const loadSlashCommands = require ('../handlers/loaders/loadSlashCommands')
 
 module.exports = {
   name: "ready",
@@ -6,6 +7,8 @@ module.exports = {
     console.log(
       "\x1b[33m" + `${bot.user.username} connecté !\n` + "\x1b[33m" + ``
     );
+
+    loadSlashCommands(bot)
 
     //Message de connexion du bot
     const channel = bot.channels.cache.get("838440585341566996");

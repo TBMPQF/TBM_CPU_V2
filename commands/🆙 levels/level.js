@@ -5,6 +5,7 @@ module.exports = {
   name: "level",
   description: "丨Affiche ton niveau d'expérience.",
   dm: false,
+  permission: 'Aucune',
 
   async execute(bot, interaction) {
     const user = interaction.user;

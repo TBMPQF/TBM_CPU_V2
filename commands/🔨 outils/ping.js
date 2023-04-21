@@ -3,6 +3,8 @@ module.exports = {
   name: "ping",
   description: "丨Affiche la latence du serveur",
   dm: false,
+  permission: 'Aucune',
+
   async execute(bot, message) {
     let reloadPing = new Discord.ActionRowBuilder().addComponents(
       new Discord.ButtonBuilder()
