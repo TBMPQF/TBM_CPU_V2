@@ -4,7 +4,7 @@ module.exports = {
   name: "métiers",
   description: "丨𝐄nvoi l'embed des 𝐌étiers.",
   dm: false,
-  permission: 'Aucune',
+  permission: "Aucune",
 
   async execute(interaction) {
     const MetierNW = new Discord.EmbedBuilder()
@@ -16,7 +16,7 @@ module.exports = {
       );
 
     const SelectMenu = new Discord.ActionRowBuilder().addComponents(
-      new Discord.SelectMenuBuilder()
+      new Discord.StringSelectMenuBuilder()
         .setCustomId("CHOIX")
         .setPlaceholder("𝐐uel métier veux-tu monter ?")
         .addOptions(
@@ -52,7 +52,7 @@ module.exports = {
           },
           {
             label: "丨𝐅abrication d'arme",
-            emoji: "1038566586077950013",
+            emoji: "1099061536670097488",
             value: "ARME",
           },
           {
@@ -62,7 +62,7 @@ module.exports = {
           },
           {
             label: "丨𝐈ngénierie",
-            emoji: "1038566586077950013",
+            emoji: "1099061523021844550",
             value: "INGENIERIE",
           },
           {
@@ -82,16 +82,20 @@ module.exports = {
           }
         )
     );
-    if (typeof interaction.reply === 'function') {
-      interaction.reply({
+    try {
+      await interaction.reply({
         embeds: [MetierNW],
         components: [SelectMenu],
       });
-    } else {
-      interaction.channel.send({
-        embed: MetierNW,
-        components: [SelectMenu],
-      });
+
+      setTimeout(async () => {
+        const message = await interaction.fetchReply();
+        if (message.deletable) {
+          await message.delete();
+        }
+      }, 600000);
+    } catch (err) {
+      console.error(err);
     }
   },
 };

@@ -1140,12 +1140,22 @@ module.exports = {
       });
     }
     if (interaction.channel === null) return;
-    if (!interaction.isCommand()) return;
-    if (!bot.commands.has(interaction.commandName)) return;
-    try {
-      bot.commands.get(interaction.commandName).execute(bot, interaction);
-    } catch (error) {
-      console.error(error);
-    }
+if (!interaction.isCommand()) return;
+if (!bot.commands.has(interaction.commandName)) return;
+try {
+  await bot.commands.get(interaction.commandName).execute(interaction);
+} catch (error) {
+  console.error(error);
+  if (typeof interaction.reply === 'function') {
+    interaction.reply({
+      content: 'Une erreur est survenue lors de l\'exécution de la commande',
+      ephemeral: true
+    });
+  } else {
+    interaction.channel.send({
+      content: 'Une erreur est survenue lors de l\'exécution de la commande'
+    });
+  }
+}
   },
 };
