@@ -836,7 +836,7 @@ module.exports = {
               .setTitle(
                 `\`${
                   interaction.user.username
-                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
+                }\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${dailyXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${
                   user.dailyStreak + 1
                 }\` :fire:`
               )
@@ -1049,6 +1049,27 @@ module.exports = {
 
     // Boutton suggestion
     if (interaction.customId === "ACCEPTSUGG") {
+      const message = interaction.message;
+const embed = message.embeds[0];
+
+// Trouver l'index du champ à mettre à jour
+const indexToUpdate = interaction.customId === 'ACCEPTSUGG' ? 1 : 2;
+
+// Mettre à jour la valeur du champ
+const newFieldValue = parseInt(embed.fields[indexToUpdate].value) + 1;
+embed.fields[indexToUpdate].value = newFieldValue.toString();
+
+// Mettre à jour l'intégration
+const updatedEmbed = new EmbedBuilder()
+  .setColor(embed.color)
+  .setTitle(embed.title)
+  .setDescription(embed.description)
+  .setThumbnail(embed.thumbnail.url)
+  .addFields(embed.fields);
+
+// Modifier le message pour refléter les nouveaux compteurs
+await message.edit({ embeds: [updatedEmbed] });
+
       await interaction.reply({
         content:
           "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
@@ -1072,6 +1093,27 @@ module.exports = {
         .send({ embeds: [ACCEPTSUGGLOG] });
     }
     if (interaction.customId === "NOPSUGG") {
+      const message = interaction.message;
+const embed = message.embeds[0];
+
+// Trouver l'index du champ à mettre à jour
+const indexToUpdate = interaction.customId === 'ACCEPTSUGG' ? 1 : 2;
+
+// Mettre à jour la valeur du champ
+const newFieldValue = parseInt(embed.fields[indexToUpdate].value) + 1;
+embed.fields[indexToUpdate].value = newFieldValue.toString();
+
+// Mettre à jour l'intégration
+const updatedEmbed = new EmbedBuilder()
+  .setColor(embed.color)
+  .setTitle(embed.title)
+  .setDescription(embed.description)
+  .setThumbnail(embed.thumbnail.url)
+  .addFields(embed.fields);
+
+// Modifier le message pour refléter les nouveaux compteurs
+await message.edit({ embeds: [updatedEmbed] });
+
       await interaction.reply({
         content:
           "**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**",
@@ -1139,6 +1181,7 @@ module.exports = {
         ephemeral: true,
       });
     }
+
     if (interaction.channel === null) return;
 if (!interaction.isCommand()) return;
 if (!bot.commands.has(interaction.commandName)) return;

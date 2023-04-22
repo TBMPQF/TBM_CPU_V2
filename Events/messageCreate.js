@@ -97,19 +97,19 @@ module.exports = {
     //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {
       let suggEmbed = new EmbedBuilder()
-        .setColor("DarkVividPink")
-        .setTitle("丨𝐒uggestion")
-        .setDescription(`${message.content}`)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .addFields(
-          {
-            name: "𝐏roposé par :",
-            value: `${message.author}`,
-            inline: true,
-          },
-          { name: "𝐏our", value: "0", inline: true },
-          { name: "𝐂ontre", value: "0", inline: true }
-        );
+      .setColor("DarkVividPink")
+      .setTitle("丨𝐒uggestion")
+      .setDescription(`${message.content}`)
+      .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+      .addFields([
+        {
+          name: "𝐏roposé par :",
+          value: message.author ? message.author.toString() : "Auteur inconnu",
+          inline: true,
+        },
+        { name: "𝐏our", value: "0", inline: true },
+        { name: "𝐂ontre", value: "0", inline: true },
+      ]);
       const buttonY = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()

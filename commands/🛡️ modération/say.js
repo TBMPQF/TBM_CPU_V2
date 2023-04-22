@@ -4,6 +4,7 @@ module.exports = {
   name: "say",
   description: "丨Parle à la place du Bot.",
   dm: false,
+  permission: 8,
   options: [
     {
       type: 3,

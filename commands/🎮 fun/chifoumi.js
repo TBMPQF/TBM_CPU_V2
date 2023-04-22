@@ -3,7 +3,7 @@ const Levels = require("discord-xp");
 
 module.exports = {
   name: "chifoumi",
-  description: "丨Jeux pierre, feuille, ciseaux",
+  description: "丨Jeux pierre, feuille, ciseaux.",
   dm: false,
   permission: 'Aucune',
   options: [

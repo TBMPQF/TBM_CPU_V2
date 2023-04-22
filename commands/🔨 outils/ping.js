@@ -1,7 +1,7 @@
 const Discord = require("discord.js");
 module.exports = {
   name: "ping",
-  description: "丨Affiche la latence du serveur",
+  description: "丨Affiche la latence du serveur.",
   dm: false,
   permission: 'Aucune',
 
