@@ -1,13 +1,15 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const experienceSchema = new mongoose.Schema({
-  userId: String,
-  username: String,
-  xp: { type: Number, default: 0 },
+const userSchema = new mongoose.Schema({
+  userID: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
+  lastMessageDate: { type: Date, default: new Date() },
+  xp: { type: Number, default : 0},
   level: { type: Number, default: 1 },
-  messages: { type: Number, default: 0},
+  messageCount: { type: Number, default: 1 },
+  lastDaily: { type: Date, default: null },
+  consecutiveDaily: { type: Number, default: 0 },
+  maxDaily: {type: Number, default: 0},
 });
 
-const Experience = mongoose.model("Experience", experienceSchema);
-
-module.exports = Experience;
+module.exports = mongoose.model('User', userSchema, 'Levels');

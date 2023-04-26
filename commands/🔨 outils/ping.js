@@ -1,50 +1,54 @@
 const Discord = require("discord.js");
+
+function getPingEmoji(ping) {
+  if (ping <= 200) {
+    return "🟢";
+  } else if (ping <= 400) {
+    return "🟠";
+  } else {
+    return "🔴";
+  }
+}
+
 module.exports = {
   name: "ping",
   description: "丨Affiche la latence du serveur.",
   dm: false,
-  permission: 'Aucune',
+  permission: 8,
 
-  async execute(bot, message) {
-    let reloadPing = new Discord.ActionRowBuilder().addComponents(
+  async execute(bot, interaction) {
+    const pingUser = Date.now() - interaction.createdAt.getTime();
+    const emojiUser = getPingEmoji(pingUser);
+
+    const APIPing = bot.ws.ping;
+    const APIemoji = getPingEmoji(APIPing);
+
+    const userPingString =
+      "`${emojiUser}`丨Ton ping : **${pingUser}ms** :fish:";
+    const PingEmbed = new Discord.EmbedBuilder()
+      .setDescription(
+        `
+         ${userPingString}
+         \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
+      )
+      .setColor("#b3c7ff");
+
+    const reloadPing = new Discord.ActionRowBuilder().addComponents(
       new Discord.ButtonBuilder()
         .setCustomId("ping")
         .setEmoji("🔄")
         .setLabel("Actualiser")
-        .setStyle(Discord.ButtonStyle.Success)
+        .setStyle("SUCCESS")
     );
-    // Ping du membre qui requête la commande
-    const pingUser = Date.now() - message.createdTimestamp;
-    let emojiUser;
-    if (pingUser <= 200) {
-      emojiUser = "🟢";
-    } else if (pingUser <= 400 && pingUser >= 200) {
-      emojiUser = "🟠";
-    } else if (pingUser >= 400) {
-      emojiUser = "🔴";
-    }
-    // Ping de l'API de discord
-    const APIPing = bot.ws.ping;
-    let APIemoji;
-    if (APIPing <= 200) {
-      APIemoji = "🟢";
-    } else if (APIPing <= 400 && APIPing >= 200) {
-      APIemoji = "🟠";
-    } else if (APIPing >= 400) {
-      APIemoji = "🔴";
-    }
-    let PingEmbed = new Discord.EmbedBuilder()
-      .setDescription(
-        `
-            \`${emojiUser}\`丨Ton ping : **${pingUser}ms** :fish: 
-            \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
-      )
-      .setColor("#b3c7ff");
 
-    await message.reply({
-      embeds: [PingEmbed],
-      components: [reloadPing],
-      ephemeral: true,
-    });
+    try {
+      await interaction.reply({
+        embeds: [PingEmbed],
+        components: [reloadPing],
+        ephemeral: false,
+      });
+    } catch (error) {
+      console.error(error);
+    }
   },
 };
