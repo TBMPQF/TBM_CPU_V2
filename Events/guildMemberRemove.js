@@ -1,8 +1,14 @@
 const { EmbedBuilder } = require("discord.js");
+const User = require("../models/experience");
 
 module.exports = {
   name: "guildMemberRemove",
   async execute(member, bot) {
+    try {
+      await User.deleteOne({ userID: member.user.id });
+    } catch (error) {
+    }
+
     const RemoveMember = new EmbedBuilder()
       .setTitle(`\`${member.user.username}\` nous a quitté ! :sob:`)
       .setColor("Red")

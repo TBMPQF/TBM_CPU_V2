@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
+const User = require("../models/experience");
 
 module.exports = {
   name: "guildMemberAdd",
@@ -7,6 +8,16 @@ module.exports = {
     const rolesChannelId = "811652152467783690";
 
     member.roles.add("825023017645899822");
+
+    const newUser = new User({
+      userID: member.user.id,
+      username: member.user.username,
+    });
+
+    try {
+      await newUser.save();
+    } catch (error) {
+    }
 
     const WelcomeEmbed = new EmbedBuilder()
       .setTitle(`\`Oh! Un nouveau membre\` :warning:`)

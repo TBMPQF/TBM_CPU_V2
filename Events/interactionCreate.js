@@ -621,6 +621,22 @@ module.exports = {
             });
           }
         });
+      } else if (choice == "MINECRAFT") {
+        interaction.deferReply({ ephemeral: true }).then(() => {
+          if (
+            member.roles.cache.some((role) => role.id == "811663653140168741")
+          ) {
+            member.roles.remove("811663653140168741");
+            interaction.editReply({
+              content: "Votre rôle `Minecraft` a été supprimé.",
+            });
+          } else {
+            member.roles.add("811663653140168741");
+            interaction.editReply({
+              content: "Vous avez récupéré votre rôle `Minecraft`.",
+            });
+          }
+        });
       }
     }
 
