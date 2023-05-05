@@ -89,37 +89,41 @@ module.exports = {
 };
 
 async function updateVoiceChannel(server) {
-  let channel = server.channels.cache.find((channel) =>
-    channel.name.startsWith("👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒")
-  );
+  try {
+    let channel = server.channels.cache.find((channel) =>
+      channel.name.startsWith("👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒")
+    );
 
-  if (!channel) {
-    channel = await server.channels.create(CHANNEL_NAME, {
-      type: 2,
-      permissionOverwrites: [
-        {
-          id: server.roles.everyone,
-          deny: ["ViewChannel"],
-        },
-      ],
-    });
-  }
+    if (!channel) {
+      channel = await server.channels.create(CHANNEL_NAME, {
+        type: 2,
+        permissionOverwrites: [
+          {
+            id: server.roles.everyone,
+            deny: ["ViewChannel"],
+          },
+        ],
+      });
+    }
 
-  fetch(
-    `https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_IP}:${MINECRAFT_SERVER_PORT}`
-  )
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.online) {
-        channel.setName(
-          `👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒 ${data.players.online} / ${data.players.max}`
-        );
-      } else {
+    fetch(
+      `https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_IP}:${MINECRAFT_SERVER_PORT}`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.online) {
+          channel.setName(
+            `👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒 ${data.players.online} / ${data.players.max}`
+          );
+        } else {
+          channel.setName(`👥 Erreur de récupération`);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
         channel.setName(`👥 Erreur de récupération`);
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-      channel.setName(`👥 Erreur de récupération`);
-    });
+      });
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du salon vocal:', error);
+  }
 }
