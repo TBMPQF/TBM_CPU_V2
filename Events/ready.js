@@ -1,9 +1,10 @@
 const { ActivityType, EmbedBuilder } = require("discord.js");
 const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
+const config = require("../config.json")
 
-const MINECRAFT_SERVER_IP = "89.83.57.84";
-const MINECRAFT_SERVER_PORT = 25566;
+const MINECRAFT_SERVER_IP = config.serveurMinecraftIP;
+const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
 
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 
@@ -19,7 +20,7 @@ module.exports = {
     setInterval(async () => {
       const server = bot.guilds.cache.first();
       updateVoiceChannel(server);
-    }, 5000);
+    }, 60000);
 
     //Message de connexion du bot
     const channel = bot.channels.cache.get("838440585341566996");
