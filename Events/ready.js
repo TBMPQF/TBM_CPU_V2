@@ -109,7 +109,13 @@ async function updateVoiceChannel(server) {
     fetch(
       `https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_IP}:${MINECRAFT_SERVER_PORT}`
     )
-      .then((response) => response.json())
+      .then((response) => {
+        if (response.headers.get('content-type') === 'application/json') {
+          return response.json();
+        } else {
+          throw new Error('Invalid JSON response');
+        }
+      })
       .then((data) => {
         if (data.online) {
           channel.setName(

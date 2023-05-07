@@ -8,7 +8,7 @@ async function levelUp(obj, user, newXP) {
     user.level = newLevel;
 
     const levelUpChannel = obj.guild.channels.cache.find(
-      (channel) => channel.name === "🎶丨𝐌usiques"
+      (channel) => channel.name === "🏆丨𝐈mplications"
     );
 
     const author =
