@@ -122,12 +122,12 @@ async function updateVoiceChannel(server) {
             `👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒 ${data.players.online} / ${data.players.max}`
           );
         } else {
-          channel.setName(`👥 Erreur de récupération`);
+          channel.setName(`👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒`);
         }
       })
       .catch((error) => {
         console.error(error);
-        channel.setName(`👥 Erreur de récupération`);
+        channel.setName(`👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒`);
       });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du salon vocal:', error);
