@@ -1,5 +1,12 @@
 const Discord = require("discord.js");
-const Levels = require("discord-xp");
+const User = require("../../models/experience");
+const levelUp = require("../../models/levelUp");
+
+const images = {
+  "pierre": "https://zupimages.net/up/22/44/u8vr.png",
+  "ciseaux": "https://zupimages.net/up/22/44/u9gk.png",
+  "feuille": "https://zupimages.net/up/22/44/wkqx.png"
+};
 
 module.exports = {
   name: "chifoumi",
@@ -16,175 +23,62 @@ module.exports = {
   ],
 
   async execute(interaction) {
-    let joueursH = interaction.options.getString("choice");
+    let joueursH = interaction.options.getString("choice").toLowerCase();
+    if (!["pierre", "feuille", "ciseaux"].includes(joueursH)) {
+      return await interaction.reply("Veuillez entrer une option valide (pierre, feuille, ciseaux).");
+    }
 
     let joueursB1 = ["pierre", "feuille", "ciseaux"];
-
     let punchradom = Math.floor(Math.random() * joueursB1.length);
     let joueursB = joueursB1[punchradom];
 
+    let thumbUrl = images[joueursB];
+
     await interaction.deferReply();
 
-    if (joueursH === "pierre" && joueursB === "feuille") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let LoseXP = Math.floor(Math.random() * 1) + 5;
-      Levels.subtractXp(interaction.user.id, interaction.guild.id, LoseXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Red")
-        .setDescription(
-          `Désolé \`${interaction.user.username}\`.. \`-5 XP\`\n\nTu as joué \*\*${joueursH}\*\* et tu as \`PERDU\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/wkqx.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp - 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "pierre" && joueursB === "pierre") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Grey")
-        .setDescription(
-          `Arf, on est connecté \`${interaction.user.username}\`\n\nTu as joué \*\*${joueursH}\*\*, il y a \`É-GA-LI-TÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u8vr.png")
-        .setFooter({
-          text: `Tu as toujours : ${users.xp} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "pierre" && joueursB === "ciseaux") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let WinXP = Math.floor(Math.random() * 1) + 5;
-      Levels.appendXp(interaction.user.id, interaction.guild.id, WinXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Green")
-        .setDescription(
-          `Bien joué \`${interaction.user.username}\` ! \`+5 XP\`\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`GAGNÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u9gk.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp + 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
+    let user = await User.findOne({ userID: interaction.user.id });
+    if (!user) {
+      user = new User({ userID: interaction.user.id, username: interaction.user.username });
     }
 
-    if (joueursH === "feuille" && joueursB === "pierre") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let WinXP = Math.floor(Math.random() * 1) + 5;
-      Levels.appendXp(interaction.user.id, interaction.guild.id, WinXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Green")
-        .setDescription(
-          `Bien joué \`${interaction.user.username}\` ! \`+5 XP\`\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`GAGNÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u8vr.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp + 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
+    let Embed = new Discord.EmbedBuilder();
 
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "feuille" && joueursB === "feuille") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Grey")
-        .setDescription(
-          `Arf, on est connecté \`${interaction.user.username}\`\n\nTu as joué \*\*${joueursH}\*\*, il y a \`É-GA-LI-TÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/wkqx.png")
-        .setFooter({
-          text: `Tu as toujours : ${users.xp} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
+    let gameResult;
+    let color;
+    let xpChange = 0;
 
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "feuille" && joueursB === "ciseaux") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let LoseXP = Math.floor(Math.random() * 1) + 5;
-      Levels.subtractXp(interaction.user.id, interaction.guild.id, LoseXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Red")
-        .setDescription(
-          `Désolé \`${interaction.user.username}\`.. \`-5 XP\`\n\nTu as joué \*\*${joueursH}\*\* et tu as \`PERDU\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u9gk.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp - 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    }
-
-    if (joueursH === "ciseaux" && joueursB === "pierre") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let LoseXP = Math.floor(Math.random() * 1) + 5;
-      Levels.subtractXp(interaction.user.id, interaction.guild.id, LoseXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Red")
-        .setDescription(
-          `Désolé \`${interaction.user.username}\`.. \`-5 XP\`\n\nTu as joué \*\*${joueursH}\*\* et tu as \`PERDU\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u8vr.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp - 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "ciseaux" && joueursB === "ciseaux") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Grey")
-        .setDescription(
-          `Arf, on est connecté \`${interaction.user.username}\`\n\nTu as joué \*\*${joueursH}\*\*, il y a \`É-GA-LI-TÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/u9gk.png")
-        .setFooter({
-          text: `Tu as toujours : ${users.xp} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    } else if (joueursH === "ciseaux" && joueursB === "feuille") {
-      let users = await Levels.fetch(interaction.user.id, interaction.guild.id);
-      let WinXP = Math.floor(Math.random() * 1) + 5;
-      Levels.appendXp(interaction.user.id, interaction.guild.id, WinXP);
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Green")
-        .setDescription(
-          `Bien joué \`${interaction.user.username}\` ! \`+5 XP\`\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`GAGNÉ\``
-        )
-        .setThumbnail("https://zupimages.net/up/22/44/wkqx.png")
-        .setFooter({
-          text: `Tu as maintenant : ${users.xp + 5} XP`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
-
-      return await interaction.followUp({ embeds: [Embed] });
-    }
-
-    if (
-      joueursH !== "feuille" ||
-      joueursH !== "ciseaux" ||
-      joueursH !== "pierre"
+    if (joueursH === joueursB) {
+      gameResult = "É-GA-LI-TÉ";
+      color = "Grey";
+    } else if (
+      (joueursH === "pierre" && joueursB === "ciseaux") ||
+      (joueursH === "feuille" && joueursB === "pierre") ||
+      (joueursH === "ciseaux" && joueursB === "feuille")
     ) {
-      let choice = interaction.options.getString("choice");
-      let Embed = new Discord.EmbedBuilder()
-        .setColor("Red")
-        .setDescription(
-          `Mmh. Tenter de gagner avec \`${choice}\` n'est pas très intelligent ${interaction.user.username}.. Essaye plutôt : \`pierre\`, \`feuille\` ou \`ciseaux\`. :see_no_evil:`
-        )
-        .setThumbnail(
-          interaction.user.displayAvatarURL({ dynamic: true, size: 32 })
-        );
-
-      return await interaction.followUp({ embeds: [Embed] });
+      gameResult = "GAGNÉ";
+      color = "Green";
+      xpChange = Math.floor(Math.random() * 1) + 5;
+    } else {
+      gameResult = "PERDU";
+      color = "Red";
+      xpChange = -(Math.floor(Math.random() * 1) + 5);
     }
+
+    user.xp += xpChange;
+    await levelUp(interaction, user, user.xp);
+
+    Embed.setColor(color)
+      .setDescription(
+        `${gameResult === "É-GA-LI-TÉ" ? "Arf, on est connecté" : gameResult === "GAGNÉ" ? "Bien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}.\``
+      )
+      .setThumbnail(thumbUrl)
+      .setFooter({
+        text: `Tu as maintenant : ${user.xp.toLocaleString()} XP.`,
+        iconURL: interaction.user.displayAvatarURL({
+          dynamic: true,
+          size: 512,
+        })
+      })
+    return await interaction.editReply({ embeds: [Embed] });
   },
 };

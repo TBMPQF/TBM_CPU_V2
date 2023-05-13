@@ -1,6 +1,6 @@
 module.exports = [
-    { level: 1, roleName: '丨2nd 𝐂lasse' },
-    { level: 2, roleName: '丨1ère 𝐂lasse' },
+    { level: 1, roleName: '丨2ⁿᵈ 𝐂lasse' },
+    { level: 2, roleName: '丨1ᵉ̀ʳᵉ 𝐂lasse' },
     { level: 5, roleName: '丨𝐂aporal' },
     { level: 10, roleName: '丨𝐂aporal 𝐂hef' },
     { level: 15, roleName: '丨𝐒ergent' },
