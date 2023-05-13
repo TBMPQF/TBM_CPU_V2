@@ -24,14 +24,14 @@ module.exports = {
 
     const nextLevel = user.level + 1;
     const xpRequiredForNextLevel = Math.pow(nextLevel / 0.1, 2);
-    const currentLevelXP = user.xp - Math.pow(user.level / 0.1, 2);
-    const xpRequiredForCurrentLevel =
-      xpRequiredForNextLevel - Math.pow(user.level / 0.1, 2);
-    const progressBar = createProgressBar(
-      currentLevelXP,
-      xpRequiredForCurrentLevel,
-      10
-    );
+    const currentLevelXP = Math.max(0, user.xp - Math.pow(user.level / 0.1, 2));
+const xpRequiredForCurrentLevel = Math.max(0, xpRequiredForNextLevel - Math.pow(user.level / 0.1, 2));
+
+const progressBar = createProgressBar(
+  Math.round(currentLevelXP),
+  Math.round(xpRequiredForCurrentLevel),
+  10
+);
     const percentage = (
       (currentLevelXP / xpRequiredForCurrentLevel) *
       100
@@ -69,6 +69,6 @@ function getPositionEmoji(position) {
   } else if (position === 3) {
     return "ème 🥉";
   } else {
-    return `#${position}`;
+    return `ème`;
   }
 }

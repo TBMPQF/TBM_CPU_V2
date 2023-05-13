@@ -470,7 +470,7 @@ module.exports = {
           const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
           const minutesRemaining = Math.floor(
             (timeRemaining % (60 * 60 * 1000)) / (60 * 1000)
-          );
+          ).toString().padStart(2, '0');
       
           return interaction.reply({
             content: `Tu dois attendre encore \`${hoursRemaining}h${minutesRemaining}\` avant de pouvoir récupérer ton daily !`,
