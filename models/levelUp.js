@@ -17,7 +17,10 @@ async function levelUp(obj, user, newXP) {
       );
     }
 
-    handleRole(obj, newLevel, levelUpChannel, "up");
+    if(newLevel !== 1) {
+      handleRole(obj, newLevel, levelUpChannel, "up");
+    }
+
   } else if (user.level > newLevel) {
     user.level = newLevel;
 
