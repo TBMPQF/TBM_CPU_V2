@@ -39,6 +39,53 @@ module.exports = {
       await user.save();
     }
 
+    const YouTube = require('youtube-sr').default;
+    const Queue = require('../models/queue');
+
+    //Gestion des musiques
+    if (message.channel.name === "🎶丨𝐌usiques") {
+      const songName = message.content;
+      const guildId = message.guild.id;
+      const queue = Queue.get(guildId) || [];
+
+      YouTube.search(songName, { limit: 1 })
+        .then(async results => {
+          const song = results[0];
+          if (!song || !song.url) {
+            return message.reply(`Je ne trouve pas la chanson "${songName}" !`);
+          }
+
+          const songUrl = song.url;
+
+          let cleanedTitle = song.title
+            .replace(/\[.*?\]/g, '')
+            .replace(/\(.*?\)/g, '')
+            .trim();
+
+          queue.push({ title: cleanedTitle, url: songUrl });
+          Queue.set(guildId, queue);
+
+          message.reply(`La chanson "${cleanedTitle}" a été ajoutée à la file d'attente !`);
+
+          // Récupérer le message de musique
+          const musicMessage = await message.channel.messages.fetch(global.musicMessageId);
+
+          // Récupérer l'embed de musique
+          const oldEmbed = musicMessage.embeds[0];
+          const newEmbed = new EmbedBuilder(oldEmbed);
+
+          // Créer une liste de chansons pour la description
+          const songList = queue.map((song, index) => `${index + 1} - ${song.title}`).join("\n");
+
+          // Mettre à jour la description de l'embed avec la nouvelle chanson
+          newEmbed.setDescription(`Playlist:\n${songList}`);
+
+          // Mettre à jour le message de musique avec le nouvel embed
+          await musicMessage.edit({ embeds: [newEmbed] });
+        })
+        .catch(console.error);
+    }
+
     //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {
       let suggEmbed = new EmbedBuilder()

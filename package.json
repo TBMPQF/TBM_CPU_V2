@@ -28,8 +28,12 @@
     "node-fetch": "^2.6.9",
     "opusscript": "^0.0.8",
     "path": "^0.12.7",
+    "play-dl": "^1.9.6",
     "python": "^0.0.4",
     "random-int": "^3.0.0",
-    "rest": "^2.0.0"
+    "rest": "^2.0.0",
+    "valid-url": "^1.0.9",
+    "youtube-sr": "^4.3.4",
+    "ytdl-core": "^4.11.4"
   }
 }

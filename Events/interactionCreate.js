@@ -889,6 +889,101 @@ module.exports = {
       });
     }
 
+    const { 
+      joinVoiceChannel, 
+      createAudioPlayer, 
+      createAudioResource, 
+      entersState, 
+      StreamType, 
+      AudioPlayerStatus 
+    } = require('@discordjs/voice');
+    
+    const ytdl = require('ytdl-core');
+    const Queue = require('../models/queue');
+    const validUrl = require('valid-url');
+    
+    if (interaction.customId === "PLAY") {
+      const guildId = interaction.guild.id;
+      const queue = Queue.get(guildId);
+    
+      if (!queue || queue.length === 0) {
+        return interaction.reply(`La playlist est actuellement vide!`);
+      }
+    
+      const channel = interaction.member.voice.channel;
+    
+      if (!channel) return interaction.reply(`Vous devez d'abord rejoindre un salon vocal!`);
+    
+      const connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: channel.guild.id,
+        adapterCreator: channel.guild.voiceAdapterCreator,
+      });
+    
+      const player = createAudioPlayer();
+    
+      player.on(AudioPlayerStatus.Idle, () => {
+        if (queue.length > 0) {
+          const songObject = queue.shift(); 
+          console.log('songObject:', songObject);
+          
+          if (!songObject || !songObject.url) {
+            throw new Error('Invalid song object');
+          }
+    
+          const url = songObject.url;
+          console.log('URL:', url);
+    
+          const stream = ytdl(url, { filter: 'audioonly' });
+          const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+          
+          player.play(resource);
+          Queue.set(guildId, queue);
+        } else {
+          connection.destroy();  
+        }
+      });
+    
+      try {
+        const songObject = queue[0];
+        console.log('songObject:', songObject);
+    
+        if (!songObject || !songObject.url) {
+          throw new Error('Invalid song object');
+        }
+    
+        const url = songObject.url;
+        console.log('URL:', url);
+    
+        if (!validUrl.isUri(url)) {
+          throw new Error('Invalid URL');
+        }
+    
+        const stream = ytdl(url, { filter: 'audioonly' });
+    
+        stream.on('error', (error) => {
+          console.error('Stream error: ', error);
+          player.stop();
+          interaction.reply('Une erreur est survenue lors du streaming de la chanson, veuillez réessayer plus tard !');
+        });
+    
+        const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+    
+        player.play(resource);
+        connection.subscribe(player);
+    
+        interaction.reply('La chanson va bientôt commencer à jouer!');
+    
+        await entersState(player, AudioPlayerStatus.Playing, 5e3);
+    
+        queue.shift();
+        Queue.set(guildId, queue);
+      } catch (error) {
+        console.error(error);
+        return interaction.reply('Impossible de jouer la chanson, veuillez réessayer plus tard!');
+      }
+    }
+
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;
