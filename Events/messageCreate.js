@@ -12,79 +12,43 @@ module.exports = {
   async execute(message, bot) {
     if (message.author.bot) return;
 
-    const user = await User.findOne({ userID: message.author.id });
-
     const now = new Date();
-    const lastMessageDate = user ? user.lastMessageDate : now;
-    const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
 
-    if (!user) {
-      const newUser = new User({
-        userID: message.author.id,
-        username: message.author.username,
-      });
+const userData = {
+  userID: message.author.id,
+  username: message.author.username,
+  serverID: message.guild.id,
+  serverName: message.guild.name,
+  lastMessageDate: now
+};
 
-      await newUser.save();
-    } else {
-      user.messageCount += 1;
+let user = await User.findOne(
+  { userID: message.author.id, serverID: message.guild.id } // conditions
+);
 
-      if (timeDifference >= 10) {
-        const randomXP = Math.floor(Math.random() * 50) + 1;
-        user.xp += randomXP;
-        user.lastMessageDate = now;
+if (!user) {
+  user = new User(userData);
+} else {
+  if (message.guild.name !== user.serverName) {
+    user.serverName = message.guild.name;
+  }
+}
 
-        await levelUp(message, user, user.xp);
-      }
+const lastMessageDate = user.lastMessageDate || now;
+const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
 
-      await user.save();
-    }
+user.messageCount = (user.messageCount || 0) + 1;
 
-    const YouTube = require('youtube-sr').default;
-    const Queue = require('../models/queue');
+if (timeDifference >= 10) {
+  const randomXP = Math.floor(Math.random() * 50) + 1;
+  user.xp = (user.xp || 0) + randomXP;
 
-    //Gestion des musiques
-    if (message.channel.name === "🎶丨𝐌usiques") {
-      const songName = message.content;
-      const guildId = message.guild.id;
-      const queue = Queue.get(guildId) || [];
+  await levelUp(message, user, user.xp);
+}
 
-      YouTube.search(songName, { limit: 1 })
-        .then(async results => {
-          const song = results[0];
-          if (!song || !song.url) {
-            return message.reply(`Je ne trouve pas la chanson "${songName}" !`);
-          }
+user.lastMessageDate = now;
 
-          const songUrl = song.url;
-          let songThumbnail = null;
-          if (song.thumbnail && song.thumbnail.medium) {
-            songThumbnail = song.thumbnail.medium.url;
-          }
-
-          let cleanedTitle = song.title
-            .replace(/\[.*?\]/g, '')
-            .replace(/\(.*?\)/g, '')
-            .trim();
-
-          queue.push({ title: cleanedTitle, url: songUrl, thumbnail: songThumbnail });
-          Queue.set(guildId, queue);
-
-          message.reply(`La chanson "${cleanedTitle}" a été ajoutée à la file d'attente !`);
-
-          const musicMessage = await message.channel.messages.fetch(global.musicMessageId);
-
-          const oldEmbed = musicMessage.embeds[0];
-          const newEmbed = new EmbedBuilder(oldEmbed);
-
-          const songList = queue.map((song, index) => `${index + 1} 丨 ${song.title}`).join("\n");
-
-          newEmbed.setDescription(`${songList}`);
-          newEmbed.setThumbnail(songThumbnail); // Ajoutez l'image ici
-
-          await musicMessage.edit({ embeds: [newEmbed] });
-        })
-        .catch(console.error);
-    }
+await user.save();
 
     //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {

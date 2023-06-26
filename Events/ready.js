@@ -22,6 +22,32 @@ module.exports = {
       updateVoiceChannel(server);
     }, 60000);
 
+    bot.on('guildCreate', async (guild) => {
+      try {
+        const owner = await guild.fetchOwner();
+    
+        const embed = new EmbedBuilder()
+          .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
+          .setColor("#ffc394")
+          .setDescription(
+            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).`
+          )
+          .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
+          .setTimestamp()
+          .setFooter({
+            text: `丨`,
+            iconURL: `${member.user.displayAvatarURL({
+              dynamic: true,
+              size: 512,
+            })}`,
+          });
+    
+        owner.send({ embeds: [embed] });
+      } catch (error) {
+        console.error('Erreur lors de l\'envoi du message au propriétaire du serveur :', error);
+      }
+    });
+
     //Message de connexion du bot
     const channel = bot.channels.cache.get("838440585341566996");
 
