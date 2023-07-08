@@ -1,48 +1,73 @@
 const { EmbedBuilder } = require("discord.js");
 const User = require("../models/experience");
+const ServerConfig = require("../models/serverConfig");
+const rolesByLevel = require("../models/roleRewards"); 
 
 module.exports = {
   name: "guildMemberAdd",
   async execute(member, bot) {
-    const reglementChannelId = "811721151998853150";
-    const rolesChannelId = "811652152467783690";
+    const serverConfig = await ServerConfig.findOne({
+      serverID: member.guild.id,
+    });
+    if (!serverConfig) {
+      return;
+    }
 
-    member.roles.add("825023017645899822");
+    const initialRoleName = rolesByLevel[0][0].roleName;
+    const initialRole = member.guild.roles.cache.find(
+      (role) => role.name === initialRoleName
+    );
+    if (initialRole) {
+      member.roles.add(initialRole);
+    }
 
     const newUser = new User({
       userID: member.user.id,
       username: member.user.username,
+      serverID: member.guild.id,
+      serverName: member.guild.name,
+      joinedAt: Date.now(),
     });
 
     try {
       await newUser.save();
-    } catch (error) {
-    }
+    } catch (error) {}
+
+    const reglementChannel = member.guild.channels.cache.get(
+      serverConfig.reglementChannelID
+    );
+    const rolesChannel = member.guild.channels.cache.get(
+      serverConfig.rolesChannelID
+    );
+
+    let reglementChannelString = reglementChannel
+      ? reglementChannel.toString()
+      : "PAS DÉFINI";
+    let rolesChannelString = rolesChannel
+      ? rolesChannel.toString()
+      : "PAS DÉFINI";
 
     const WelcomeEmbed = new EmbedBuilder()
       .setTitle(`\`Oh! Un nouveau membre\` :warning:`)
       .setColor("#ffc394")
       .setDescription(
-        `Bienvenue <@${member.user.id}>, tu viens de rejoindre la **${
-          member.guild.name
-        }**. \nPrend ton fusil et rend toi directement sur le champ de tir !\nN'oublie pas de \`lire/valider\` le ${member.guild.channels.cache
-          .get(reglementChannelId)
-          .toString()} et de prendre tes ${member.guild.channels.cache
-          .get(rolesChannelId)
-          .toString()} de jeux.`
+        `Bienvenue <@${member.user.id}>, tu viens de rejoindre la **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes ${rolesChannelString} de jeux.`
       )
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
       .setTimestamp()
       .setFooter({
-        text: `${member.user.username} nouvelle recrue au rang de 丨2nd 𝐂lasse`,
+        text: `${member.user.username} nouvelle recrue au rang de ${initialRoleName}`,
         iconURL: `${member.user.displayAvatarURL({
           dynamic: true,
           size: 512,
         })}`,
       });
 
-    bot.channels.cache
-      .get("825333855933300778")
-      .send({ embeds: [WelcomeEmbed] });
+    const welcomeChannel = bot.channels.cache.get(
+      serverConfig.welcomeChannelID
+    );
+    if (welcomeChannel) {
+      welcomeChannel.send({ embeds: [WelcomeEmbed] });
+    }
   },
 };

@@ -5,50 +5,116 @@ const {
   ButtonBuilder,
 } = require("discord.js");
 const User = require("../models/experience");
-const levelUp = require("../models/levelUp")
+const levelUp = require("../models/levelUp");
+const ServerConfig = require("../models/serverConfig");
+
+const { logRequestMessageIds, welcomeRequestMessageIds } = require("../models/shared");
 
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
     if (message.author.bot) return;
 
+    // Gestion réponse pour salon de LOG
+    const serverId = message.guild.id;
+    const serverName = message.guild.name;
+    if (message.reference) {
+      if (message.reference.messageId === logRequestMessageIds[serverId]) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              logChannelName: channel.name,
+              logChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(`Le salon de 𝐋og sera désormais \`${channel.name}\``);
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de donné soit le nom exact, soit l'ID (en faisant un clique droit -> Copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion réponse pour salon du WELCOME
+    if (message.reference) {
+      if (message.reference.messageId === welcomeRequestMessageIds[serverId]) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              welcomeChannelName: channel.name,
+              welcomeChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon de 𝐁ienvenue sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de donné soit le nom exact, soit l'ID (en faisant un clique droit -> Copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+
+    //Experience pour chaque message
     const now = new Date();
+    const userData = {
+      userID: message.author.id,
+      username: message.author.username,
+      serverID: message.guild.id,
+      serverName: message.guild.name,
+      lastMessageDate: now,
+    };
+    let user = await User.findOne({
+      userID: message.author.id,
+      serverID: message.guild.id,
+    });
+    if (!user) {
+      user = new User(userData);
+    } else {
+      if (message.guild.name !== user.serverName) {
+        user.serverName = message.guild.name;
+      }
+    }
 
-const userData = {
-  userID: message.author.id,
-  username: message.author.username,
-  serverID: message.guild.id,
-  serverName: message.guild.name,
-  lastMessageDate: now
-};
+    const lastMessageDate = user.lastMessageDate || now;
+    const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
 
-let user = await User.findOne(
-  { userID: message.author.id, serverID: message.guild.id } // conditions
-);
+    user.messageCount = (user.messageCount || 0) + 1;
 
-if (!user) {
-  user = new User(userData);
-} else {
-  if (message.guild.name !== user.serverName) {
-    user.serverName = message.guild.name;
-  }
-}
+    if (timeDifference >= 10) {
+      const randomXP = Math.floor(Math.random() * 50) + 1;
+      user.xp = (user.xp || 0) + randomXP;
 
-const lastMessageDate = user.lastMessageDate || now;
-const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
+      await levelUp(message, user, user.xp);
+    } else {
+      user.lastMessageDate = now;
+      await user.save();
+    }
 
-user.messageCount = (user.messageCount || 0) + 1;
+    user.lastMessageDate = now;
 
-if (timeDifference >= 10) {
-  const randomXP = Math.floor(Math.random() * 50) + 1;
-  user.xp = (user.xp || 0) + randomXP;
-
-  await levelUp(message, user, user.xp);
-}
-
-user.lastMessageDate = now;
-
-await user.save();
+    await user.save();
 
     //Salon suggestion qui se tranforme à chaque message en embed préparé.
     if (message.channel.id === "1045073140948152371") {

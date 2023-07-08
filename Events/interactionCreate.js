@@ -11,6 +11,9 @@ const config = require("../config");
 const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const interactionSetConfig = require("./interactionsetconfig");
+const ServerRole = require("../models/serverRole");
+const { logRequestMessageIds, welcomeRequestMessageIds } = require("../models/shared");
+const ServerConfig = require("../models/serverConfig");
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -23,11 +26,6 @@ module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
     //Tous les embeds de Métiers pour New World
-    if (interaction.isStringSelectMenu()) {
-      if (interaction.customId === interactionSetConfig.name) {
-        interactionSetConfig.execute(interaction);
-      }
-    }
     if (interaction.isStringSelectMenu()) {
       let choice = interaction.values[0];
       if (choice == "TANNERIE") {
@@ -452,38 +450,49 @@ module.exports = {
 
     //Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
-      const user = await User.findOne({ userID: interaction.user.id });
-    
+      const user = await User.findOne({
+        serverID: interaction.guild.id,
+        userID: interaction.user.id,
+      });
+
       if (!user) {
         return interaction.reply({
-          content: "Avant de vouloir récupérer ton bonus, ne veux-tu pas d'abord faire un peu connaissance avec tes nouveaux camarades ?",
+          content:
+            "Avant de vouloir récupérer ton bonus, ne veux-tu pas d'abord faire un peu connaissance avec tes nouveaux camarades ?",
           ephemeral: true,
         });
       }
-    
+
       const now = new Date();
       const lastClaim = user.lastDaily;
       const msIn47Hours = 47 * 60 * 60 * 1000;
       const msIn23Hours = 23 * 60 * 60 * 1000;
       const daysInWeek = 7;
       let resetConsecutiveDaily = false;
-    
+
       if (lastClaim && now.getTime() - lastClaim.getTime() < msIn47Hours) {
         const timeSinceLastClaim = now.getTime() - lastClaim.getTime();
-    
+
         if (timeSinceLastClaim < msIn23Hours) {
           const timeRemaining = msIn23Hours - timeSinceLastClaim;
           const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
           const minutesRemaining = Math.floor(
             (timeRemaining % (60 * 60 * 1000)) / (60 * 1000)
-          ).toString().padStart(2, '0');
-      
+          )
+            .toString()
+            .padStart(2, "0");
+          const secondsRemaining = Math.floor(
+            (timeRemaining % (60 * 1000)) / 1000
+          )
+            .toString()
+            .padStart(2, "0");
+
           return interaction.reply({
-            content: `Tu dois attendre encore \`${hoursRemaining}h${minutesRemaining}\` avant de pouvoir récupérer ton daily !`,
+            content: `Tu dois attendre encore \`${hoursRemaining} heure(s), ${minutesRemaining} minute(s) et ${secondsRemaining} seconde(s)\` avant de pouvoir récupérer ton daily !`,
             ephemeral: true,
           });
         }
-    
+
         user.consecutiveDaily += 1;
         if (user.consecutiveDaily > user.maxDaily) {
           user.maxDaily = user.consecutiveDaily;
@@ -492,12 +501,12 @@ module.exports = {
         resetConsecutiveDaily = true;
         user.consecutiveDaily = 1;
       }
-    
+
       const baseXP = 200;
       const weeksConsecutive = Math.floor(user.consecutiveDaily / daysInWeek);
-      const bonusXP = (baseXP * 0.02) * weeksConsecutive;
+      const bonusXP = baseXP * 0.02 * weeksConsecutive;
       const totalXP = baseXP + bonusXP;
-    
+
       user.xp += totalXP;
       user.lastDaily = now;
       levelUp(interaction, user, user.xp);
@@ -511,137 +520,87 @@ module.exports = {
       } else {
         dailyMessage = `\`${interaction.user.username}\` 𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en feu \`${user.consecutiveDaily}\` :fire:\n 𝐓on record est de \`${user.maxDaily}\``;
       }
-    
+
       const dailyEmbed = new EmbedBuilder()
-              .setColor("Gold")
-              .setTitle(dailyMessage)
-              .setFooter({
-                text: `丨`,
-                iconURL: interaction.user.displayAvatarURL({
-                  dynamic: true,
-                  size: 64,
-                }),
-              })
-              .setTimestamp();
-            interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
+        .setColor("Gold")
+        .setTitle(dailyMessage)
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
+      interaction.reply({ embeds: [dailyEmbed], ephemeral: true });
+
       //LOG Pour Daily.
+      const serverInfo = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+
+      if (serverInfo || !serverInfo.logChannelID) {
       const XPLOG = new EmbedBuilder()
-      .setColor("Orange")
-      .setTitle(
-        `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
-      )
-      .setFooter({
-        text: `丨`,
-        iconURL: interaction.user.displayAvatarURL({
-          dynamic: true,
-          size: 64,
-        }),
-      })
-      .setTimestamp();
-    bot.channels.cache
-      .get("838440585341566996")
-      .send({ embeds: [XPLOG] });
+        .setColor("Orange")
+        .setTitle(
+          `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
+        )
+        .setFooter({
+          text: `丨`,
+          iconURL: interaction.user.displayAvatarURL({
+            dynamic: true,
+            size: 64,
+          }),
+        })
+        .setTimestamp();
+
+      const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
+      logChannel.send({ embeds: [XPLOG] });
+      }
     }
 
     //SelectMenu pour le channel rôle, sélecteur de jeux.
     if (interaction.isStringSelectMenu()) {
-      let choice = interaction.values[0];
       const member = interaction.member;
-      if (choice == "APEX") {
+
+      if (interaction.customId === "RoleCustomID") {
+        let choice = interaction.values[0];
         interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "811662603713511425")
-          ) {
-            member.roles.remove("811662603713511425");
-            interaction.editReply({
-              content: "Votre rôle `Apex Legends` a été supprimé.",
-            });
-          } else {
-            member.roles.add("811662603713511425");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `Apex Legends`.",
-            });
+          if (choice == "APEX") {
+            const roleID = "811662603713511425";
+            handleRole(interaction, member, roleID, "Apex Legends");
+          } else if (choice == "NEWORLD") {
+            const roleID = "907320710559576105";
+            handleRole(interaction, member, roleID, "New World");
+          } else if (choice == "FOREST") {
+            const roleID = "1078754580113920020";
+            handleRole(interaction, member, roleID, "Sons of The Forest");
+          } else if (choice == "CALLOF") {
+            const roleID = "813800188317663254";
+            handleRole(interaction, member, roleID, "Call of Duty");
+          } else if (choice == "ROCKET") {
+            const roleID = "811663563558092841";
+            handleRole(interaction, member, roleID, "Rocket League");
+          } else if (choice == "MINECRAFT") {
+            const roleID = "811663653140168741";
+            handleRole(interaction, member, roleID, "Minecraft");
           }
         });
-      } else if (choice == "NEWORLD") {
-        interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "907320710559576105")
-          ) {
-            member.roles.remove("907320710559576105");
-            interaction.editReply({
-              content: "Votre rôle `New World` a été supprimé.",
-            });
-          } else {
-            member.roles.add("907320710559576105");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `New World`.",
-            });
-          }
+      } else if (interaction.customId === interactionSetConfig.name) {
+        interactionSetConfig.execute(interaction);
+      }
+    }
+
+    async function handleRole(interaction, member, roleID, roleName) {
+      if (member.roles.cache.some((role) => role.id == roleID)) {
+        await member.roles.remove(roleID);
+        interaction.editReply({
+          content: `Votre rôle \`${roleName}\` a été supprimé.`,
         });
-      } else if (choice == "FOREST") {
-        interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "1078754580113920020")
-          ) {
-            member.roles.remove("1078754580113920020");
-            interaction.editReply({
-              content: "Votre rôle `Sons of The Forest` a été supprimé.",
-            });
-          } else {
-            member.roles.add("1078754580113920020");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `Sons of The Forest`.",
-            });
-          }
-        });
-      } else if (choice == "CALLOF") {
-        interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "813800188317663254")
-          ) {
-            member.roles.remove("813800188317663254");
-            interaction.editReply({
-              content: "Votre rôle `Call of Duty` a été supprimé.",
-            });
-          } else {
-            member.roles.add("813800188317663254");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `Call of Duty`.",
-            });
-          }
-        });
-      } else if (choice == "ROCKET") {
-        interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "811663563558092841")
-          ) {
-            member.roles.remove("811663563558092841");
-            interaction.editReply({
-              content: "Votre rôle `Rocket League` a été supprimé.",
-            });
-          } else {
-            member.roles.add("811663563558092841");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `Rocket League`.",
-            });
-          }
-        });
-      } else if (choice == "MINECRAFT") {
-        interaction.deferReply({ ephemeral: true }).then(() => {
-          if (
-            member.roles.cache.some((role) => role.id == "811663653140168741")
-          ) {
-            member.roles.remove("811663653140168741");
-            interaction.editReply({
-              content: "Votre rôle `Minecraft` a été supprimé.",
-            });
-          } else {
-            member.roles.add("811663653140168741");
-            interaction.editReply({
-              content: "Vous avez récupéré votre rôle `Minecraft`.",
-            });
-          }
+      } else {
+        await member.roles.add(roleID);
+        interaction.editReply({
+          content: `Vous avez récupéré votre rôle \`${roleName}\`.`,
         });
       }
     }
@@ -777,7 +736,7 @@ module.exports = {
         ephemeral: true,
       });
       const ACCEPTSUGGLOG = new EmbedBuilder()
-        .setColor("Green")
+        .setColor("Blue")
         .setTitle(
           `:ok: \`${interaction.user.username}\` 𝐕ient de réagir positivement à la suggestion :\n\n\`"${embed.description}"\`.`
         )
@@ -833,7 +792,7 @@ module.exports = {
         ephemeral: true,
       });
       const NOPSUGGLOG = new EmbedBuilder()
-        .setColor("Red")
+        .setColor("Blue")
         .setTitle(
           `:x: \`${interaction.user.username}\` 𝐕ient de réagir négativement à la suggestion :\n\n\`"${embed.description}"\`.`
         )
@@ -893,6 +852,169 @@ module.exports = {
         components: [reloadPing],
         ephemeral: true,
       });
+    }
+
+    //Gestion du SetConfig
+    if (interaction.customId === "LOG_BUTTON") {
+      const message = await interaction.reply({
+        content: "Merci de répondre avec le nom exact ou l'ID du salon désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      logRequestMessageIds[serverId] = message.id;
+    }
+    if (interaction.customId === "ROLES_LISTE") {
+      let roles = interaction.guild.roles.cache
+        .sort((a, b) => b.position - a.position)
+        .map((role) => role.toString())
+        .join(", ");
+      if (roles.length > 2048) roles = "To many roles to display";
+      if (!roles) roles = "No roles";
+
+      const roleEmbed = new EmbedBuilder()
+        .setTitle("Liste des Rôles")
+        .setColor("#b3c7ff")
+        .setDescription(roles);
+      const rowRolesListe = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("ROLES_PERSOLISTE")
+          .setEmoji("🖌️")
+          .setLabel("Personnalisation")
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
+    }
+
+    if (interaction.customId === "ROLES_PERSOLISTE") {
+      const levels = {};
+      let currentLevelIndex = 0;
+      const replyMessage = await interaction.reply(
+        "Veuillez répondre avec les rôles personnalisés dans l'ordre correspondant aux niveaux (niveau 1, niveau 2, etc.). Vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules."
+      );
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        time: 60000, // 60 secondes de délai de réponse
+        max: 1, // Une seule réponse attendue
+      });
+
+      collector.on("collect", async (m) => {
+        const roles = m.content.split(",").map((role) => role.trim());
+
+        if (roles.length > 5) {
+          interaction.followUp(
+            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 5 rôles."
+          );
+          return;
+        }
+
+        const rolesInGuild = interaction.guild.roles.cache.map(
+          (role) => role.name
+        );
+        const rolesExist = roles.every((role) => rolesInGuild.includes(role));
+
+        if (!rolesExist) {
+          interaction.followUp(
+            "Un ou plusieurs rôles que vous avez entrés n'existent pas sur ce serveur. Veuillez vérifier les noms des rôles et réessayer."
+          );
+          return;
+        }
+
+        // Chercher le serveur dans la base de données
+        let server = await ServerRole.findOne({
+          serverID: interaction.guild.id,
+        });
+
+        // Si le serveur n'existe pas, créez un nouveau document
+        if (!server) {
+          server = new ServerRole({
+            serverID: interaction.guild.id,
+            serverName: interaction.guild.name,
+            levels: [],
+          });
+        }
+
+        // Ajouter le niveau et les rôles au document du serveur
+        server.levels.push({
+          level: `level_${levels[currentLevelIndex]}`,
+          roles: roles,
+        });
+
+        // Sauvegarder le document du serveur
+        await server.save();
+
+        currentLevelIndex++;
+
+        if (currentLevelIndex < levels.length) {
+          interaction.followUp(
+            `Rôles pour le niveau ${
+              levels[currentLevelIndex - 1]
+            } enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le niveau ${
+              levels[currentLevelIndex]
+            }. N'oubliez pas, vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules.`
+          );
+        } else {
+          interaction.followUp(
+            "Tous les rôles ont été enregistrés avec succès !"
+          );
+          collector.stop();
+        }
+      });
+    }
+    if (interaction.customId === "WELCOME_BUTTON") {
+      const message = await interaction.reply({
+        content: "Merci de répondre avec le nom exact ou l'ID du salon désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      welcomeRequestMessageIds[serverId] = message.id;
+    }
+
+    //Bouton Classement Général
+    if (interaction.customId === "LADDER_BUTTON") {
+      const guild = interaction.guild;
+      const topUsers = await User.find({ serverID: guild.id })
+        .sort({ prestige: -1, xp: -1 })
+        .limit(10);
+
+      const leaderboardEmbed = new EmbedBuilder()
+        .setColor("Gold")
+        .setTitle(`Classement du serveur ${guild.name}`)
+        .setDescription(
+          topUsers
+            .map((user, index) => {
+              let positionSuffix = "ᵉᵐᵉ";
+              let medalEmoji = "";
+
+              switch (index) {
+                case 0:
+                  positionSuffix = "ᵉʳ";
+                  medalEmoji = "🥇";
+                  break;
+                case 1:
+                  medalEmoji = "🥈";
+                  break;
+                case 2:
+                  medalEmoji = "🥉";
+                  break;
+              }
+
+              return `\n**${index + 1}${positionSuffix} ${medalEmoji}** <@${
+                user.userID
+              }> 丨 Prestige: **\`${
+                user.prestige
+              }\`** - XP: **\`${user.xp.toLocaleString()}\`**`;
+            })
+            .join("\n")
+        )
+        .setThumbnail(guild.iconURL({ dynamic: true }));
+
+      await interaction.reply({ embeds: [leaderboardEmbed] });
+      setTimeout(async () => {
+        const message = await interaction.fetchReply();
+        message.delete();
+      }, 60000);
     }
 
     if (interaction.channel === null) return;

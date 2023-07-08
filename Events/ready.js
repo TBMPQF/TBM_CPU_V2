@@ -1,7 +1,9 @@
 const { ActivityType, EmbedBuilder } = require("discord.js");
+const Discord = require("discord.js");
 const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
-const config = require("../config.json")
+const config = require("../config.json");
+const ServerConfig = require("../models/serverConfig");
 
 const MINECRAFT_SERVER_IP = config.serveurMinecraftIP;
 const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
@@ -22,10 +24,10 @@ module.exports = {
       updateVoiceChannel(server);
     }, 60000);
 
-    bot.on('guildCreate', async (guild) => {
+    bot.on("guildCreate", async (guild) => {
       try {
         const owner = await guild.fetchOwner();
-    
+
         const embed = new EmbedBuilder()
           .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
           .setColor("#ffc394")
@@ -41,41 +43,60 @@ module.exports = {
               size: 512,
             })}`,
           });
-    
+
         owner.send({ embeds: [embed] });
       } catch (error) {
-        console.error('Erreur lors de l\'envoi du message au propriétaire du serveur :', error);
+        console.error(
+          "Erreur lors de l'envoi du message au propriétaire du serveur :",
+          error
+        );
       }
     });
 
-    //Message de connexion du bot
-    const channel = bot.channels.cache.get("838440585341566996");
+    // Message de connexion du bot
+    const server = bot.guilds.cache.first();
 
-    channel.messages.fetch({ limit: 100 }).then((messages) => {
-      const connectMessages = messages.filter(
-        (msg) =>
-          msg.author.id === bot.user.id &&
-          msg.embeds.length > 0 &&
-          msg.embeds[0].description ===
-            "**Je viens tout juste de me connecter.**"
-      );
+    ServerConfig.findOne({ serverID: server.id })
+      .then((serverConfig) => {
+        if (serverConfig) {
+          const logChannelID = serverConfig.logChannelID;
+          const logChannel = bot.channels.cache.get(logChannelID);
 
-      if (connectMessages.size > 0) {
-        channel.bulkDelete(connectMessages).then(() => {
-          const ConnectOK = new EmbedBuilder()
-            .setDescription(`**Je viens tout juste de me connecter.**`)
-            .setColor("White")
-            .setTimestamp();
-          channel.send({ embeds: [ConnectOK] });
-        });
-      } else {
-        const ConnectOK = new EmbedBuilder()
-          .setDescription(`**Je viens tout juste de me connecter.**`)
-          .setColor("White")
-          .setTimestamp();
-        channel.send({ embeds: [ConnectOK] });
-      }
-    });
+          if (logChannel && logChannel instanceof Discord.TextChannel) {
+            logChannel.messages.fetch({ limit: 100 }).then((messages) => {
+              const connectMessages = messages.filter(
+                (msg) =>
+                  msg.author.id === bot.user.id &&
+                  msg.embeds.length > 0 &&
+                  msg.embeds[0].description ===
+                    "**Je viens tout juste de me connecter.**"
+              );
+
+              if (connectMessages.size > 0) {
+                logChannel.bulkDelete(connectMessages).then(() => {
+                  const ConnectOK = new EmbedBuilder()
+                    .setDescription("**Je viens tout juste de me connecter.**")
+                    .setColor("White")
+                    .setTimestamp();
+                  logChannel.send({ embeds: [ConnectOK] });
+                });
+              } else {
+                const ConnectOK = new EmbedBuilder()
+                  .setDescription("**Je viens tout juste de me connecter.**")
+                  .setColor("White")
+                  .setTimestamp();
+                logChannel.send({ embeds: [ConnectOK] });
+              }
+            });
+          }
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur lors de la récupération du salon de journalisation depuis la base de données :",
+          error
+        );
+      });
 
     // Interval de messages pour le Daily.
     const channelDaily = bot.channels.cache.get("818640158693392405");
@@ -136,10 +157,10 @@ async function updateVoiceChannel(server) {
       `https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_IP}:${MINECRAFT_SERVER_PORT}`
     )
       .then((response) => {
-        if (response.headers.get('content-type') === 'application/json') {
+        if (response.headers.get("content-type") === "application/json") {
           return response.json();
         } else {
-          throw new Error('Invalid JSON response');
+          throw new Error("Invalid JSON response");
         }
       })
       .then((data) => {
@@ -156,6 +177,6 @@ async function updateVoiceChannel(server) {
         channel.setName(`👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒`);
       });
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du salon vocal:', error);
+    console.error("Erreur lors de la mise à jour du salon vocal:", error);
   }
 }
