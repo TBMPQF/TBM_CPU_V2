@@ -1,16 +1,26 @@
 const { EmbedBuilder } = require("discord.js");
 const User = require("../models/experience");
+const ServerConfig = require("../models/serverConfig");
 
 module.exports = {
   name: "guildMemberRemove",
   async execute(member, bot) {
+    const serverConfig = await ServerConfig.findOne({
+      serverID: member.guild.id,
+    });
+    if (!serverConfig || !serverConfig.logChannelID) {
+      return;
+    }
+
     let user;
     try {
-      user = await User.findOneAndDelete({ serverID: interaction.guild.id,
-        userID: interaction.user.id });
+      user = await User.findOneAndDelete({
+        serverID: member.guild.id,
+        userID: member.user.id,
+      });
     } catch (error) {}
 
-    let timeOnServer = "Inconnu";
+    let timeOnServer = "\`PAS DÉFINI\`";
     if (user && user.joinedAt) {
       const now = new Date();
       const timeDiff = now - user.joinedAt;
@@ -50,8 +60,9 @@ module.exports = {
         })}`,
       });
 
-    bot.channels.cache
-      .get("838440585341566996")
-      .send({ embeds: [RemoveMember] });
+    const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
+    if (logChannel) {
+      logChannel.send({ embeds: [RemoveMember] });
+    }
   },
 };

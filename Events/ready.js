@@ -24,6 +24,7 @@ module.exports = {
       updateVoiceChannel(server);
     }, 60000);
 
+    // Message lors d'un ajout du bot sur un nouveau serveur
     bot.on("guildCreate", async (guild) => {
       try {
         const owner = await guild.fetchOwner();
@@ -32,7 +33,7 @@ module.exports = {
           .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).`
+            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).\n\`N'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\``
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()

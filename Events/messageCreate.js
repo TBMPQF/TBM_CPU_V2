@@ -8,7 +8,13 @@ const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const ServerConfig = require("../models/serverConfig");
 
-const { logRequestMessageIds, welcomeRequestMessageIds } = require("../models/shared");
+const {
+  logRequestMessageIds,
+  welcomeRequestMessageIds,
+  reglementRequestMessageIds,
+  RolereglementRequestMessageIds,
+  RoleWelcomeRequestMessageIds,
+} = require("../models/shared");
 
 module.exports = {
   name: "messageCreate",
@@ -37,7 +43,9 @@ module.exports = {
             },
             { upsert: true }
           );
-          await message.reply(`Le salon de 𝐋og sera désormais \`${channel.name}\``);
+          await message.reply(
+            `Le salon de 𝐋og sera désormais \`${channel.name}\``
+          );
         } else {
           await message.reply(
             `Invalide salon ! Merci de donné soit le nom exact, soit l'ID (en faisant un clique droit -> Copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
@@ -73,6 +81,95 @@ module.exports = {
             `Invalide salon ! Merci de donné soit le nom exact, soit l'ID (en faisant un clique droit -> Copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
           );
         }
+      }
+    }
+    // Gestion réponse pour le salon du REGLEMENT
+    if (message.reference) {
+      if (
+        message.reference.messageId === reglementRequestMessageIds[serverId]
+      ) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              reglementChannelName: channel.name,
+              reglementChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon de 𝐑èglement sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de donné soit le nom exact, soit l'ID (en faisant un clique droit -> Copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion pour modifié le rôle du REGLEMENT
+    let role;
+    if (message.mentions.roles.size > 0) {
+      role = message.mentions.roles.first();
+    }
+
+    if (
+      message.reference &&
+      message.reference.messageId === RolereglementRequestMessageIds[serverId]
+    ) {
+      if (role) {
+        await ServerConfig.findOneAndUpdate(
+          { serverID: serverId },
+          {
+            roleReglementID: role.id,
+            roleReglementName: role.name,
+          },
+          { upsert: true }
+        );
+        await message.reply(
+          `Le rôle de 𝐑èglement sera désormais \`${role.name}\``
+        );
+      } else {
+        await message.reply(
+          `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le \`𝐑èglement\`.`
+        );
+      }
+    }
+
+    // Gestion pour modifier le rôle de bienvenue
+    let welcomeRole;
+    if (message.mentions.roles.size > 0) {
+      welcomeRole = message.mentions.roles.first();
+    }
+
+    if (
+      message.reference &&
+      message.reference.messageId === RoleWelcomeRequestMessageIds[serverId]
+    ) {
+      if (welcomeRole) {
+        await ServerConfig.findOneAndUpdate(
+          { serverID: serverId },
+          {
+            roleWelcomeID: welcomeRole.id,
+            roleWelcomeName: welcomeRole.name,
+          },
+          { upsert: true }
+        );
+        await message.reply(
+          `Le rôle de bienvenue sera désormais \`${welcomeRole.name}\``
+        );
+      } else {
+        await message.reply(
+          `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur arrivera sur votre serveur.`
+        );
       }
     }
 

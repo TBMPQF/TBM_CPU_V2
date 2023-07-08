@@ -1,4 +1,7 @@
 module.exports = {
     logRequestMessageIds: {},
-    welcomeRequestMessageIds: {}
+    welcomeRequestMessageIds: {},
+    reglementRequestMessageIds: {},
+    RolereglementRequestMessageIds : {},
+    RoleWelcomeRequestMessageIds : {}
   };

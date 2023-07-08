@@ -51,7 +51,7 @@ module.exports = {
       .setTitle(`\`Oh! Un nouveau membre\` :warning:`)
       .setColor("#ffc394")
       .setDescription(
-        `Bienvenue <@${member.user.id}>, tu viens de rejoindre la **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes ${rolesChannelString} de jeux.`
+        `Bienvenue <@${member.user.id}>, tu viens de rejoindre la **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes rôles ${rolesChannelString}.`
       )
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
       .setTimestamp()

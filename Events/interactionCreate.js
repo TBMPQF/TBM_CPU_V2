@@ -1,3 +1,4 @@
+const { DiscordAPIError } = require("discord.js");
 const {
   ActionRowBuilder,
   PermissionsBitField,
@@ -12,7 +13,13 @@ const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const interactionSetConfig = require("./interactionsetconfig");
 const ServerRole = require("../models/serverRole");
-const { logRequestMessageIds, welcomeRequestMessageIds } = require("../models/shared");
+const {
+  logRequestMessageIds,
+  welcomeRequestMessageIds,
+  reglementRequestMessageIds,
+  RolereglementRequestMessageIds,
+  RoleWelcomeRequestMessageIds
+} = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 
 mongoose.connect(config.mongourl, {
@@ -540,22 +547,22 @@ module.exports = {
       });
 
       if (serverInfo || !serverInfo.logChannelID) {
-      const XPLOG = new EmbedBuilder()
-        .setColor("Orange")
-        .setTitle(
-          `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
-        )
-        .setFooter({
-          text: `丨`,
-          iconURL: interaction.user.displayAvatarURL({
-            dynamic: true,
-            size: 64,
-          }),
-        })
-        .setTimestamp();
+        const XPLOG = new EmbedBuilder()
+          .setColor("Orange")
+          .setTitle(
+            `\`${interaction.user.username}\` 𝐕ient de récuperer son bonus quotidien. 💸`
+          )
+          .setFooter({
+            text: `丨`,
+            iconURL: interaction.user.displayAvatarURL({
+              dynamic: true,
+              size: 64,
+            }),
+          })
+          .setTimestamp();
 
-      const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
-      logChannel.send({ embeds: [XPLOG] });
+        const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
+        logChannel.send({ embeds: [XPLOG] });
       }
     }
 
@@ -605,12 +612,58 @@ module.exports = {
       }
     }
 
-    //Bouton pour Ticket => Création salon avec fermeture une fois terminé.
-    if (interaction.customId === "VALID_CHARTE") {
-      interaction.deferUpdate();
-      interaction.member.roles.add("811662602530717738");
+    // Validation règlement avec rôle
+    if (interaction.customId === "VALID_REGL") {
+      const guild = await interaction.client.guilds.fetch(interaction.guildId);
+      const member = await guild.members.fetch(interaction.user.id);
+
+      const serverConfig = await ServerConfig.findOne({ serverID: guild.id });
+
+      if (serverConfig && serverConfig.roleReglementID) {
+        const roleId = serverConfig.roleReglementID;
+
+        if (!guild.roles.cache.has(roleId)) {
+          await interaction.reply({
+            content: `Le rôle ${roleId} n'existe pas sur ce serveur.`,
+            ephemeral: true,
+          });
+          return;
+        }
+
+        if (member.roles.cache.has(roleId)) {
+          await interaction.reply({content: 'Tu as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:', ephemeral: true});
+          return;
+        }
+
+        try {
+          await member.roles.add(roleId);
+          await interaction.reply({
+            content: "Merci d'avoir pris connaissance du règlement. :sunglasses:",
+            ephemeral: true,
+          });
+        } catch (error) {
+          if (error.code === 50013) {
+            if (!interaction.replied && !interaction.deferred) {
+              await interaction.reply({
+                content:
+                  "Contact un modérateur avec l'erreur suivante : Le bot doit être \`tout en haut\` dans la liste des rôles du serveur. N'oublie pas de me mettre \`administrateur\`.\nUne fois que c'est fait tu pourras validé le règlement !",
+                ephemeral: true,
+              });
+            } else if (interaction.deferred || interaction.replied) {
+              await interaction.followUp({
+                content:
+                  "Contact un modérateur avec l'erreur suivante : Le bot doit être \`tout en haut\` dans la liste des rôles du serveur. N'oublie pas de me mettre \`administrateur\`.\nUne fois que c'est fait tu pourras validé le règlement !",
+                ephemeral: true,
+              });
+            }
+          } else {
+            console.error(error);
+          }
+        }
+      }
     }
 
+    //Bouton pour Ticket => Création salon avec fermeture une fois terminé.
     const StreamCordBOTId = "375805687529209857";
     const DisboardBOTId = "302050872383242240";
     const AdminRoleID = "717122082663694506";
@@ -857,11 +910,15 @@ module.exports = {
     //Gestion du SetConfig
     if (interaction.customId === "LOG_BUTTON") {
       const message = await interaction.reply({
-        content: "Merci de répondre avec le nom exact ou l'ID du salon désiré.",
+        content:
+          "Merci de **répondre** avec le nom exact ou l'ID du salon de `𝐋og` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       logRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
     }
     if (interaction.customId === "ROLES_LISTE") {
       let roles = interaction.guild.roles.cache
@@ -890,7 +947,7 @@ module.exports = {
       const levels = {};
       let currentLevelIndex = 0;
       const replyMessage = await interaction.reply(
-        "Veuillez répondre avec les rôles personnalisés dans l'ordre correspondant aux niveaux (niveau 1, niveau 2, etc.). Vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules."
+        "Veuillez **répondre** avec les rôles personnalisés dans l'ordre correspondant aux niveaux (niveau 1, niveau 2, etc.). Vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules."
       );
 
       const collector = interaction.channel.createMessageCollector({
@@ -964,11 +1021,90 @@ module.exports = {
     }
     if (interaction.customId === "WELCOME_BUTTON") {
       const message = await interaction.reply({
-        content: "Merci de répondre avec le nom exact ou l'ID du salon désiré.",
+        content:
+          "Merci de **répondre** avec le nom exact ou l'ID du salon de `𝐁ienvenue` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       welcomeRequestMessageIds[serverId] = message.id;
+    }
+    if (interaction.customId === "REGL_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de répondre avec le nom exact ou l'ID du salon de `𝐑èglement` désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      reglementRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
+    }
+    if (interaction.customId === "REGL_PUSH") {
+      let serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+      if (!serverConfig || !serverConfig.reglementChannelID) {
+        return interaction.reply({
+          content:
+            "Aucun salon de règlement n'est configuré pour ce serveur. Veuillez en configurer un en séléctionnant `Modifié Salon`.",
+          ephemeral: true,
+        });
+      }
+
+      const Reglementembed = new EmbedBuilder()
+        .setColor("#b3c7ff")
+        .setTitle(
+          `*_~𝐑èglement de la ${interaction.guild.name} pour votre bonne formation~_*`
+        )
+        .setDescription(
+          `\n**Merci de bien vouloir lire toute les règles ainsi que de les respecter !**\n\n:wave:\`丨𝐁ienvenue :\` \nTout d'abord bienvenue parmi nous. Tu peux à présent lire et valider le règlement puis choisir tes rôles dans le salon \`Rôles\`. Si tu es un streamer, tu peux obtenir le rôle \`Streamer\` pour avoir les notifications de TES lives sur notre serveur ! Pour toute demande, informations ou signalement, tu peux ouvrir un ticket dans le \`salon prévu à cet effet\`, un modérateur se fera un plaisir de te répondre.\n\n:rotating_light:\`丨𝐌entions :\`\n Évitez les mentions inutiles et \`réfléchissez\` avant de poser une question. Vous n'êtes pas seuls et les réponses ont souvent déjà été données. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:warning:\`丨𝐏ublicités :\`\n Toute publicité \`non autorisé\` par un membre du staff est \`strictement interdite\` sur le serveur mais également par message privé. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:underage:\`丨𝐍SFW :\`\nNSFW, NSFL et le contenu malsain n'est \`pas autorisé\` sur le serveur. Il sera punissable d'un \`bannissement\` !\n\n:flag_fr:\`丨𝐅rançais :\`\nLa structure est \`francophone\`, veuillez donc écrire français uniquement pour une compréhension facile de tous les membres de la communauté. Il sera punissable si les avertissements sont répétés et non écoutés.`
+        )
+        .setThumbnail(interaction.guild.iconURL())
+        .setFooter({
+          text: `Cordialement l'équipe ${interaction.guild.name}`,
+          iconURL: interaction.guild.iconURL(),
+        });
+
+      const rowValidRegl = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("VALID_REGL")
+          .setLabel("📝丨𝐕alider le 𝐑èglement丨📝")
+          .setStyle(ButtonStyle.Success)
+      );
+      const ReglementChannel = bot.channels.cache.get(
+        serverConfig.reglementChannelID
+      );
+      if (ReglementChannel) {
+        ReglementChannel.send({
+          embeds: [Reglementembed],
+          components: [rowValidRegl],
+        });
+      }
+    }
+    if (interaction.customId === "REGL_ROLE") {
+      const message = await interaction.reply({
+        content:
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      RolereglementRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
+    }
+    if (interaction.customId === "WELCOME_ROLE") {
+      const message = await interaction.reply({
+        content:
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      RoleWelcomeRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
     }
 
     //Bouton Classement Général

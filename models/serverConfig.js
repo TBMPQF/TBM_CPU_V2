@@ -11,6 +11,8 @@ const serverConfigSchema = new mongoose.Schema({
   dailyChannelName: { type: String, default: null },
   welcomeChannelID: { type: String, default: null },
   welcomeChannelName: { type: String, default: null },
+  roleWelcomeID: { type: String, default: null },
+  roleWelcomeName: { type: String, default: null },
   implicationsChannelID: { type: String, default: null },
   implicationsChannelName: { type: String, default: null },
   suggestionsChannelID: { type: String, default: null },
@@ -19,6 +21,8 @@ const serverConfigSchema = new mongoose.Schema({
   rolesChannelName: { type: String, default: null },
   ticketChannelID: { type: String, default: null },
   ticketChannelName: { type: String, default: null },
+  roleReglementID : { type: String, default: null },
+  roleReglementName : { type: String, default: null }
 }, { versionKey: false });
 
 module.exports = mongoose.model('ServerConfig', serverConfigSchema, 'Serveur Channels');

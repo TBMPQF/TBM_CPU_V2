@@ -5,10 +5,14 @@ const {
   ActionRowBuilder,
   ButtonStyle,
 } = require("discord.js");
+const ServerConfig = require("../models/serverConfig");
 
 module.exports = {
   name: "setConfigCustomID",
   async execute(interaction) {
+    const serverID = interaction.guild.id;
+    const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+
     if (interaction.isStringSelectMenu()) {
       const selectedOption = interaction.values[0];
 
@@ -17,7 +21,7 @@ module.exports = {
           const logEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐋og丨`")
             .setDescription(
-              "Salon qui te permettra de suivre l'actualité du serveur (Quand quelqu'un récupère son daily, quand quelqu'un quitte ton serveur, suivre les suggestions ...)\n\nModifie le salon ou carrément désactive les 𝐋ogs de ton serveur."
+              `Salon qui te permettra de suivre l'actualité du serveur (Quand quelqu'un récupère son daily, quand quelqu'un quitte ton serveur, suivre les suggestions ... )\n\nModifie le salon ou carrément désactive les 𝐋ogs de ton serveur.\n\nSalon actuel : \`${serverConfig.logChannelName}\``
             )
             .setThumbnail(
               "https://images.emojiterra.com/google/android-12l/512px/1f4dd.png"
@@ -46,7 +50,7 @@ module.exports = {
           const reglementEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐑èglement丨`")
             .setDescription(
-              "Le salon ou tu affiche le règlement de ton serveur Discord.\n\nModifie le salon ou carrément désactive le 𝐑èglement de ton serveur.\n✔️ pour envoyé le règlement dans ton salon !"
+              `Le salon ou tu affiche le 𝐑èglement de ton serveur Discord.\n\nModifie le salon ou carrément désactive le 𝐑èglement de ton serveur.\nTu peux également modifié le rôle obtenu lors de la validation de ton 𝐑èglement.\n\n✔️ pour envoyé le 𝐑èglement dans ton salon !\n\nSalon actuel : \`${serverConfig.reglementChannelName}\`\nRôle actuel : \`${serverConfig.roleReglementName}\``
             )
             .setThumbnail(
               "https://exalto-park.com/wp-content/uploads/2022/11/Reglement-interieur.png"
@@ -69,6 +73,13 @@ module.exports = {
             )
             .addComponents(
               new ButtonBuilder()
+                .setCustomId("REGL_ROLE")
+                .setEmoji("🕵")
+                .setLabel("Modifié Rôle")
+                .setStyle(ButtonStyle.Primary)
+            )
+            .addComponents(
+              new ButtonBuilder()
                 .setCustomId("REGL_DESAC")
                 .setEmoji("❌")
                 .setLabel("Désactivé")
@@ -85,7 +96,7 @@ module.exports = {
           const WELCOMEEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐖elcome丨`")
             .setDescription(
-              "Message de bienvenue lorsque qu'un utilisateur rejoint ton serveur Discord.\n\nPersonnalise ton message, modifie le salon ou carrément désactive le message de bienvenue de ton serveur."
+              `Message de bienvenue lorsque qu'un utilisateur rejoint ton serveur Discord.\n\nModifie le salon, le rôle attribué lors de l'arrivé du membre ou carrément désactive le message de bienvenue de ton serveur.\n\nSalon actuel : \`${serverConfig.welcomeChannelName}\`\nRôle actuel : \`${serverConfig.roleWelcomeName}\``
             )
             .setThumbnail(
               "https://cdn.pixabay.com/photo/2016/03/31/21/33/greeting-1296493_1280.png"
@@ -94,16 +105,15 @@ module.exports = {
           const rowWelcome = new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
-                .setCustomId("WELCOME_PERSO")
-                .setEmoji("🖌️")
-                .setLabel("Personnalisation")
-                .setStyle(ButtonStyle.Secondary)
-            )
-            .addComponents(
-              new ButtonBuilder()
                 .setCustomId("WELCOME_BUTTON")
                 .setEmoji("📝")
                 .setLabel("Modifié Salon")
+                .setStyle(ButtonStyle.Primary)
+            ).addComponents(
+              new ButtonBuilder()
+                .setCustomId("WELCOME_ROLE")
+                .setEmoji("🕵")
+                .setLabel("Modifié Rôle")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
@@ -123,20 +133,13 @@ module.exports = {
           const IMPLICATIONEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐈mplications丨`")
             .setDescription(
-              "Message qui s'affiche dans le salon que tu veux pour avertir ta communauté qu'un de tes membres vient de prendre un niveau !\n\nPersonnalise ton message, modifie le salon ou carrément désactive les messages d'expérience de ton serveur."
+              `Message qui s'affiche dans le salon que tu veux pour avertir ta communauté qu'un de tes membres vient de prendre un niveau !\n\nModifie le salon ou carrément désactive les messages d'expérience de ton serveur.\nPour mieux faire, tu peux même désactiver les messages de bienvenue envoyer par Discord !\n\nSalon actuel : \`${serverConfig.implicationsChannelName}\``
             )
             .setThumbnail(
               "https://supermonday.io/wp-content/uploads/2023/01/brain-g13f32aaed_1920.png"
             )
             .setColor("#b3c7ff");
           const rowImplication = new ActionRowBuilder()
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId("IMPLICATION_PERSO")
-                .setEmoji("🖌️")
-                .setLabel("Personnalisation")
-                .setStyle(ButtonStyle.Secondary)
-            )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_BUTTON")
@@ -161,7 +164,7 @@ module.exports = {
           const SUGGESTIONEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐒uggestions丨`")
             .setDescription(
-              "Un salon qui peut permettre a ta communautée de proposer une amélioration à ton serveur.\n\nModifie le salon ou carrément désactive les suggestions de ton serveur."
+              `Un salon qui peut permettre a ta communautée de proposer une amélioration à ton serveur.\n\nModifie le salon ou carrément désactive les 𝐒uggestions de ton serveur.\n\nSalon actuel : \`${serverConfig.suggestionsChannelName}\``
             )
             .setThumbnail(
               "https://cdn-icons-png.flaticon.com/512/2118/2118247.png"
@@ -192,20 +195,13 @@ module.exports = {
           const DAILYEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐃aily丨`")
             .setDescription(
-              "Permet à toute ta communautée de récupérer un bonus quotidien d'expérience, récupérable une fois toute les 23H. Un bonus de 2% sera appliqué au bout de 7 jours consécutifs.\n\nPersonnalise l'expérience donné, modifie le salon ou carrément désactive le daily de ton serveur.\n✔️ pour envoyé le message de récupération de daily dans ton salon !"
+              `Permet à toute ta communautée de récupérer un bonus quotidien d'expérience de **200 XP**, récupérable une fois __toute les 23H__. Un bonus cumulable de 2% sera appliqué au bout de 7 jours consécutifs.\n\nModifie le salon ou carrément désactive le 𝐃aily de ton serveur.\n\n✔️ pour envoyé le message de récupération de 𝐃aily dans ton salon !\n\nSalon actuel : \`${serverConfig.dailyChannelName}\``
             )
             .setThumbnail(
               "https://papycha.fr/wp-content/uploads/2019/08/84863418061.png"
             )
             .setColor("#b3c7ff");
           const rowDaily = new ActionRowBuilder()
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId("DAILY_PERSO")
-                .setEmoji("🖌️")
-                .setLabel("Personnalisation")
-                .setStyle(ButtonStyle.Secondary)
-            )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("DAILY_PUSH")
@@ -238,7 +234,8 @@ module.exports = {
             .setTitle("`丨𝐂onfiguration 𝐑ôles丨`")
             .setDescription("Contenu de l'option ROLES")
             .setColor("#b3c7ff");
-            const rowRoles = new ActionRowBuilder().addComponents(
+          const rowRoles = new ActionRowBuilder()
+            .addComponents(
               new ButtonBuilder()
                 .setCustomId("ROLES_LISTE")
                 .setEmoji("📅")
