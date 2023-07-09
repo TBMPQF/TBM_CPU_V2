@@ -164,7 +164,7 @@ module.exports = {
           const SUGGESTIONEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐒uggestions丨`")
             .setDescription(
-              `Un salon qui peut permettre a ta communautée de proposer une amélioration à ton serveur.\n\nModifie le salon ou carrément désactive les 𝐒uggestions de ton serveur.\n\nSalon actuel : \`${serverConfig.suggestionsChannelName}\``
+              `Un salon qui peut permettre a ta communautée de proposer une amélioration à ton serveur.\n__Chaque personne qui envoie un simple message sera transformé directement en suggestion avec bouton pour pouvoir réagir__ !\n\nModifie le salon ou carrément désactive les 𝐒uggestions de ton serveur.\n\nSalon actuel : \`${serverConfig.suggestionsChannelName}\``
             )
             .setThumbnail(
               "https://cdn-icons-png.flaticon.com/512/2118/2118247.png"

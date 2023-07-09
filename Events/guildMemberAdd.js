@@ -13,12 +13,12 @@ module.exports = {
       return;
     }
 
-    const initialRoleName = rolesByLevel[0][0].roleName;
-    const initialRole = member.guild.roles.cache.find(
-      (role) => role.name === initialRoleName
+    const welcomeRoleName = serverConfig.roleWelcomeName;
+    const welcomeRole = member.guild.roles.cache.find(
+      (role) => role.name === welcomeRoleName
     );
-    if (initialRole) {
-      member.roles.add(initialRole);
+    if (welcomeRole) {
+      member.roles.add(welcomeRole);
     }
 
     const newUser = new User({
@@ -56,7 +56,7 @@ module.exports = {
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
       .setTimestamp()
       .setFooter({
-        text: `${member.user.username} nouvelle recrue au rang de ${initialRoleName}`,
+        text: `${member.user.username} nouvelle recrue au rang de ${welcomeRole.name}`,
         iconURL: `${member.user.displayAvatarURL({
           dynamic: true,
           size: 512,

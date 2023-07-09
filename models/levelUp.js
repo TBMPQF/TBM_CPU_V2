@@ -1,16 +1,19 @@
 const roleRewards = require("./roleRewards");
 const Discord = require("discord.js");
 const MAX_LEVEL = 50;
+const ServerConfig = require("../models/serverConfig");
 
 async function levelUp(obj, user, newXP) {
-  let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
+  const serverConfig = await ServerConfig.findOne({ serverID: obj.guild.id });
+  if (!serverConfig) {
+    return;
+  }
 
-  const levelUpChannel = obj.guild.channels.cache.find(
-    (channel) => channel.name === "🏆丨𝐈mplications"
-  );
-  const levelDownChannel = obj.guild.channels.cache.find(
-    (channel) => channel.name === "🏆丨𝐈mplications"
-  );
+  const implicationChannelID = serverConfig.implicationsChannelID;
+  const levelUpChannel = obj.guild.channels.cache.get(implicationChannelID);
+  const levelDownChannel = obj.guild.channels.cache.get(implicationChannelID);
+
+  let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
   const author = obj instanceof Discord.Message ? obj.author : obj.user;
 
   if (newLevel > MAX_LEVEL) {
@@ -24,7 +27,6 @@ async function levelUp(obj, user, newXP) {
       );
     }
 
-    // Remove all level roles from previous prestige
     const previousPrestigeRoleRewards = roleRewards[oldPrestige];
     for (let reward of previousPrestigeRoleRewards) {
       const previousRole = obj.guild.roles.cache.find(

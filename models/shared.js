@@ -3,5 +3,8 @@ module.exports = {
     welcomeRequestMessageIds: {},
     reglementRequestMessageIds: {},
     RolereglementRequestMessageIds : {},
-    RoleWelcomeRequestMessageIds : {}
+    RoleWelcomeRequestMessageIds : {},
+    implicationRequestMessageIds : {},
+    dailyRequestMessageIds : {},
+    suggestionsRequestMessageIds : {}
   };

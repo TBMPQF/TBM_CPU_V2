@@ -1,4 +1,3 @@
-const { DiscordAPIError } = require("discord.js");
 const {
   ActionRowBuilder,
   PermissionsBitField,
@@ -18,7 +17,10 @@ const {
   welcomeRequestMessageIds,
   reglementRequestMessageIds,
   RolereglementRequestMessageIds,
-  RoleWelcomeRequestMessageIds
+  RoleWelcomeRequestMessageIds,
+  implicationRequestMessageIds,
+  dailyRequestMessageIds,
+  suggestionsRequestMessageIds,
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 
@@ -631,14 +633,19 @@ module.exports = {
         }
 
         if (member.roles.cache.has(roleId)) {
-          await interaction.reply({content: 'Tu as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:', ephemeral: true});
+          await interaction.reply({
+            content:
+              "Tu as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:",
+            ephemeral: true,
+          });
           return;
         }
 
         try {
           await member.roles.add(roleId);
           await interaction.reply({
-            content: "Merci d'avoir pris connaissance du règlement. :sunglasses:",
+            content:
+              "Merci d'avoir pris connaissance du règlement. :sunglasses:",
             ephemeral: true,
           });
         } catch (error) {
@@ -646,13 +653,13 @@ module.exports = {
             if (!interaction.replied && !interaction.deferred) {
               await interaction.reply({
                 content:
-                  "Contact un modérateur avec l'erreur suivante : Le bot doit être \`tout en haut\` dans la liste des rôles du serveur. N'oublie pas de me mettre \`administrateur\`.\nUne fois que c'est fait tu pourras validé le règlement !",
+                  "Contact un modérateur avec l'erreur suivante : Le bot doit être `tout en haut` dans la liste des rôles du serveur. N'oublie pas de me mettre `administrateur`.\nUne fois que c'est fait tu pourras validé le règlement !",
                 ephemeral: true,
               });
             } else if (interaction.deferred || interaction.replied) {
               await interaction.followUp({
                 content:
-                  "Contact un modérateur avec l'erreur suivante : Le bot doit être \`tout en haut\` dans la liste des rôles du serveur. N'oublie pas de me mettre \`administrateur\`.\nUne fois que c'est fait tu pourras validé le règlement !",
+                  "Contact un modérateur avec l'erreur suivante : Le bot doit être `tout en haut` dans la liste des rôles du serveur. N'oublie pas de me mettre `administrateur`.\nUne fois que c'est fait tu pourras validé le règlement !",
                 ephemeral: true,
               });
             }
@@ -911,7 +918,7 @@ module.exports = {
     if (interaction.customId === "LOG_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom exact ou l'ID du salon de `𝐋og` désiré.",
+          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon de `𝐋og` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1022,7 +1029,7 @@ module.exports = {
     if (interaction.customId === "WELCOME_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom exact ou l'ID du salon de `𝐁ienvenue` désiré.",
+          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon de `𝐁ienvenue` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1031,7 +1038,7 @@ module.exports = {
     if (interaction.customId === "REGL_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de répondre avec le nom exact ou l'ID du salon de `𝐑èglement` désiré.",
+          "Merci de répondre avec le nom __exact__ ou l'ID du salon de `𝐑èglement` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1047,7 +1054,7 @@ module.exports = {
       if (!serverConfig || !serverConfig.reglementChannelID) {
         return interaction.reply({
           content:
-            "Aucun salon de règlement n'est configuré pour ce serveur. Veuillez en configurer un en séléctionnant `Modifié Salon`.",
+            "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
           ephemeral: true,
         });
       }
@@ -1106,6 +1113,70 @@ module.exports = {
         message.delete();
       }, 60000);
     }
+    if (interaction.customId === "IMPLICATION_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour `𝐈mplications` désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      implicationRequestMessageIds[serverId] = message.id;
+    }
+    if (interaction.customId === "DAILY_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour le `𝐃aily` désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      dailyRequestMessageIds[serverId] = message.id;
+    }
+    if (interaction.customId === "DAILY_PUSH") {
+      let serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+      if (!serverConfig || !serverConfig.dailyChannelID) {
+        return interaction.reply({
+          content:
+            "Aucun salon pour le 𝐃aily n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
+          ephemeral: true,
+        });
+      }
+      const DailyEmbed = new EmbedBuilder()
+        .setColor("Orange")
+        .setTitle(`――――――∈ 𝐆ain d'𝐗𝐏 journalier ! ∋――――――`)
+        .setDescription(
+          `\n𝐂'est ici que tu peux récupérer ton \`𝐃aily\`. 𝐈l sera disponible à nouveau après \`23H\`. 𝐍e l'oublie pas, lui en tout cas ne t'oublieras pas haha.`
+        )
+        .setThumbnail(interaction.guild.iconURL())
+        .setFooter({
+          text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
+          iconURL: interaction.guild.iconURL(),
+        });
+
+      const rowPushDaily = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("DAILYXP")
+          .setLabel("💸丨𝐑écupérer l'𝐗𝐏丨💸")
+          .setStyle(ButtonStyle.Success)
+      );
+      const dailyChannel = bot.channels.cache.get(serverConfig.dailyChannelID);
+      if (dailyChannel) {
+        dailyChannel.send({
+          embeds: [DailyEmbed],
+          components: [rowPushDaily],
+        });
+      }
+    }
+    if (interaction.customId === "SUGG_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour les `𝐒uggestions` désiré.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      suggestionsRequestMessageIds[serverId] = message.id;
+    }
 
     //Bouton Classement Général
     if (interaction.customId === "LADDER_BUTTON") {
@@ -1136,9 +1207,10 @@ module.exports = {
                   break;
               }
 
-              return `\n**${index + 1}${positionSuffix} ${medalEmoji}** <@${
-                user.userID
-              }> 丨 Prestige: **\`${
+              return `\n**${index + 1}${positionSuffix} ${medalEmoji}** __**${
+                bot.users.cache.get(user.userID)?.username ||
+                "Utilisateur inconnu"
+              }**__ 丨 Prestige: **\`${
                 user.prestige
               }\`** - XP: **\`${user.xp.toLocaleString()}\`**`;
             })
@@ -1162,12 +1234,12 @@ module.exports = {
       console.error(error);
       if (typeof interaction.reply === "function") {
         interaction.reply({
-          content: "Une erreur est survenue lors de l'exécution de la commande",
+          content: "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur \`tbmpqf\`.",
           ephemeral: true,
         });
       } else {
         interaction.channel.send({
-          content: "Une erreur est survenue lors de l'exécution de la commande",
+          content: "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur \`tbmpqf\`.",
         });
       }
     }

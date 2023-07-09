@@ -14,6 +14,9 @@ const {
   reglementRequestMessageIds,
   RolereglementRequestMessageIds,
   RoleWelcomeRequestMessageIds,
+  implicationRequestMessageIds,
+  dailyRequestMessageIds,
+  suggestionsRequestMessageIds,
 } = require("../models/shared");
 
 module.exports = {
@@ -120,7 +123,6 @@ module.exports = {
     if (message.mentions.roles.size > 0) {
       role = message.mentions.roles.first();
     }
-
     if (
       message.reference &&
       message.reference.messageId === RolereglementRequestMessageIds[serverId]
@@ -143,13 +145,11 @@ module.exports = {
         );
       }
     }
-
     // Gestion pour modifier le rôle de bienvenue
     let welcomeRole;
     if (message.mentions.roles.size > 0) {
       welcomeRole = message.mentions.roles.first();
     }
-
     if (
       message.reference &&
       message.reference.messageId === RoleWelcomeRequestMessageIds[serverId]
@@ -170,6 +170,100 @@ module.exports = {
         await message.reply(
           `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur arrivera sur votre serveur.`
         );
+      }
+    }
+    // Gestion pour le salon d'implication
+    if (message.reference) {
+      if (
+        message.reference.messageId === implicationRequestMessageIds[serverId]
+      ) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              implicationsChannelName: channel.name,
+              implicationsChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon d'𝐈mplication sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de **répondre** soit le nom __exact__, soit l'ID (en faisant un clique droit -> copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion pour le salon du daily
+    if (message.reference) {
+      if (message.reference.messageId === dailyRequestMessageIds[serverId]) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              dailyChannelName: channel.name,
+              dailyChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon du 𝐃aily sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de **répondre** soit le nom __exact__, soit l'ID (en faisant un clique droit -> copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion pour le salon des suggestions
+    if (message.reference) {
+      if (
+        message.reference.messageId === suggestionsRequestMessageIds[serverId]
+      ) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              suggestionsChannelName: channel.name,
+              suggestionsChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon des 𝐒uggestions sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de **répondre** soit le nom __exact__, soit l'ID (en faisant un clique droit -> copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
       }
     }
 
@@ -213,45 +307,55 @@ module.exports = {
 
     await user.save();
 
-    //Salon suggestion qui se tranforme à chaque message en embed préparé.
-    if (message.channel.id === "1045073140948152371") {
-      let suggEmbed = new EmbedBuilder()
-        .setColor("DarkVividPink")
-        .setTitle("丨𝐒uggestion")
-        .setDescription(`${message.content}`)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .addFields([
-          {
-            name: "𝐏roposé par :",
-            value: message.author
-              ? message.author.toString()
-              : "Auteur inconnu",
-            inline: true,
-          },
-          { name: "𝐏our", value: "0", inline: true },
-          { name: "𝐂ontre", value: "0", inline: true },
-        ]);
-      const buttonY = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId("ACCEPTSUGG")
-            .setEmoji("✔️")
-            .setStyle(ButtonStyle.Success)
-        )
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId("NOPSUGG")
-            .setEmoji("✖️")
-            .setStyle(ButtonStyle.Danger)
-        );
-
-      bot.channels.cache
-        .get("1045073140948152371")
-        .send({ embeds: [suggEmbed], components: [buttonY] })
-        .then((msg) => {
-          msg.startThread({ name: `𝐒uggestion de ${message.author.username}` });
-        });
-      await message.delete();
+    //Gestion des suggestions
+    const serverConfig = await ServerConfig.findOne({
+      serverID: message.guild.id,
+    });
+    if (!serverConfig || !serverConfig.suggestionsChannelID) {
+      console.error("Le canal des suggestions n'est pas défini.");
+      return;
     }
+
+    if (message.channel.id !== serverConfig.suggestionsChannelID) {
+      return;
+    }
+
+    let suggEmbed = new EmbedBuilder()
+      .setColor("DarkVividPink")
+      .setTitle("丨𝐒uggestion")
+      .setDescription(`${message.content}`)
+      .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+      .addFields([
+        {
+          name: "𝐏roposé par :",
+          value: message.author ? message.author.toString() : "Auteur inconnu",
+          inline: true,
+        },
+        { name: "𝐏our", value: "0", inline: true },
+        { name: "𝐂ontre", value: "0", inline: true },
+      ]);
+
+    const buttonY = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId("ACCEPTSUGG")
+          .setEmoji("✔️")
+          .setStyle(ButtonStyle.Success)
+      )
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId("NOPSUGG")
+          .setEmoji("✖️")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+    bot.channels.cache
+      .get(serverConfig.suggestionsChannelID)
+      .send({ embeds: [suggEmbed], components: [buttonY] })
+      .then((msg) => {
+        msg.startThread({ name: `𝐒uggestion de ${message.author.username}` });
+      });
+
+    await message.delete();
   },
 };

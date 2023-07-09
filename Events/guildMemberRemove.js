@@ -48,8 +48,9 @@ module.exports = {
 
     const RemoveMember = new EmbedBuilder()
       .setTitle(
-        `\`${member.user.username}\` nous a quitté ! :sob:\nIl a résisté pendant ${timeOnServer}.`
+        `\`${member.user.username}\` nous a quitté ! :sob:`
       )
+      .setDescription(`Il a résisté pendant \`${timeOnServer}\` !`)
       .setColor("Red")
       .setTimestamp()
       .setFooter({
