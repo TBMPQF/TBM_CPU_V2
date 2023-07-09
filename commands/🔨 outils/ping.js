@@ -12,20 +12,34 @@ function getPingEmoji(ping) {
 
 module.exports = {
   name: "ping",
-  description: "丨Affiche la latence du serveur.",
+  description: "丨Affiche les latences.",
   dm: false,
-  permission: 8,
+  permission: "Aucune",
 
-  async execute(bot, interaction) {
-    const pingUser = Date.now() - interaction.createdAt.getTime();
-    const emojiUser = getPingEmoji(pingUser);
+  async execute(interaction, bot) {
+    const startTime = Date.now();
 
     const APIPing = bot.ws.ping;
     const APIemoji = getPingEmoji(APIPing);
 
-    const userPingString =
-      "`${emojiUser}`丨Ton ping : **${pingUser}ms** :fish:";
-    const PingEmbed = new Discord.EmbedBuilder()
+    const reloadPing = new Discord.ActionRowBuilder().addComponents(
+      new Discord.ButtonBuilder()
+        .setCustomId("PING_BUTTON")
+        .setEmoji("🔄")
+        .setLabel("Actualiser")
+        .setStyle(Discord.ButtonStyle.Success)
+    );
+
+    try {
+      await interaction.reply({content: 'Pong!'});
+
+      const pingUser = Date.now() - startTime;
+      const emojiUser = getPingEmoji(pingUser);
+      
+      const userPingString =
+      `\`${emojiUser}\`丨Ton ping : **${pingUser}ms** :fish:`;
+
+      const PingEmbed = new Discord.EmbedBuilder()
       .setDescription(
         `
          ${userPingString}
@@ -33,19 +47,9 @@ module.exports = {
       )
       .setColor("#b3c7ff");
 
-    const reloadPing = new Discord.ActionRowBuilder().addComponents(
-      new Discord.ButtonBuilder()
-        .setCustomId("ping")
-        .setEmoji("🔄")
-        .setLabel("Actualiser")
-        .setStyle("SUCCESS")
-    );
-
-    try {
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [PingEmbed],
         components: [reloadPing],
-        ephemeral: false,
       });
     } catch (error) {
       console.error(error);

@@ -757,6 +757,14 @@ module.exports = {
 
     // Boutton suggestion
     if (interaction.customId === "ACCEPTSUGG") {
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+
+      if (!serverConfig || !serverConfig.logChannelID) {
+        return;
+      }
+
       const messageVotes = usersVoted.get(interaction.message.id) || new Map();
 
       if (messageVotes.has(interaction.user.id)) {
@@ -792,9 +800,10 @@ module.exports = {
       await interaction.message.edit({ embeds: [updatedEmbed] });
 
       await interaction.reply({
-        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**`,
+        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le __fil__ de la suggestion. :bulb:**`,
         ephemeral: true,
       });
+
       const ACCEPTSUGGLOG = new EmbedBuilder()
         .setColor("Blue")
         .setTitle(
@@ -808,11 +817,20 @@ module.exports = {
           }),
         })
         .setTimestamp();
-      bot.channels.cache
-        .get("838440585341566996")
-        .send({ embeds: [ACCEPTSUGGLOG] });
+
+      const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
+      logChannel.send({ embeds: [ACCEPTSUGGLOG] });
     }
+
     if (interaction.customId === "NOPSUGG") {
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+
+      if (!serverConfig || !serverConfig.logChannelID) {
+        return;
+      }
+
       const messageVotes = usersVoted.get(interaction.message.id) || new Map();
 
       if (messageVotes.has(interaction.user.id)) {
@@ -848,9 +866,10 @@ module.exports = {
       await interaction.message.edit({ embeds: [updatedEmbed] });
 
       await interaction.reply({
-        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le fil de la suggestion. :bulb:**`,
+        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le __fil__ de la suggestion. :bulb:**`,
         ephemeral: true,
       });
+
       const NOPSUGGLOG = new EmbedBuilder()
         .setColor("Blue")
         .setTitle(
@@ -864,16 +883,16 @@ module.exports = {
           }),
         })
         .setTimestamp();
-      bot.channels.cache
-        .get("838440585341566996")
-        .send({ embeds: [NOPSUGGLOG] });
+
+      const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
+      logChannel.send({ embeds: [NOPSUGGLOG] });
     }
 
     // Actualisation du ping
-    if (interaction.customId === "ping") {
+    if (interaction.customId === "PING_BUTTON") {
       let reloadPing = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId("ping")
+          .setCustomId("PING_BUTTON")
           .setEmoji("🔄")
           .setLabel("Actualiser")
           .setStyle(ButtonStyle.Success)
@@ -928,17 +947,8 @@ module.exports = {
       }, 60000);
     }
     if (interaction.customId === "ROLES_LISTE") {
-      let roles = interaction.guild.roles.cache
-        .sort((a, b) => b.position - a.position)
-        .map((role) => role.toString())
-        .join(", ");
-      if (roles.length > 2048) roles = "To many roles to display";
-      if (!roles) roles = "No roles";
-
-      const roleEmbed = new EmbedBuilder()
-        .setTitle("Liste des Rôles")
-        .setColor("#b3c7ff")
-        .setDescription(roles);
+      const serverRoles = await ServerRole.findOne({ serverID: interaction.guild.id });
+    
       const rowRolesListe = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("ROLES_PERSOLISTE")
@@ -946,78 +956,82 @@ module.exports = {
           .setLabel("Personnalisation")
           .setStyle(ButtonStyle.Secondary)
       );
-
+    
+      if (!serverRoles) {
+        return interaction.reply({ content: "Il n'y a pas de rôles stockés pour ce serveur.", components: [rowRolesListe] });
+      }
+    
+      const prestige0Roles = serverRoles.prestige0Roles.join(", ");
+      const prestige1Roles = serverRoles.prestige1Roles.join(", ");
+    
+      const roleEmbed = new EmbedBuilder()
+        .setTitle("Liste des Rôles")
+        .setColor("#b3c7ff")
+        .addField("Rôles Prestige 0", prestige0Roles)
+        .addField("Rôles Prestige 1", prestige1Roles);
+    
       interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
     }
-
     if (interaction.customId === "ROLES_PERSOLISTE") {
-      const levels = {};
-      let currentLevelIndex = 0;
+      let currentPrestige = "prestige0Roles";
       const replyMessage = await interaction.reply(
-        "Veuillez **répondre** avec les rôles personnalisés dans l'ordre correspondant aux niveaux (niveau 1, niveau 2, etc.). Vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules."
+        "Veuillez **répondre** avec les rôles personnalisés pour le prestige 0. Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
       );
-
+    
       const collector = interaction.channel.createMessageCollector({
         filter: (m) => m.author.id === interaction.user.id,
         time: 60000, // 60 secondes de délai de réponse
-        max: 1, // Une seule réponse attendue
+        max: 2, // Deux réponses attendues (une pour chaque prestige)
       });
-
+    
       collector.on("collect", async (m) => {
         const roles = m.content.split(",").map((role) => role.trim());
-
-        if (roles.length > 5) {
+    
+        if (roles.length > 12) {
           interaction.followUp(
-            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 5 rôles."
+            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 12 rôles."
           );
           return;
         }
-
+    
         const rolesInGuild = interaction.guild.roles.cache.map(
-          (role) => role.name
+          (role) => role.id
         );
         const rolesExist = roles.every((role) => rolesInGuild.includes(role));
-
+    
         if (!rolesExist) {
           interaction.followUp(
             "Un ou plusieurs rôles que vous avez entrés n'existent pas sur ce serveur. Veuillez vérifier les noms des rôles et réessayer."
           );
           return;
         }
-
+    
         // Chercher le serveur dans la base de données
         let server = await ServerRole.findOne({
           serverID: interaction.guild.id,
         });
-
+    
         // Si le serveur n'existe pas, créez un nouveau document
         if (!server) {
           server = new ServerRole({
             serverID: interaction.guild.id,
             serverName: interaction.guild.name,
-            levels: [],
+            prestige0Roles: [],
+            prestige1Roles: [],
           });
         }
-
-        // Ajouter le niveau et les rôles au document du serveur
-        server.levels.push({
-          level: `level_${levels[currentLevelIndex]}`,
-          roles: roles,
-        });
-
+    
+        // Ajouter les rôles au document du serveur
+        server[currentPrestige] = roles;
+    
         // Sauvegarder le document du serveur
         await server.save();
-
-        currentLevelIndex++;
-
-        if (currentLevelIndex < levels.length) {
+    
+        if (currentPrestige === "prestige0Roles") {
           interaction.followUp(
-            `Rôles pour le niveau ${
-              levels[currentLevelIndex - 1]
-            } enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le niveau ${
-              levels[currentLevelIndex]
-            }. N'oubliez pas, vous pouvez entrer jusqu'à 5 rôles, séparés par des virgules.`
+            "Rôles pour le prestige 0 enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le prestige 1. N'oubliez pas, vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
           );
+          currentPrestige = "prestige1Roles";
         } else {
           interaction.followUp(
             "Tous les rôles ont été enregistrés avec succès !"
@@ -1229,17 +1243,19 @@ module.exports = {
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;
     try {
-      await bot.commands.get(interaction.commandName).execute(interaction);
+      await bot.commands.get(interaction.commandName).execute(interaction, bot);
     } catch (error) {
       console.error(error);
       if (typeof interaction.reply === "function") {
         interaction.reply({
-          content: "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur \`tbmpqf\`.",
+          content:
+            "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.",
           ephemeral: true,
         });
       } else {
         interaction.channel.send({
-          content: "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur \`tbmpqf\`.",
+          content:
+            "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.",
         });
       }
     }
