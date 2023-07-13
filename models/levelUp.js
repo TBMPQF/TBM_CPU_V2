@@ -1,7 +1,26 @@
-const roleRewards = require("./roleRewards");
 const Discord = require("discord.js");
 const MAX_LEVEL = 50;
 const ServerConfig = require("../models/serverConfig");
+const ServerRole = require("../models/serverRole");
+const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+async function getRoleRewards(serverID) {
+  const serverRole = await ServerRole.findOne({ serverID: serverID });
+  let roleRewards = [[], []];
+
+  if (serverRole) {
+    roleRewards[0] = serverRole.prestige0Roles.map((roleId, i) => ({
+      level: i + 1,
+      roleId: roleId,
+    }));
+    roleRewards[1] = serverRole.prestige1Roles.map((roleId, i) => ({
+      level: i + 1,
+      roleId: roleId,
+    }));
+  }
+
+  return roleRewards;
+}
 
 async function levelUp(obj, user, newXP) {
   const serverConfig = await ServerConfig.findOne({ serverID: obj.guild.id });
@@ -15,6 +34,8 @@ async function levelUp(obj, user, newXP) {
 
   let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
   const author = obj instanceof Discord.Message ? obj.author : obj.user;
+
+  const roleRewards = await getRoleRewards(obj.guild.id);
 
   if (newLevel > MAX_LEVEL) {
     newLevel = MAX_LEVEL;
@@ -75,52 +96,53 @@ async function levelUp(obj, user, newXP) {
 }
 
 async function handleRole(obj, newLevel, channel, direction, prestige) {
+  const roleRewards = await getRoleRewards(obj.guild.id);
+
   const currentPrestigeRoleRewards = roleRewards[prestige] || [];
-  const roleReward = currentPrestigeRoleRewards.find(
-    (reward) => reward.level === newLevel
-  );
+  const roleIndex = LEVELS.indexOf(newLevel);
 
-  if (roleReward) {
-    const role = obj.guild.roles.cache.find(
-      (r) => r.name === roleReward.roleName
-    );
+  if (roleIndex !== -1) {
+    const roleReward = currentPrestigeRoleRewards[roleIndex];
 
-    if (direction === "up") {
-      const previousRoleReward = currentPrestigeRoleRewards.find(
-        (reward) => reward.level === newLevel - 1
-      );
-      if (previousRoleReward) {
-        const previousRole = obj.guild.roles.cache.find(
-          (r) => r.name === previousRoleReward.roleName
-        );
-        if (previousRole) {
-          await obj.member.roles.remove(previousRole);
+    if (roleReward) {
+      const role = obj.guild.roles.cache.get(roleReward.roleId);
+
+      if (direction === "up") {
+        const previousRoleReward = currentPrestigeRoleRewards[roleIndex - 1];
+
+        if (previousRoleReward) {
+          const previousRole = obj.guild.roles.cache.get(
+            previousRoleReward.roleId
+          );
+
+          if (previousRole) {
+            await obj.member.roles.remove(previousRole);
+          }
+        }
+      } else if (direction === "down") {
+        const previousRoleReward = currentPrestigeRoleRewards[roleIndex];
+
+        if (previousRoleReward) {
+          const previousRole = obj.guild.roles.cache.get(
+            previousRoleReward.roleId
+          );
+
+          if (previousRole) {
+            await obj.member.roles.remove(previousRole);
+          }
         }
       }
-    } else if (direction === "down") {
-      const previousRoleReward = currentPrestigeRoleRewards.find(
-        (reward) => reward.level === newLevel + 1
-      );
 
-      if (previousRoleReward) {
-        const previousRole = obj.guild.roles.cache.find(
-          (r) => r.name === previousRoleReward.roleName
+      if (role) {
+        await obj.member.roles.add(role);
+        channel.send(
+          `**        丨** 𝐓u ${
+            direction === "up" ? "débloques le" : "es rétrogradé au"
+          } grade ${role}. ${
+            direction === "up" ? "Félicitation" : "Courage"
+          } ! - :${direction === "up" ? "tada" : "muscle"}:`
         );
-        if (previousRole) {
-          await obj.member.roles.remove(previousRole);
-        }
       }
-    }
-
-    if (role) {
-      await obj.member.roles.add(role);
-      channel.send(
-        `**        丨** 𝐓u ${
-          direction === "up" ? "débloques le" : "es rétrogradé au"
-        } grade ${role}. ${
-          direction === "up" ? "Félicitation" : "Courage"
-        } ! - :${direction === "up" ? "tada" : "muscle"}:`
-      );
     }
   }
 }

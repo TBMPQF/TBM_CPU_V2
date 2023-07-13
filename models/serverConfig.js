@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const serverConfigSchema = new mongoose.Schema({
   serverID: { type: String, required: true },
   serverName: { type: String, required: true },
+  roleChannelID :{ type: String, default: null },
+  roleChannelName: { type: String, default: null },
   logChannelID: { type: String, default: null },
   logChannelName: { type: String, default: null },
   reglementChannelID: { type: String, default: null },
@@ -17,8 +19,6 @@ const serverConfigSchema = new mongoose.Schema({
   implicationsChannelName: { type: String, default: null },
   suggestionsChannelID: { type: String, default: null },
   suggestionsChannelName: { type: String, default: null },
-  rolesChannelID: { type: String, default: null },
-  rolesChannelName: { type: String, default: null },
   ticketChannelID: { type: String, default: null },
   ticketChannelName: { type: String, default: null },
   roleReglementID : { type: String, default: null },

@@ -312,7 +312,6 @@ module.exports = {
       serverID: message.guild.id,
     });
     if (!serverConfig || !serverConfig.suggestionsChannelID) {
-      console.error("Le canal des suggestions n'est pas défini.");
       return;
     }
 

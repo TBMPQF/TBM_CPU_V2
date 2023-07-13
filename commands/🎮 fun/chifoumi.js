@@ -37,7 +37,7 @@ module.exports = {
     }
 
     if (mise < 5 || mise > 1000) {
-      return await interaction.reply("La mise doit être entre 5 et 1000 XP.");
+      return await interaction.reply("La mise doit être entre \`5\` et \`1000\` XP.");
     }
 
     let joueursB;
@@ -69,7 +69,7 @@ module.exports = {
     }
 
     if (user.xp < mise) {
-      return await interaction.editReply("Vous n'avez pas assez d'XP pour cette mise.");
+      return await interaction.editReply("**Vous n'avez pas assez d'XP pour cette mise.**");
     }
 
     let Embed = new Discord.EmbedBuilder();

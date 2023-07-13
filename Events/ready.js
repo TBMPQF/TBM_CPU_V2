@@ -4,10 +4,8 @@ const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
 const config = require("../config.json");
 const ServerConfig = require("../models/serverConfig");
-
 const MINECRAFT_SERVER_IP = config.serveurMinecraftIP;
 const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
-
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 
 module.exports = {
@@ -28,6 +26,32 @@ module.exports = {
     bot.on("guildCreate", async (guild) => {
       try {
         const owner = await guild.fetchOwner();
+
+        const serverConfig = new ServerConfig({
+          serverID: guild.id,
+          serverName: guild.name,
+          roleChannelID: null,
+          roleChannelName: null,
+          logChannelID: null,
+          logChannelName: null,
+          reglementChannelID: null,
+          reglementChannelName: null,
+          dailyChannelID: null,
+          dailyChannelName: null,
+          welcomeChannelID: null,
+          welcomeChannelName: null,
+          roleWelcomeID: null,
+          roleWelcomeName: null,
+          implicationsChannelID: null,
+          implicationsChannelName: null,
+          suggestionsChannelID: null,
+          suggestionsChannelName: null,
+          ticketChannelID: null,
+          ticketChannelName: null,
+          roleReglementID: null,
+          roleReglementName: null,
+        });
+        await serverConfig.save();
 
         const embed = new EmbedBuilder()
           .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
@@ -55,49 +79,53 @@ module.exports = {
     });
 
     // Message de connexion du bot
-    const server = bot.guilds.cache.first();
+    bot.guilds.cache.forEach((server) => {
+      ServerConfig.findOne({ serverID: server.id })
+        .then((serverConfig) => {
+          if (serverConfig) {
+            const logChannelID = serverConfig.logChannelID;
+            const logChannel = bot.channels.cache.get(logChannelID);
 
-    ServerConfig.findOne({ serverID: server.id })
-      .then((serverConfig) => {
-        if (serverConfig) {
-          const logChannelID = serverConfig.logChannelID;
-          const logChannel = bot.channels.cache.get(logChannelID);
+            if (logChannel && logChannel instanceof Discord.TextChannel) {
+              logChannel.messages.fetch({ limit: 100 }).then((messages) => {
+                const connectMessages = messages.filter(
+                  (msg) =>
+                    msg.author.id === bot.user.id &&
+                    msg.embeds.length > 0 &&
+                    msg.embeds[0].description ===
+                      "**Je viens tout juste de me connecter. :warning:**"
+                );
 
-          if (logChannel && logChannel instanceof Discord.TextChannel) {
-            logChannel.messages.fetch({ limit: 100 }).then((messages) => {
-              const connectMessages = messages.filter(
-                (msg) =>
-                  msg.author.id === bot.user.id &&
-                  msg.embeds.length > 0 &&
-                  msg.embeds[0].description ===
-                    "**Je viens tout juste de me connecter.**"
-              );
-
-              if (connectMessages.size > 0) {
-                logChannel.bulkDelete(connectMessages).then(() => {
+                if (connectMessages.size > 0) {
+                  logChannel.bulkDelete(connectMessages).then(() => {
+                    const ConnectOK = new EmbedBuilder()
+                      .setDescription(
+                        "**Je viens tout juste de me connecter. :warning:**"
+                      )
+                      .setColor("White")
+                      .setTimestamp();
+                    logChannel.send({ embeds: [ConnectOK] });
+                  });
+                } else {
                   const ConnectOK = new EmbedBuilder()
-                    .setDescription("**Je viens tout juste de me connecter.**")
+                    .setDescription(
+                      "**Je viens tout juste de me connecter. :warning:**"
+                    )
                     .setColor("White")
                     .setTimestamp();
                   logChannel.send({ embeds: [ConnectOK] });
-                });
-              } else {
-                const ConnectOK = new EmbedBuilder()
-                  .setDescription("**Je viens tout juste de me connecter.**")
-                  .setColor("White")
-                  .setTimestamp();
-                logChannel.send({ embeds: [ConnectOK] });
-              }
-            });
+                }
+              });
+            }
           }
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Erreur lors de la récupération du salon de journalisation depuis la base de données :",
-          error
-        );
-      });
+        })
+        .catch((error) => {
+          console.error(
+            "Erreur lors de la récupération du salon de journalisation depuis la base de données :",
+            error
+          );
+        });
+    });
 
     // Interval de messages pour le Daily.
     const channelDaily = bot.channels.cache.get("818640158693392405");
@@ -128,14 +156,15 @@ module.exports = {
       });
     }, 43200000);
 
-    //Activité du bot
+    // Activité initiale du bot
     bot.user.setPresence({
-      activities: [{ name: bot.config.activity, type: ActivityType.Playing }],
+      activities: [{ name: bot.config.activity, type: "PLAYING" }],
       status: "dnd",
     });
   },
 };
 
+// Mise a jour du nombre de joueurs sur le serveur Minecraft
 async function updateVoiceChannel(server) {
   try {
     let channel = server.channels.cache.find((channel) =>
@@ -144,11 +173,11 @@ async function updateVoiceChannel(server) {
 
     if (!channel) {
       channel = await server.channels.create(CHANNEL_NAME, {
-        type: 2,
+        type: "GUILD_VOICE",
         permissionOverwrites: [
           {
-            id: server.roles.everyone,
-            deny: ["ViewChannel"],
+            id: server.id,
+            deny: ["VIEW_CHANNEL"],
           },
         ],
       });
@@ -161,7 +190,7 @@ async function updateVoiceChannel(server) {
         if (response.headers.get("content-type") === "application/json") {
           return response.json();
         } else {
-          throw new Error("Invalid JSON response");
+          throw new Error("Invalide JSON réponse");
         }
       })
       .then((data) => {

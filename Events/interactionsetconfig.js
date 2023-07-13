@@ -231,8 +231,8 @@ module.exports = {
 
         case "ROLES":
           const ROLESEmbed = new EmbedBuilder()
-            .setTitle("`丨𝐂onfiguration 𝐑ôles丨`")
-            .setDescription("Contenu de l'option ROLES")
+            .setTitle("`丨𝐂onfiguration 𝐑ôles des niveaux丨`")
+            .setDescription("Gestion des rôles de niveau, tu peux modifié les rôles donné lorsque un utilisateur passe niveau 1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45 et 50. Tu peux faire cela sur le prestige 1 aussi.")
             .setColor("#b3c7ff");
           const rowRoles = new ActionRowBuilder()
             .addComponents(
@@ -241,20 +241,6 @@ module.exports = {
                 .setEmoji("📅")
                 .setLabel("Liste")
                 .setStyle(ButtonStyle.Secondary)
-            )
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId("ROLES_PUSH")
-                .setEmoji("✔️")
-                .setLabel("Envoyé")
-                .setStyle(ButtonStyle.Success)
-            )
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId("ROLES_BUTTON")
-                .setEmoji("📝")
-                .setLabel("Modifié Salon")
-                .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()

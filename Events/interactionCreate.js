@@ -487,17 +487,26 @@ module.exports = {
           const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
           const minutesRemaining = Math.floor(
             (timeRemaining % (60 * 60 * 1000)) / (60 * 1000)
-          )
-            .toString()
-            .padStart(2, "0");
+          );
           const secondsRemaining = Math.floor(
             (timeRemaining % (60 * 1000)) / 1000
-          )
+          );
+
+          let timeRemainingMessage = "";
+          if (hoursRemaining > 0) {
+            timeRemainingMessage += `\`${hoursRemaining} heure(s)\`, `;
+          }
+          if (minutesRemaining > 0) {
+            timeRemainingMessage += `\`${minutesRemaining
+              .toString()
+              .padStart(2, "0")} minute(s)\` et `;
+          }
+          timeRemainingMessage += `\`${secondsRemaining
             .toString()
-            .padStart(2, "0");
+            .padStart(2, "0")} seconde(s)\``;
 
           return interaction.reply({
-            content: `Tu dois attendre encore \`${hoursRemaining} heure(s), ${minutesRemaining} minute(s) et ${secondsRemaining} seconde(s)\` avant de pouvoir récupérer ton daily !`,
+            content: `Tu dois attendre encore ${timeRemainingMessage} avant de pouvoir récupérer ton daily !`,
             ephemeral: true,
           });
         }
@@ -947,71 +956,92 @@ module.exports = {
       }, 60000);
     }
     if (interaction.customId === "ROLES_LISTE") {
-      const serverRoles = await ServerRole.findOne({ serverID: interaction.guild.id });
-    
+      const serverRoles = await ServerRole.findOne({
+        serverID: interaction.guild.id,
+      });
+
       const rowRolesListe = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("ROLES_PERSOLISTE")
           .setEmoji("🖌️")
-          .setLabel("Personnalisation")
+          .setLabel("Modifié les rôles")
           .setStyle(ButtonStyle.Secondary)
       );
-    
+
       if (!serverRoles) {
-        return interaction.reply({ content: "Il n'y a pas de rôles stockés pour ce serveur.", components: [rowRolesListe] });
+        return interaction.reply({
+          content: "Il n'y a pas de rôles stockés pour ce serveur.",
+          components: [rowRolesListe],
+        });
       }
-    
-      const prestige0Roles = serverRoles.prestige0Roles.join(", ");
-      const prestige1Roles = serverRoles.prestige1Roles.join(", ");
-    
+
+      const levels = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+      const prestige0Roles = serverRoles.prestige0Roles
+        .map(
+          (id, index) =>
+            `Niveau ${levels[index]} | ${
+              interaction.guild.roles.cache.get(id)?.toString() ||
+              "Rôle inconnu"
+            }`
+        )
+        .join("\n");
+      const prestige1Roles = serverRoles.prestige1Roles
+        .map(
+          (id, index) =>
+            `Niveau ${levels[index]} | ${
+              interaction.guild.roles.cache.get(id)?.toString() ||
+              "Rôle inconnu"
+            }`
+        )
+        .join("\n");
+
       const roleEmbed = new EmbedBuilder()
         .setTitle("Liste des Rôles")
         .setColor("#b3c7ff")
-        .addField("Rôles Prestige 0", prestige0Roles)
-        .addField("Rôles Prestige 1", prestige1Roles);
-    
+        .setDescription(
+          `__**Rôles Prestige 0 :**__\n ${prestige0Roles}\n\n__**Rôles Prestige 1 :**__\n ${prestige1Roles}`
+        );
+
       interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
     }
     if (interaction.customId === "ROLES_PERSOLISTE") {
       let currentPrestige = "prestige0Roles";
-      const replyMessage = await interaction.reply(
-        "Veuillez **répondre** avec les rôles personnalisés pour le prestige 0. Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
+      await interaction.reply(
+        "Veuillez **répondre** avec les rôles personnalisés pour le prestige `0` (Niveau avant le prestige `1`). Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules. (123456789, 123456789 etc ... )"
       );
-    
+
       const collector = interaction.channel.createMessageCollector({
         filter: (m) => m.author.id === interaction.user.id,
-        time: 60000, // 60 secondes de délai de réponse
-        max: 2, // Deux réponses attendues (une pour chaque prestige)
+        time: 60000,
       });
-    
+
       collector.on("collect", async (m) => {
         const roles = m.content.split(",").map((role) => role.trim());
-    
+
         if (roles.length > 12) {
           interaction.followUp(
-            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 12 rôles."
+            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 12 rôles __maximum__."
           );
           return;
         }
-    
+
         const rolesInGuild = interaction.guild.roles.cache.map(
           (role) => role.id
         );
         const rolesExist = roles.every((role) => rolesInGuild.includes(role));
-    
+
         if (!rolesExist) {
           interaction.followUp(
-            "Un ou plusieurs rôles que vous avez entrés n'existent pas sur ce serveur. Veuillez vérifier les noms des rôles et réessayer."
+            "Un ou plusieurs rôles que vous avez entrés n'existent pas sur ce serveur. Veuillez vérifier les ID's des rôles et réessayer."
           );
           return;
         }
-    
-        // Chercher le serveur dans la base de données
+
         let server = await ServerRole.findOne({
           serverID: interaction.guild.id,
         });
-    
-        // Si le serveur n'existe pas, créez un nouveau document
+
         if (!server) {
           server = new ServerRole({
             serverID: interaction.guild.id,
@@ -1020,23 +1050,27 @@ module.exports = {
             prestige1Roles: [],
           });
         }
-    
-        // Ajouter les rôles au document du serveur
         server[currentPrestige] = roles;
-    
-        // Sauvegarder le document du serveur
         await server.save();
-    
+
         if (currentPrestige === "prestige0Roles") {
           interaction.followUp(
-            "Rôles pour le prestige 0 enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le prestige 1. N'oubliez pas, vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
+            "Rôles pour le prestige `0` enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le prestige `1`. N'oubliez pas, vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
           );
           currentPrestige = "prestige1Roles";
         } else {
           interaction.followUp(
-            "Tous les rôles ont été enregistrés avec succès !"
+            "**Tous les rôles ont été enregistrés avec succès !**"
           );
           collector.stop();
+        }
+      });
+
+      collector.on("end", (collected, reason) => {
+        if (reason === "time") {
+          interaction.followUp(
+            "__**Le temps pour entrer les rôles est écoulé. Veuillez réessayer.**__"
+          );
         }
       });
     }
@@ -1249,13 +1283,13 @@ module.exports = {
       if (typeof interaction.reply === "function") {
         interaction.reply({
           content:
-            "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.",
+            "**Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.**",
           ephemeral: true,
         });
       } else {
         interaction.channel.send({
           content:
-            "Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.",
+            "**Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.**",
         });
       }
     }
