@@ -21,6 +21,7 @@ const {
   implicationRequestMessageIds,
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
+  roleChannelRequestMessageIds
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 
@@ -1225,6 +1226,18 @@ module.exports = {
       const serverId = interaction.guild.id;
       suggestionsRequestMessageIds[serverId] = message.id;
     }
+    if (interaction.customId === "ROLECHANNEL_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de répondre avec le nom __exact__ ou l'ID du salon pour les `𝐑oles`.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      roleChannelRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
+    }
 
     //Bouton Classement Général
     if (interaction.customId === "LADDER_BUTTON") {
@@ -1270,7 +1283,7 @@ module.exports = {
       setTimeout(async () => {
         const message = await interaction.fetchReply();
         message.delete();
-      }, 60000);
+      }, 15000);
     }
 
     if (interaction.channel === null) return;

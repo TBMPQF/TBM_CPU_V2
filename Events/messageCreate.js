@@ -17,6 +17,7 @@ const {
   implicationRequestMessageIds,
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
+  roleChannelRequestMessageIds
 } = require("../models/shared");
 
 module.exports = {
@@ -258,6 +259,38 @@ module.exports = {
           );
           await message.reply(
             `Le salon des 𝐒uggestions sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de **répondre** soit le nom __exact__, soit l'ID (en faisant un clique droit -> copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion pour le salon des roles
+    if (message.reference) {
+      if (
+        message.reference.messageId === roleChannelRequestMessageIds[serverId]
+      ) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              roleChannelName: channel.name,
+              roleChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon des 𝐑oles sera désormais \`${channel.name}\``
           );
         } else {
           await message.reply(

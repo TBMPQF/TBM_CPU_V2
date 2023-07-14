@@ -31,6 +31,11 @@ module.exports = {
             value: "REGLEMENT",
           },
           {
+            label: "丨𝐑ôle Channel",
+            emoji: "🎭",
+            value: "ROLECHANNEL",
+          },
+          {
             label: "丨𝐖elcome",
             emoji: "👋",
             value: "WELCOME",
@@ -51,8 +56,8 @@ module.exports = {
             value: "DAILY",
           },
           {
-            label: "丨𝐑ôles pour niveaux",
-            emoji: "🎭",
+            label: "丨𝐑ôles des 𝐍iveaux",
+            emoji: "🧪",
             value: "ROLES",
           },
           {

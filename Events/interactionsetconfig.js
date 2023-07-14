@@ -46,6 +46,35 @@ module.exports = {
 
           break;
 
+          case "ROLECHANNEL":
+            const roleChannelEmbed = new EmbedBuilder()
+              .setTitle("`丨𝐂onfiguration du salon 𝐑ôles丨`")
+              .setDescription(
+                `Salon ou tu permets à tes utilisateurs de prendre leurs rôles de jeu, une fois enregistrer, il s'affichera surtout dans le message 𝐖elcome.\nModifie ou carrément désactive le salon des 𝐑ôles de ton serveur.\n\nSalon actuel : \`${serverConfig.roleChannelName}\``
+              )
+              .setThumbnail(
+                "https://www.numerama.com/wp-content/uploads/2020/03/role-playing-game-2536016_1920.jpg"
+              )
+              .setColor("#b3c7ff");
+            const rowroleChannel = new ActionRowBuilder()
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("ROLECHANNEL_BUTTON")
+                  .setEmoji("📝")
+                  .setLabel("Modifié Salon")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("ROLECHANNEL_DESAC")
+                  .setEmoji("❌")
+                  .setLabel("Désactivé")
+                  .setStyle(ButtonStyle.Danger)
+              );
+            await interaction.reply({ embeds: [roleChannelEmbed], components: [rowroleChannel] });
+  
+            break;
+
         case "REGLEMENT":
           const reglementEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐑èglement丨`")
@@ -233,11 +262,15 @@ module.exports = {
           const ROLESEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐑ôles des niveaux丨`")
             .setDescription("Gestion des rôles de niveau, tu peux modifié les rôles donné lorsque un utilisateur passe niveau 1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45 et 50. Tu peux faire cela sur le prestige 1 aussi.")
+            .setThumbnail(
+              "https://cdn-icons-png.flaticon.com/512/33/33056.png"
+            )
             .setColor("#b3c7ff");
+            
           const rowRoles = new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
-                .setCustomId("ROLES_LISTE")
+                .setCustomId("ROLE_LISTE")
                 .setEmoji("📅")
                 .setLabel("Liste")
                 .setStyle(ButtonStyle.Secondary)

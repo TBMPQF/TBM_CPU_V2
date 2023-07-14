@@ -41,7 +41,7 @@ module.exports = {
     }
 
     let joueursB;
-    if (Math.random() < 0.7) { 
+    if (Math.random() < 0.6) { //Plus c'est haut, plus le bot gagne !
       switch (joueursH) {
         case "pierre":
           joueursB = "feuille";
@@ -63,13 +63,13 @@ module.exports = {
 
     await interaction.deferReply();
 
-    let user = await User.findOne({ userID: interaction.user.id });
+    let user = await User.findOne({ userID: interaction.user.id, serverID: interaction.guild.id });
     if (!user) {
-      user = new User({ userID: interaction.user.id, username: interaction.user.username });
+      user = new User({ userID: interaction.user.id, serverID: interaction.guild.id, username: interaction.user.username });
     }
 
     if (user.xp < mise) {
-      return await interaction.editReply("**Vous n'avez pas assez d'XP pour cette mise.**");
+      return await interaction.editReply(`:no_entry_sign: **Tu n'as pas assez d'__XP__ pour cette mise.**\nTu as seulement ${user.xp.toLocaleString()} XP disponible.`);
     }
 
     let Embed = new Discord.EmbedBuilder();
@@ -110,6 +110,7 @@ module.exports = {
           size: 512,
         })
       })
-    return await interaction.editReply({ embeds: [Embed] });
+      const sentMessage = await interaction.editReply({ embeds: [Embed] });
+      setTimeout(() => sentMessage.delete(), 10000); // 
   },
 };

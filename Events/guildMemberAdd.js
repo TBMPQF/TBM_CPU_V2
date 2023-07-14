@@ -39,7 +39,7 @@ module.exports = {
       serverConfig.reglementChannelID
     );
     const rolesChannel = member.guild.channels.cache.get(
-      serverConfig.rolesChannelID
+      serverConfig.roleChannelID    
     );
 
     let reglementChannelString = reglementChannel

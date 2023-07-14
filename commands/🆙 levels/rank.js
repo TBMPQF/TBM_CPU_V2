@@ -24,7 +24,10 @@ module.exports = {
       });
     }
 
-    const allUsers = await User.find({ serverID: guild.id }).sort({ prestige: -1, xp: -1 });
+    const allUsers = await User.find({ serverID: guild.id }).sort({
+      prestige: -1,
+      xp: -1,
+    });
     const position = allUsers.findIndex((u) => u.userID === target.id) + 1;
     const positionEmoji = getPositionEmoji(position);
 
@@ -65,7 +68,18 @@ module.exports = {
       )
       .setThumbnail(target.displayAvatarURL({ dynamic: true }));
 
-    await interaction.reply({ embeds: [embed], components: [rowLadder] });
+    const reply = await interaction.reply({
+      embeds: [embed],
+      components: [rowLadder],
+      fetchReply: true,
+    });
+
+    setTimeout(() => {
+      interaction.channel.messages
+        .fetch(reply.id)
+        .then((message) => message.delete())
+        .catch(console.error);
+    }, 15000);
   },
 };
 
