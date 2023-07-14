@@ -4,6 +4,8 @@ const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
 const config = require("../config.json");
 const ServerConfig = require("../models/serverConfig");
+const ServerRole = require('../models/serverRole');
+const User = require('../models/experience');
 const MINECRAFT_SERVER_IP = config.serveurMinecraftIP;
 const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
@@ -21,6 +23,20 @@ module.exports = {
       const server = bot.guilds.cache.first();
       updateVoiceChannel(server);
     }, 60000);
+
+    // Message lors de la suppression du bot d'un serveur
+    bot.on("guildDelete", async (guild) => {
+      try {
+        await ServerRole.deleteMany({ serverID: guild.id });
+        await ServerConfig.deleteMany({ serverID: guild.id });
+        await User.deleteMany({ serverID: guild.id });
+      } catch (error) {
+        console.error(
+          "Erreur lors de la suppression de la configuration du serveur :",
+          error
+        );
+      }
+    });
 
     // Message lors d'un ajout du bot sur un nouveau serveur
     bot.on("guildCreate", async (guild) => {
