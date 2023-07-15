@@ -7,5 +7,7 @@ module.exports = {
     implicationRequestMessageIds : {},
     dailyRequestMessageIds : {},
     suggestionsRequestMessageIds : {},
-    roleChannelRequestMessageIds : {}
+    roleChannelRequestMessageIds : {},
+    ticketRequestMessageIds : {},
+    RoleAdminRequestMessageIds : {}
   };

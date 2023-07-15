@@ -18,6 +18,8 @@ const {
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
   roleChannelRequestMessageIds,
+  ticketRequestMessageIds,
+  RoleAdminRequestMessageIds
 } = require("../models/shared");
 
 module.exports = {
@@ -299,6 +301,64 @@ module.exports = {
         }
       }
     }
+    // Gestion du salon pour les tickets
+    if (message.reference) {
+      if (
+        message.reference.messageId === ticketRequestMessageIds[serverId]
+      ) {
+        let channel;
+        if (message.mentions.channels.size > 0) {
+          channel = message.mentions.channels.first();
+        } else {
+          const id = message.content.replace(/<#(\d+)>/, "$1");
+          channel = message.guild.channels.cache.get(id);
+        }
+        if (channel) {
+          await ServerConfig.findOneAndUpdate(
+            { serverID: serverId },
+            {
+              serverName: serverName,
+              ticketChannelName: channel.name,
+              ticketChannelID: channel.id,
+            },
+            { upsert: true }
+          );
+          await message.reply(
+            `Le salon des 𝐓ickets sera désormais \`${channel.name}\``
+          );
+        } else {
+          await message.reply(
+            `Invalide salon ! Merci de **répondre** soit le nom __exact__, soit l'ID (en faisant un clique droit -> copier l'identifiant du salon) ou de faire un tag (#votre_salon).`
+          );
+        }
+      }
+    }
+    // Gestion pour modifier le rôle d'administrateur pour les tickets
+    let adminRole;
+    if (message.mentions.roles.size > 0) {
+      adminRole = message.mentions.roles.first();
+    }
+    if (
+      message.reference &&
+      message.reference.messageId === RoleAdminRequestMessageIds[serverId]
+    ) {if (adminRole) {
+      await ServerConfig.findOneAndUpdate(
+        { serverID: serverId },
+        {
+          ticketAdminRoleID: adminRole.id,
+          ticketAdminRoleName: adminRole.name,
+        },
+        { upsert: true }
+      );
+      await message.reply(
+        `Le rôle d'administrateur sera désormais \`${adminRole.name}\``
+      );
+    } else {
+      await message.reply(
+        `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle d'administration de votre serveur.`
+      );
+    }
+  }
 
     //Experience pour chaque message
     const now = new Date();
@@ -309,6 +369,7 @@ module.exports = {
       serverName: message.guild.name,
       lastMessageDate: now,
     };
+
     let user = await User.findOne({
       userID: message.author.id,
       serverID: message.guild.id,
@@ -328,22 +389,32 @@ module.exports = {
     user.messageCount = (user.messageCount || 0) + 1;
 
     const member = message.guild.members.cache.get(message.author.id);
-    const hasRole = member.roles.cache.some(
-      (role) => role.name === "✨丨𝐄lite 𝐒ecrète"
-    ); 
+    const rolesToCheck = {
+      "✨丨𝐄lite 𝐒ecrète": 1.05,
+      "🧪丨Twitch Sub T1": 1.1,
+      "🧪丨Twitch Sub T2": 1.2,
+      "🧪丨Twitch Sub T3": 1.3,
+    };
+
+    let rolePercentage = 1;
+    let weekendPercentage = 1;
+
+    for (const role of Array.from(member.roles.cache.values())) {
+      if (rolesToCheck[role.name]) {
+        rolePercentage *= rolesToCheck[role.name];
+      }
+    }
 
     const dayOfWeek = now.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    if (isWeekend) {
+        weekendPercentage = 1.1;
+    }
 
     if (timeDifference >= 10) {
       let randomXP = Math.floor(Math.random() * 50) + 1;
-      if (hasRole) {
-        randomXP *= 1.3;
-      }
-
-      if (isWeekend) {
-        randomXP *= 1.30;
-      }
+      randomXP *= rolePercentage;
+      randomXP *= weekendPercentage;
 
       randomXP = Math.round(randomXP);
       user.xp = (user.xp || 0) + randomXP;

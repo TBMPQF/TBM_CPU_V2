@@ -288,6 +288,47 @@ module.exports = {
           });
           break;
 
+          case "TICKET":
+          const TICKETEmbed = new EmbedBuilder()
+            .setTitle("`丨𝐂onfiguration 𝐓icket丨`")
+            .setDescription(`Système de 𝐓icket qui permettra à tous tes utilisateurs lors d'un problème d'ouvrir un salon disponible uniquement pour les modérateurs. Ainsi il pourra exposer son problème.\n\nModifie le salon ou carrément désactive les 𝐓ickets de ton serveur.\n\n✔️ pour envoyé le message initial des 𝐓ickets dans ton salon !\n\nSalon actuel : \`${serverConfig.ticketChannelName}\`\nRole actuel : \`${serverConfig.ticketAdminRoleName}\``)
+            .setThumbnail(
+              "https://www.pngall.com/wp-content/uploads/12/Ticket-PNG-Free-Image.png"
+            )
+            .setColor("#b3c7ff");
+            
+          const rowTicket = new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId("TICKET_PUSH")
+                .setEmoji("✔️")
+                .setLabel("Envoyé")
+                .setStyle(ButtonStyle.Secondary)
+            ).addComponents(
+              new ButtonBuilder()
+                .setCustomId("TICKET_BUTTON")
+                .setEmoji("📝")
+                .setLabel("Modifié Salon")
+                .setStyle(ButtonStyle.Primary)
+            ).addComponents(
+              new ButtonBuilder()
+                .setCustomId("TICKET_ROLE")
+                .setEmoji("👮‍♂️")
+                .setLabel("Administrateur Rôles")
+                .setStyle(ButtonStyle.Primary)
+            )
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId("ROLES_DESAC")
+                .setEmoji("❌")
+                .setLabel("Désactivé")
+                .setStyle(ButtonStyle.Danger)
+            );
+          await interaction.reply({
+            embeds: [TICKETEmbed],
+            components: [rowTicket],
+          });
+          break;
         default:
           await interaction.reply("Option invalide");
           break;

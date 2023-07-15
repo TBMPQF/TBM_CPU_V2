@@ -21,6 +21,8 @@ const serverConfigSchema = new mongoose.Schema({
   suggestionsChannelName: { type: String, default: null },
   ticketChannelID: { type: String, default: null },
   ticketChannelName: { type: String, default: null },
+  ticketAdminRoleID : { type: String, default: null },
+  ticketAdminRoleName : { type: String, default: null },
   roleReglementID : { type: String, default: null },
   roleReglementName : { type: String, default: null }
 }, { versionKey: false });

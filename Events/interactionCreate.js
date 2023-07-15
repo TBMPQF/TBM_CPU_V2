@@ -22,6 +22,8 @@ const {
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
   roleChannelRequestMessageIds,
+  ticketRequestMessageIds,
+  RoleAdminRequestMessageIds,
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 
@@ -682,48 +684,59 @@ module.exports = {
     }
 
     //Bouton pour Ticket => Création salon avec fermeture une fois terminé.
-    const StreamCordBOTId = "375805687529209857";
-    const DisboardBOTId = "302050872383242240";
-    const AdminRoleID = "717122082663694506";
     if (interaction.customId === "CREATE_CHANNEL") {
-      interaction.deferUpdate();
+      const serverConfig = await mongoose
+        .model("ServerConfig")
+        .findOne({ serverID: interaction.guild.id });
+      const StreamCordBOTId = "375805687529209857";
+      const DisboardBOTId = "302050872383242240";
+      const AdminRoleID = serverConfig.ticketAdminRoleID;
+      await interaction.deferReply({ ephemeral: true });
+
+      const parentChannel = interaction.channel;
+
+      let permissionOverwrites = [
+        {
+          id: interaction.guild.roles.everyone,
+          deny: [PermissionsBitField.Flags.ViewChannel],
+        },
+        {
+          id: interaction.user,
+          allow: [
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ViewChannel,
+          ],
+        },
+        {
+          id: StreamCordBOTId,
+          deny: [PermissionsBitField.Flags.ViewChannel],
+        },
+        {
+          id: DisboardBOTId,
+          deny: [PermissionsBitField.Flags.ViewChannel],
+        },
+      ];
+
+      if (AdminRoleID) {
+        permissionOverwrites.push({
+          id: AdminRoleID,
+          allow: [
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ViewChannel,
+          ],
+        });
+      }
+
       let channel = await interaction.guild.channels.create({
         name: `🎫丨𝐓icket丨${interaction.user.username}`,
-        parent: "823950661523603466",
+        parent: parentChannel.parentId,
         type: ChannelType.GuildText,
-        permissionOverwrites: [
-          {
-            id: interaction.guild.roles.everyone,
-            deny: [PermissionsBitField.Flags.ViewChannel],
-          },
-          {
-            id: interaction.user,
-            allow: [
-              PermissionsBitField.Flags.SendMessages,
-              PermissionsBitField.Flags.ViewChannel,
-            ],
-          },
-          {
-            id: StreamCordBOTId,
-            deny: [PermissionsBitField.Flags.ViewChannel],
-          },
-          {
-            id: DisboardBOTId,
-            deny: [PermissionsBitField.Flags.ViewChannel],
-          },
-          {
-            id: AdminRoleID,
-            allow: [
-              PermissionsBitField.Flags.SendMessages,
-              PermissionsBitField.Flags.ViewChannel,
-            ],
-          },
-        ],
+        permissionOverwrites: permissionOverwrites,
       });
 
       const clearembed = new EmbedBuilder()
         .setDescription(
-          `${interaction.user}\n Merci d'être patient, notre équipe s'occupe de tout !`
+          `${interaction.user}\n丨𝐓on dossier va être étudié, __merci d'être patient__, notre équipe s'occupe de tout !`
         )
         .setColor("Blue");
 
@@ -734,12 +747,22 @@ module.exports = {
           .setLabel("Supprimer le ticket")
           .setStyle(ButtonStyle.Danger)
       );
+
       await channel.send({
         embeds: [clearembed],
         components: [deletebutton],
       });
-    }
 
+      if (!AdminRoleID) {
+        await channel.send(
+          "⚠丨__**Attention**__丨Le rôle d'administrateur __n'est pas__ défini pour la gestion des tickets."
+        );
+      }
+
+      await interaction.editReply({
+        content: "Ticket créé avec succès !",
+      });
+    }
     if (interaction.customId === "DELETE_TICKET") {
       const surbutton = new ActionRowBuilder()
         .addComponents(
@@ -761,7 +784,6 @@ module.exports = {
         ephemeral: true,
       });
     }
-
     if (interaction.customId === "VALID_DELETE") {
       await interaction.guild.channels.delete(interaction.channel);
     }
@@ -832,7 +854,6 @@ module.exports = {
       const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
       logChannel.send({ embeds: [ACCEPTSUGGLOG] });
     }
-
     if (interaction.customId === "NOPSUGG") {
       const serverConfig = await ServerConfig.findOne({
         serverID: interaction.guild.id,
@@ -1235,6 +1256,70 @@ module.exports = {
       });
       const serverId = interaction.guild.id;
       roleChannelRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
+    }
+    if (interaction.customId === "TICKET_BUTTON") {
+      const message = await interaction.reply({
+        content:
+          "Merci de répondre avec le nom __exact__ ou l'ID du salon pour les `𝐓ickets`.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      ticketRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete();
+      }, 60000);
+    }
+    if (interaction.customId === "TICKET_PUSH") {
+      let serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+      if (!serverConfig || !serverConfig.ticketChannelID) {
+        return interaction.reply({
+          content:
+            "Aucun salon pour les 𝐓ickets n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
+          ephemeral: true,
+        });
+      }
+      const TicketEmbed = new EmbedBuilder()
+        .setColor("#b3c7ff")
+        .setTitle(`―――――― :inbox_tray: 𝐎uvrir un 𝐓icket :inbox_tray: ――――――`)
+        .setDescription(
+          `\n**𝐌erci de respecter les règles concernant les \`𝐓ickets\` !**\n\n\`1.\` 𝐍e pas créer de ticket sans raison.\n\n\`2.\` 𝐍e pas mentionner le staff sauf si vous n'avez pas eu de réponse durant 24h.\n\n\`3.\` 𝐍e pas créer de ticket pour insulter le staff ou une autre personne.`
+        )
+        .setThumbnail(interaction.guild.iconURL())
+        .setFooter({
+          text: `𝐂ordialement, l'équipe ${interaction.guild.name}`,
+          iconURL: interaction.guild.iconURL(),
+        });
+
+      const rowPushTicket = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("CREATE_CHANNEL")
+          .setLabel("🎫丨𝐂réer un 𝐓icket丨🎫")
+          .setStyle(ButtonStyle.Primary)
+      );
+      const ticketChannel = bot.channels.cache.get(
+        serverConfig.ticketChannelID
+      );
+      if (ticketChannel) {
+        ticketChannel.send({
+          embeds: [TicketEmbed],
+          components: [rowPushTicket],
+        });
+        return interaction.reply({ content: "Embed crée.", ephemeral: true });
+      }
+    }
+    if (interaction.customId === "TICKET_ROLE") {
+      const message = await interaction.reply({
+        content:
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour rentrer le rôle d'administration de votre serveur.",
+        fetchReply: true,
+      });
+      const serverId = interaction.guild.id;
+      RoleAdminRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
         message.delete();
       }, 60000);

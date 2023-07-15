@@ -4,9 +4,9 @@ const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
 const config = require("../config.json");
 const ServerConfig = require("../models/serverConfig");
-const ServerRole = require('../models/serverRole');
-const User = require('../models/experience');
-const MINECRAFT_SERVER_IP = config.serveurMinecraftIP;
+const ServerRole = require("../models/serverRole");
+const User = require("../models/experience");
+const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
 const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 
@@ -66,6 +66,8 @@ module.exports = {
           ticketChannelName: null,
           roleReglementID: null,
           roleReglementName: null,
+          ticketAdminRoleID: null,
+          ticketAdminRoleName: null,
         });
         await serverConfig.save();
 
@@ -199,9 +201,7 @@ async function updateVoiceChannel(server) {
       });
     }
 
-    fetch(
-      `https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_IP}:${MINECRAFT_SERVER_PORT}`
-    )
+    fetch(`https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_DOMAIN}`)
       .then((response) => {
         if (response.headers.get("content-type") === "application/json") {
           return response.json();
