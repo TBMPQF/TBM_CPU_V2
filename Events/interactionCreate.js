@@ -21,7 +21,7 @@ const {
   implicationRequestMessageIds,
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
-  roleChannelRequestMessageIds
+  roleChannelRequestMessageIds,
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 
@@ -513,12 +513,13 @@ module.exports = {
         }
 
         user.consecutiveDaily += 1;
-        if (user.consecutiveDaily > user.maxDaily) {
-          user.maxDaily = user.consecutiveDaily;
-        }
       } else {
         resetConsecutiveDaily = true;
         user.consecutiveDaily = 1;
+      }
+
+      if (user.consecutiveDaily > user.maxDaily) {
+        user.maxDaily = user.consecutiveDaily;
       }
 
       const baseXP = 200;

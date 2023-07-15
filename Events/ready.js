@@ -174,7 +174,7 @@ module.exports = {
 
     // Activité initiale du bot
     bot.user.setPresence({
-      activities: [{ name: bot.config.activity, type: "PLAYING" }],
+      activities: [{ name: "Apex Legends", type: "PLAYING" }],
       status: "dnd",
     });
   },

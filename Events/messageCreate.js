@@ -17,7 +17,7 @@ const {
   implicationRequestMessageIds,
   dailyRequestMessageIds,
   suggestionsRequestMessageIds,
-  roleChannelRequestMessageIds
+  roleChannelRequestMessageIds,
 } = require("../models/shared");
 
 module.exports = {
@@ -313,6 +313,7 @@ module.exports = {
       userID: message.author.id,
       serverID: message.guild.id,
     });
+
     if (!user) {
       user = new User(userData);
     } else {
@@ -326,8 +327,25 @@ module.exports = {
 
     user.messageCount = (user.messageCount || 0) + 1;
 
+    const member = message.guild.members.cache.get(message.author.id);
+    const hasRole = member.roles.cache.some(
+      (role) => role.name === "✨丨𝐄lite 𝐒ecrète"
+    ); 
+
+    const dayOfWeek = now.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
     if (timeDifference >= 10) {
-      const randomXP = Math.floor(Math.random() * 50) + 1;
+      let randomXP = Math.floor(Math.random() * 50) + 1;
+      if (hasRole) {
+        randomXP *= 1.3;
+      }
+
+      if (isWeekend) {
+        randomXP *= 1.30;
+      }
+
+      randomXP = Math.round(randomXP);
       user.xp = (user.xp || 0) + randomXP;
 
       await levelUp(message, user, user.xp);
