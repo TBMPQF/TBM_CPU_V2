@@ -12,7 +12,10 @@ const userSchema = new mongoose.Schema({
   messageCount: { type: Number, default: 0 },
   lastDaily: { type: Date, default: null },
   consecutiveDaily: { type: Number, default: 0 },
+  lostConsecutiveDaily: { type: Number, default: 0 },
   maxDaily: {type: Number, default: 0},
+  malusDaily : {type: Number, default: 0},
+  malusDuration : {type: Number, default: 0},
   prestige: { type: Number, default: 0 },
 }, { versionKey: false });
 
