@@ -174,11 +174,28 @@ module.exports = {
       });
     }, 43200000);
 
-    // Activité initiale du bot
-    bot.user.setPresence({
-      activities: [{ name: "Apex Legends", type: "PLAYING" }],
-      status: "dnd",
-    });
+    // Activité du bot
+    const activities = [
+      { name: "Apex Legends", type: ActivityType.Playing },
+      { name: ``, type: ActivityType.Listening },
+    ];
+
+    let i = 0;
+    setInterval(() => {
+      let activity = activities[i];
+
+      if (activity.type === ActivityType.Listening) {
+        activity.name = `丨${bot.guilds.cache.size}丨 𝐒erveurs`;
+      }
+
+      bot.user.setPresence({
+        activities: [activity],
+        status: "dnd",
+      });
+
+      if (i === activities.length - 1) i = 0;
+      else i++;
+    }, 2 * 60 * 1000);
   },
 };
 
