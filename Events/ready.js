@@ -7,7 +7,6 @@ const ServerConfig = require("../models/serverConfig");
 const ServerRole = require("../models/serverRole");
 const User = require("../models/experience");
 const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
-const MINECRAFT_SERVER_PORT = config.serveurMinecraftPORT;
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 
 module.exports = {

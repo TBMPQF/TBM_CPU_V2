@@ -460,8 +460,7 @@ module.exports = {
       }
     }
 
-    //Bouton Daily, pour récupérer son bonus quotidien.
-    let storedConsecutiveDailyMap = new Map();
+    // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
       const user = await User.findOne({
         serverID: interaction.guild.id,
@@ -482,7 +481,6 @@ module.exports = {
       const msIn23Hours = 23 * 60 * 60 * 1000;
       const daysInWeek = 7;
       let resetConsecutiveDaily = false;
-      let storedConsecutiveDaily = 0;
 
       if (lastClaim && now.getTime() - lastClaim.getTime() < msIn47Hours) {
         const timeSinceLastClaim = now.getTime() - lastClaim.getTime();
@@ -518,7 +516,7 @@ module.exports = {
 
         user.consecutiveDaily += 1;
       } else {
-        storedConsecutiveDaily[user.userID] = user.consecutiveDaily;
+        user.lostConsecutiveDaily = user.consecutiveDaily;
         resetConsecutiveDaily = true;
         user.consecutiveDaily = 1;
       }
@@ -546,10 +544,6 @@ module.exports = {
       }
 
       user.xp += totalXP;
-      if (resetConsecutiveDaily == true && lastClaim != null) {
-        user.malusDaily = calculateMalus(user.consecutiveDaily);
-        user.malusDuration = calculateMalusDuration(user.consecutiveDaily);
-      }
       levelUp(interaction, user, user.xp);
 
       let dailyMessage = "";
@@ -640,12 +634,12 @@ module.exports = {
         userID: interaction.user.id,
       });
 
-      const costXP = calculateCostXP(user.consecutiveDaily);
-      const malus = calculateMalus(user.consecutiveDaily);
-      const malusDuration = calculateMalusDuration(user.consecutiveDaily);
+      const costXP = calculateCostXP(user.lostConsecutiveDaily);
+      const malus = calculateMalus(user.lostConsecutiveDaily);
+      const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
 
       if (user.xp >= costXP) {
-        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__, ça te coutera \`${costXP}\` 𝐗p et tu auras un malus de \`${malus}\` pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
+        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? Ça te coutera \`${costXP.toLocaleString()}\` 𝐗p et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
 
         const yesButton = new ButtonBuilder()
           .setCustomId("CONFIRM_RECUPDAILY_BUTTON")
@@ -665,19 +659,19 @@ module.exports = {
         });
       } else {
         return interaction.reply({
-          content: `丨𝐓u n'as pas assez d'𝐗p pour rattraper ton __bonus quotidien__. Tu as besoin de \`${costXP}\` 𝐗p minimum.`,
+          content: `丨𝐓u n'as pas assez d'𝐗p pour rattraper ton __bonus quotidien__. Tu as besoin de \`${costXP.toLocaleString()}\` 𝐗p minimum et tu as uniquement \`${user.xp.toLocaleString()}\` 𝐗p disponible.`,
           ephemeral: true,
         });
       }
     }
 
     function calculateCostXP(consecutiveDaily) {
-      // Chaque jour de la série coûte 250 xp
-      return consecutiveDaily * 250;
+      // Chaque jour de la série coûte 1000 xp
+      return consecutiveDaily * 750;
     }
 
     function calculateMalus(consecutiveDaily) {
-      // Malus est de 25 si la série est inférieure à 7 jours, sinon c'est 50
+      // Malus est de 50 si la série est inférieure à 7 jours, sinon c'est 75
       return consecutiveDaily < 7 ? 50 : 75;
     }
 
@@ -693,26 +687,29 @@ module.exports = {
         userID: interaction.user.id,
       });
 
-      const storedConsecutiveDaily = user.consecutiveDaily || 0;
+      const storedConsecutiveDaily = user.lostConsecutiveDaily || 0;
       const costXP = calculateCostXP(storedConsecutiveDaily);
       const malus = calculateMalus(storedConsecutiveDaily);
       const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
 
       if (user.xp >= costXP) {
         user.xp -= costXP;
-        user.consecutiveDaily = storedConsecutiveDaily;
+        user.consecutiveDaily = user.lostConsecutiveDaily;
+        user.lostConsecutiveDaily = 0;
         user.malusDaily = malus;
         user.malusDuration = malusDuration;
         user.lastDaily = new Date(Date.now());
         await user.save();
 
         return interaction.reply({
-          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP}\`. Tes copains ne diront plus que tu es un rat ! Par contre.. __Un malus__ de \`${malus}\` a été appliqué pour \`${user.malusDuration} jour(s)\`.`,
+          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. Tes copains ne diront plus que tu es un rat ! Par contre.. __Un malus__ de \`${malus}\` a été appliqué pour \`${
+            user.malusDuration
+          } jour(s)\`.`,
           ephemeral: true,
         });
       } else {
         return interaction.reply({
-          content: `丨**Une erreur est survenue car tu n'as pas assez d'expérience -> contact mon créateur \`tbmpqf\`.**`,
+          content: `丨**L'application met trop de temps à répondre -> contact mon créateur \`tbmpqf\`.**`,
           ephemeral: true,
         });
       }
@@ -720,6 +717,11 @@ module.exports = {
 
     // Bouton cancel récupération de daily
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
+      return interaction.reply({
+        content:
+          "Tu as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas, ce qui ne te tue pas te rend plus fort... ou pas ! 😅",
+        ephemeral: true,
+      });
     }
 
     //SelectMenu pour le channel rôle, sélecteur de jeux.
@@ -1466,6 +1468,49 @@ module.exports = {
       }, 60000);
     }
 
+    //Bouton supprimé suggestion
+    if (interaction.customId === "SUPPSUGG") {
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+
+      if (!serverConfig || !serverConfig.ticketAdminRoleID) {
+        return interaction.reply({
+          content:
+            "**Action impossible car la configuration du rôle administrateur n'a pas été défini dans le `/setconfig`.**",
+          ephemeral: true,
+        });
+      }
+
+      const member = interaction.guild.members.cache.get(interaction.user.id);
+      const adminRole = interaction.guild.roles.cache.get(
+        serverConfig.ticketAdminRoleID
+      );
+
+      if (!adminRole || !member.roles.cache.has(adminRole.id)) {
+        return interaction.reply({
+          content:
+            "Désolé, mais tu n'as pas la permission d'utiliser ce bouton.",
+          ephemeral: true,
+        });
+      }
+      // Vérifie si le message est dans un thread
+      if (interaction.channel.isThread()) {
+        // Archive le thread
+        await interaction.channel.setArchived(true);
+        // Supprime le thread
+        await interaction.channel.delete();
+      } else {
+        // Supprime le message
+        await interaction.message.delete();
+      }
+
+      return interaction.reply({
+        content: "La suggestion et le thread associé ont été supprimés.",
+        ephemeral: true,
+      });
+    }
+
     //Bouton Classement Général
     if (interaction.customId === "LADDER_BUTTON") {
       const guild = interaction.guild;
@@ -1516,8 +1561,20 @@ module.exports = {
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;
+
+    let timeoutFlag = false;
+    let timeout = setTimeout(function () {
+      timeoutFlag = true;
+      interaction.reply({
+        content:
+          "**L'exécution de la commande prend plus de temps que prévu. __Merci__ de patienter...**",
+        ephemeral: true,
+      });
+    }, 5000);
+
     try {
       await bot.commands.get(interaction.commandName).execute(interaction, bot);
+      clearTimeout(timeout);
     } catch (error) {
       console.error(error);
       if (typeof interaction.reply === "function") {
@@ -1532,6 +1589,18 @@ module.exports = {
             "**Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.**",
         });
       }
+    }
+    if (timeoutFlag) {
+      // En cas de dépassement du temps, vous pouvez ajouter une action supplémentaire ici
+      console.error(
+        `Command ${interaction.commandName} took too long to execute.`
+      );
+      // Si vous avez un système de surveillance externe, vous pouvez envoyer une notification à ce système.
+      interaction.followUp({
+        content:
+          "**La commande a pris trop de temps à répondre et a été annulée. Veuillez réessayer plus tard.**",
+        ephemeral: true,
+      });
     }
   },
 };

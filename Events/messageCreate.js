@@ -468,6 +468,12 @@ module.exports = {
           .setCustomId("NOPSUGG")
           .setEmoji("✖️")
           .setStyle(ButtonStyle.Danger)
+      )
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId("SUPPSUGG")
+          .setEmoji("♻")
+          .setStyle(ButtonStyle.Secondary)
       );
 
     bot.channels.cache
