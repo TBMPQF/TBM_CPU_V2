@@ -8,16 +8,68 @@ const ServerRole = require("../models/serverRole");
 const User = require("../models/experience");
 const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
+const Music = require("../models/music")
+const queue = require('../models/queue')
 
 module.exports = {
   name: "ready",
   execute(bot, member) {
+
+    // Réinitialise le message de playlist pour la musique
+    const serverId = '716810235985133568';
+    const channelMusicId = '1136327173343559810';
+    Music.findOne({ serverId: serverId })
+    .then((musicEntry) => {
+      if (musicEntry && musicEntry.messageId) {
+        const channel = bot.channels.cache.get(channelMusicId);
+        if (!channel) return console.error('Channel not found!');
+        
+        channel.messages.fetch(musicEntry.messageId)
+        .then((message) => {
+          if(queue[serverId]) queue[serverId] = [];
+          
+          const newEmbed = new EmbedBuilder()
+            .setColor("Purple")
+            .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
+            .setThumbnail("https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png")
+            .setDescription("**丨𝐋a playlist est vide pour le moment丨**")
+            .setFooter({
+              text: `Cordialement, l'équipe ${bot.guilds.cache.get(serverId).name}`,
+              iconURL: bot.guilds.cache.get(serverId).iconURL(),
+            });
+          message.edit({ embeds: [newEmbed] });
+        })
+        .catch((error) => {
+          console.error(`Le message rechercher est introuvable : ${error}`);
+        });
+      }
+    })
+    .catch((error) => {
+      console.error(`Failed to fetch music entry: ${error}`);
+    });
+
+    //Donne l'heure exact lors du démarrage dans la console
+    function formatTwoDigits(num) {
+      return num < 10 ? `0${num}` : num.toString();
+    }
+    const date = new Date();
+    const jour = formatTwoDigits(date.getDate());
+    const mois = formatTwoDigits(date.getMonth() + 1);
+    const annee = date.getFullYear();
+    const heures = formatTwoDigits(date.getHours());
+    const minutes = formatTwoDigits(date.getMinutes());
+    const dateHeureFrancaise = `${jour}/${mois}/${annee} à ${heures}:${minutes}`;
+
     console.log(
-      "\x1b[33m" + `${bot.user.username} connecté !\n` + "\x1b[33m" + ``
+      "\x1b[33m" +
+        `${bot.user.username} connecté le ` +
+        "\x1b[33m" +
+        `${dateHeureFrancaise}\n`
     );
 
     loadSlashCommands(bot);
 
+    //Interval pour mettre a jour le salon vocal Minecraft
     setInterval(async () => {
       const server = bot.guilds.cache.first();
       updateVoiceChannel(server);

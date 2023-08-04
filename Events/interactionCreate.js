@@ -5,6 +5,7 @@ const {
   EmbedBuilder,
   ChannelType,
   ButtonStyle,
+  Embed,
 } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("../config");
@@ -26,6 +27,13 @@ const {
   RoleAdminRequestMessageIds,
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
+const ytdl = require("ytdl-core");
+const {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+} = require("@discordjs/voice");
+const { queue } = require("../models/queue");
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -37,429 +45,6 @@ const usersVoted = new Map();
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
-    //Tous les embeds de Métiers pour New World
-    if (interaction.isStringSelectMenu()) {
-      let choice = interaction.values[0];
-      if (choice == "TANNERIE") {
-        let Tannerie050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1412 x Peau brute\n • 353 x `Cuir brut` (*Tannerie 3*)\n\n Coût net total ~ `808,37` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tannerie50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
-          .setTitle(`\`Niveau 50 à 100\`丨🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n725 x Tanin mâture\n 11600 x Peau brute\n • 2900 x Cuir brut (*Tannerie 3*)\n •• 725 x `Cuir corroyé` (*Tannerie 3*)\n\n Coût net total ~ `5495,50` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tannerie100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n642 x Tanin mâture\n 3852 x Peau épaisse\n • 1284 x Cuir corroyé (*Tannerie 3*)\n •• 725 x `Cuir épais` (*Tannerie 4*)\n\n Coût net total ~ `8326,74` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tannerie150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/wbm7.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n1602 x Tanin mâture\n 9609 x Peau épaisse\n • 3203 x Cuir corroyé (*Tannerie 3*)\n • 2082 x Cuir épais (*Tannerie 4*)\n • 8328 x Peau de fer\n • 1041 x Tanin mâture\n •• 1041 x `Cuir imprégné` (*Tannerie 5*)\n\n Coût net total ~ `19081,53` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Tannerie050, Tannerie50100, Tannerie100150, Tannerie150200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "TISSAGE") {
-        let Tissage050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1336 x Fibres\n • 334 x `Lin` (*Métier à tisser 3*)\n\n Coût net total ~ `390,78` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tissage50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
-          .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n2740 x Lin\n 685 x Triplure en tissefer\n • 685 x `Satin` (*Métier à tisser 3*)\n\n Coût net total ~ `3630,50` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tissage100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n3642 x Fils de soie\n 1214 x Satin\n 607 x Triplure en tissefer\n • 607 x `Soie` (*Métier à tisser 4*)\n\n Coût net total ~ `6792,33` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tissage150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/fx4f.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n9083 x Fils de soie\n 3028 x Satin\n 1514 x Triplure en tissefer\n • 1968 x Soie (*Métier à tisser 4*)\n • 984 x Triplure en tissefer\n • 7872 x Souchet (*Métier à tisser 5*)\n •• 984 x `Soie imprégnée` (*Métier à tisser 5*)\n\n Coût net total ~ `26723,17` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Tissage050, Tissage50100, Tissage100150, Tissage150200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "CUISINE") {
-        let Cuisine050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 346 x Viande rouge\n 346 x Champignon\n • 346 x `Ration de voyage` (*Cuisine 2*)\n\n Coût net total ~ `96,90` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Cuisine50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
-          .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n690 x Chou\n 690 x Viande rouge\n 690 x Champignon\n • 690 x `Repas léger` (*Cuisine 3*)\n\n Coût net total ~ `386,40` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Cuisine100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n3950 x Chou\n 3950 x Viande rouge\n 3950 x Champignon\n • 3950 x `Repas léger` (*Cuisine 3*)\n\n Coût net total ~ `2212,00` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Cuisine150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/kaao.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n1050 x Haricot vert\n 1050 x Viande rouge\n 1050 x Champignon\n 1050 x Courge\n 1050 x Miel\n • 1050 x Repas Copieux (*Cuisine 5*)\n\n Coût net total ~ `1585,50` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Cuisine050, Cuisine50100, Cuisine100150, Cuisine150200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "ARTS") {
-        let Arts050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 334 x Amanite chaudron\n 334 x Vrille de rampesol\n 334 x Eau\n • 334 x `Teinture mère de dépérissement ordinaire` (*Réserve dédiée aux arts obscurs 2*)\n\n Coût net total ~ `340,68` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Arts50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
-          .setTitle(`\`Niveau 50 à 100\`丨 🟩🟩⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1035 x Anneau d'amanite tue-mouches\n 1035 x Vrille de rampesol\n 1035 x Eau\n • 1035 x `Teinture mère de dépérissement puissante` (*Réserve dédiée aux arts obscurs 3*)\n\n Coût net total ~ `2649,60` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Arts100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1432 x Peau de lumécaille\n 895 x Noirétoffe\n 716 x Fer des fées\n 1074 x Grain de la mort\n • 179 x `Gantelets du néant en métal stellaire` (*Réserve dédiée aux arts obscurs 4*)\n\n Coût net total ~ `4850,01` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Arts150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/i73x.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩🟩⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 4560 x Peau brute\n • 1140 x Cuir brut (Tannerie 3)\n • 1425 x Fer des fées\n • 2280 x Bois sauvage\n • 1710 x Grain de la vie\n •• 285 x `Bâton de la vie en orichalque` (*Réserve dédiée aux arts obscurs 5*)\n\n Coût net total ~ `8760,90` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Arts050, Arts50100, Arts100150, Arts150200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "JOALLERIE") {
-        let Joallerie0100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/46/fiju.png")
-          .setTitle(`\`Niveau 0 à 100\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 348 x Pierre de lune impure taillée\n 348 x Chaîne en argent\n 348 x Fixation en argent\n 348 x Lingot d'argent\n • 348 x `Lustré Amulette de pierre de lune impure` (*Poste d'équipement 2*)\n\n Coût net total ~ `873,48` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Joallerie100200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/46/fiju.png")
-          .setTitle(`\`Niveau 100 à 200\`丨 🟩🟩🟩`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 41552 x Minerai d'argent\n • 10388 x Lingot d'argent (*Fonderie 3*)\n •• 2597 x FIxation en argent (*Poste d'équipement 2*)\n •• 2597 x Émeraude taillée\n •• 2597 x Bande en argent\n ••• 2597 x `Trempé Anneau d'émeraude` (*Poste d'équipement 3*)\n\n Coût net total ~ `29605,80` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 16/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Joallerie0100, Joallerie100200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "AMEUBLEMENT") {
-        let Ameublement050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩🟩⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 1695 x Lin\n 565 x Triplure en tissefer\n 565 x Fibres\n • 113 x `Tapis soleil rond` (*Atelier 2*)\n\n Coût net total ~ `2826,13` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Ameublement50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 50 à 100\`丨 🟩🟩🟩`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 11385 x Lin\n 3795 x Triplure en tissefer\n 3795 x Fibres\n • 759 x `Tapis soleil rond` (*Atelier 2*)\n\n Coût net total ~ `18982,59` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Ameublement100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩🟩`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 3080 x Cuir épais\n 880 x Plumes\n 88 x Peau d'ours immaculée\n • 88 x `Tapis en peau d'ours brun` (*Atelier 2*)\n\n Coût net total ~ `40588,68` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Ameublement150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩🟩🟩`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 19005 x Cuir épais\n 5430 x Plumes\n 543 x Peau d'ours immaculée\n • 543 x `Tapis en peau d'ours brun` (*Atelier 2*)\n\n Coût net total ~ `250450,61` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [
-            Ameublement050,
-            Ameublement50100,
-            Ameublement100150,
-            Ameublement150200,
-          ],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-      if (choice == "TAILLEUR") {
-        let Tailleur050 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 0 à 50\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 88 x Aigue-marine impure\n 176 x Grain de l'eau\n • 88 x `Aigue-marine impure taillée` (*Table de tailleur de pierre 3*)\n\n Coût net total ~ `319,44` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 20/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tailleur50100 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 50 à 100\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 470 x Grain de l'eau\n • 94 x Volute de l'eau (*Réserve dédiée aux arts obscurs 3*)\n • 282 x Aigue-marine impure\n • 188 x Dissolvant pur\n •• 94 x `Aigue-marine` (*Table de tailleur de pierre 3*)\n\n Coût net total ~ `981,36` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tailleur100150 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 100 à 150\`丨 🟩🟩⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 2520 x Grain du feu\n • 504 x Volute du feu (*Réserve dédiée aux arts obscurs 3*)\n •• 126 x Essence du feu\n •• 504 x Rubis\n •• 252 x Dissolvant pur\n ••• 126 x `Rubis éclatant` (*Table de tailleur de pierre 4*)\n\n Coût net total ~ `4576,32` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-        let Tailleur150200 = new EmbedBuilder()
-          .setColor("Gold")
-          .setThumbnail("https://zupimages.net/up/22/45/ozh4.png")
-          .setTitle(`\`Niveau 150 à 200\`丨 🟩⬛⬛`)
-          .setDescription(
-            "\n\n\n**__Étapes de fabrication__** :\n\n 380 x Dissolvant pur\n 190 x Quintessence de la terre\n 950 x Ambre éclatant\n • 190 x `Ambre immaculé` (*Table de tailleur de pierre 5*)\n\n Coût net total ~ `17394,50` <:coins:1040567610913345576>"
-          )
-          .setFooter({
-            text: `Prix mis à jour le 11/11/2022丨Si tu as d'autres propositions, n'hésite pas à crée un ticket`,
-            iconURL: interaction.guild.iconURL({
-              dynamic: true,
-              size: 64,
-            }),
-          });
-
-        interaction.reply({
-          embeds: [Tailleur050, Tailleur50100, Tailleur100150, Tailleur150200],
-        });
-        setTimeout(() => interaction.deleteReply(), 600000);
-      }
-    }
-
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
       const user = await User.findOne({
@@ -639,7 +224,9 @@ module.exports = {
       const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
 
       if (user.xp >= costXP) {
-        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? Ça te coutera \`${costXP.toLocaleString()}\` 𝐗p et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
+        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? Tu avais une série de \`${
+          user.lostConsecutiveDaily
+        }.\`\n Ça te coutera \`${costXP.toLocaleString()}\` 𝐗p et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
 
         const yesButton = new ButtonBuilder()
           .setCustomId("CONFIRM_RECUPDAILY_BUTTON")
@@ -719,7 +306,7 @@ module.exports = {
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
       return interaction.reply({
         content:
-          "Tu as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas, ce qui ne te tue pas te rend plus fort... ou pas ! 😅",
+          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas, **ce qui ne te tue pas te rend plus fort**... ou pas ! 😅",
         ephemeral: true,
       });
     }
@@ -754,6 +341,208 @@ module.exports = {
       } else if (interaction.customId === interactionSetConfig.name) {
         interactionSetConfig.execute(interaction);
       }
+    }
+
+    // Gestion de la musique
+    let connections = {};
+
+    async function handleVoiceChannel(interaction, notInChannelMessage) {
+      const voiceChannel = interaction.member.voice.channel;
+      if (!voiceChannel) {
+        const msg = await interaction.reply({
+          embeds: [
+            {
+              description: notInChannelMessage,
+              color: 0x800080,
+            },
+          ],
+        });
+        setTimeout(() => msg.delete(), 5000);
+        return null;
+      }
+      return voiceChannel;
+    }
+
+    if (interaction.customId === "PLAY_MUSIC") {
+      const voiceChannel = await handleVoiceChannel(
+        interaction,
+        ":microphone2:丨𝐓u dois être dans un salon vocal pour lancer la playlist !"
+      );
+      if (!voiceChannel) return;
+
+      const serverId = interaction.guild.id;
+
+      if (!queue[serverId] || queue[serverId].length === 0) {
+        sendAndDeleteMessage(
+          interaction,
+          ":snowflake:丨𝐋a playlist est actuellement vide.",
+          5000
+        );
+        return;
+      }
+
+      connections[serverId] = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: voiceChannel.guild.id,
+        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+      });
+
+      const player = createAudioPlayer();
+      playNextSong(interaction, serverId, player, queue);
+
+      sendAndDeleteMessage(
+        interaction,
+        ":saxophone:丨𝐉e lance la musique poulet !",
+        5000
+      );
+    }
+
+    async function playNextSong(interaction, serverId, player, queue) {
+      if (!queue[serverId] || queue[serverId].length === 0) {
+        if (connections[serverId]) connections[serverId].disconnect();
+        return;
+      }
+
+      const song = queue[serverId].shift();
+      const stream = ytdl(song.url, {
+        filter: "audioonly",
+        quality: "highestaudio",
+      });
+
+      stream.on("error", (error) =>
+        console.error(
+          `Une erreur est survenue lors de la lectur de la musique : ${error.message}`
+        )
+      );
+
+      const resource = createAudioResource(stream);
+      player.play(resource);
+      if (connections[serverId]) {
+        connections[serverId].subscribe(player);
+      } else {
+        console.log(
+          `Could not establish connection for server ID: ${serverId}`
+        );
+      }
+
+      player.on("error", (error) =>
+        console.error(`Erreur: ${error.message} avec le son : ${song}`)
+      );
+
+      player.on("idle", async () => {
+        playNextSong(interaction, serverId, player, queue);
+        await updateEmbedMessage(interaction, serverId, queue);
+      });
+    }
+
+    async function updateEmbedMessage(interaction, serverId, queue) {
+      const playlistText = queue[serverId]
+        .map(
+          (song, i) => `${i + 1}. ${i === 0 ? `**${song.title}**` : song.title}`
+        )
+        .join("\n");
+
+      const newEmbed = new EmbedBuilder()
+        .setColor("Purple")
+        .setTitle("――――――――∈ `MUSIQUE` ∋――――――――")
+        .setThumbnail(
+          "https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png"
+        )
+        .setDescription(playlistText)
+        .setFooter({
+          text: `Cordialement, l'équipe ${interaction.guild.name}`,
+          iconURL: interaction.guild.iconURL(),
+        });
+
+      const messageEntry = await interaction.channel.messages.fetch(
+        musicEntry.messageId
+      );
+      await messageEntry.edit({ embeds: [newEmbed] });
+    }
+
+    async function sendAndDeleteMessage(interaction, description, delay) {
+      const msg = await interaction.reply({
+        embeds: [
+          {
+            description,
+            color: 0x800080,
+          },
+        ],
+      });
+      setTimeout(() => msg.delete(), delay);
+    }
+
+    //Arrêter la musique
+    if (interaction.customId === "STOP_MUSIC") {
+      const voiceChannel = await handleVoiceChannel(
+        interaction,
+        ":microphone2:丨𝐓u dois être dans un salon vocal pour arrêter la playlist !"
+      );
+      if (!voiceChannel) return;
+
+      const serverId = interaction.guild.id;
+
+      if (queue[serverId] && queue[serverId].length > 0) {
+        connections[serverId].disconnect();
+        delete connections[serverId];
+        const stopMsg = await interaction.reply({
+          embeds: [
+            {
+              description: ":no_entry_sign:丨𝐋a musique a été arrêtée !",
+              color: 0x800080,
+            },
+          ],
+        });
+        setTimeout(() => stopMsg.delete(), 5000);
+      } else {
+        const stopMsg = await interaction.reply({
+          embeds: [
+            {
+              description: "丨𝐀ucune musique est en cours de lecture.",
+              color: 0x800080,
+            },
+          ],
+        });
+        setTimeout(() => stopMsg.delete(), 5000);
+      }
+    }
+
+    // Passe à la musique suivante de la playlist
+    if (interaction.customId === "NEXT_MUSIC") {
+      const voiceChannel = await handleVoiceChannel(
+        interaction,
+        ":microphone2:丨𝐓u dois être dans un salon vocal pour passer à la prochaine musique !"
+      );
+      if (!voiceChannel) return;
+
+      const serverId = interaction.guild.id;
+
+      if (!queue[serverId] || queue[serverId].length === 0) {
+        sendAndDeleteMessage(
+          interaction,
+          ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.",
+          5000
+        );
+        return;
+      }
+
+      if (!connections[serverId]) {
+        sendAndDeleteMessage(
+          interaction,
+          ":x:丨𝐉e ne suis pas connecté à un salon vocal.",
+          5000
+        );
+        return;
+      }
+
+      const player = createAudioPlayer();
+      playNextSong(interaction, serverId, player, queue);
+
+      sendAndDeleteMessage(
+        interaction,
+        ":next_track:丨𝐉'ai passé à la prochaine musique !",
+        5000
+      );
     }
 
     async function handleRole(interaction, member, roleID, roleName) {
@@ -1495,11 +1284,10 @@ module.exports = {
         });
       }
       // Vérifie si le message est dans un thread
-      if (interaction.channel.isThread()) {
-        // Archive le thread
-        await interaction.channel.setArchived(true);
-        // Supprime le thread
-        await interaction.channel.delete();
+      const thread = channel.threads.cache.find((x) => x.name === "food-talk");
+
+      if (interaction.channel.thread) {
+        await thread.delete();
       } else {
         // Supprime le message
         await interaction.message.delete();
@@ -1593,7 +1381,7 @@ module.exports = {
     if (timeoutFlag) {
       // En cas de dépassement du temps, vous pouvez ajouter une action supplémentaire ici
       console.error(
-        `Command ${interaction.commandName} took too long to execute.`
+        `Command ${interaction.commandName} trop longue a executé.`
       );
       // Si vous avez un système de surveillance externe, vous pouvez envoyer une notification à ce système.
       interaction.followUp({

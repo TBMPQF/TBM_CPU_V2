@@ -7,6 +7,10 @@ const {
 const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const ServerConfig = require("../models/serverConfig");
+const yts = require("yt-search");
+const { queue } = require("../models/queue");
+const Music = require("../models/music");
+const { filterMessage } = require('../automod');
 
 const {
   logRequestMessageIds,
@@ -19,13 +23,100 @@ const {
   suggestionsRequestMessageIds,
   roleChannelRequestMessageIds,
   ticketRequestMessageIds,
-  RoleAdminRequestMessageIds
+  RoleAdminRequestMessageIds,
 } = require("../models/shared");
 
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
     if (message.author.bot) return;
+    filterMessage(message);
+
+    //Gestion des messages pour la musique dans le salon musique
+    if (message.channel.id === "1136327173343559810") {
+      const { videos } = await yts.search(message.content);
+      if (videos.length == 0) {
+        const noResultEmbed = new EmbedBuilder()
+          .setColor("Purple")
+          .setDescription("Aucun résultat trouvé");
+        return message.channel.send({ embeds: [noResultEmbed] }).then((msg) => {
+          setTimeout(() => msg.delete(), 5000);
+        });
+      }
+
+      const songUrl = videos[0].url;
+
+      const serverId2 = message.guild.id;
+      if (!queue[serverId2]) {
+        queue[serverId2] = [];
+      }
+      queue[serverId2].push({
+        url: songUrl,
+        title: videos[0].title,
+      });
+
+      const musicEntry = await Music.findOne({ serverId: serverId2 });
+
+      let messageEntry;
+
+      if (musicEntry && musicEntry.messageId) {
+        messageEntry = await message.channel.messages.fetch(
+          musicEntry.messageId
+        );
+      }
+
+      const songAddedEmbed = new EmbedBuilder()
+        .setColor("Purple")
+        .setDescription(
+          `"${videos[0].title}" a été ajouté à la liste de lecture.`
+        );
+
+      if (messageEntry) {
+        const oldEmbed = messageEntry.embeds[0];
+
+        let playlistText = "";
+        for (let i = 0; i < queue[serverId2].length; i++) {
+          let title = queue[serverId2][i].title;
+          title = title.replace(/ *\([^)]*\) */g, "");
+          title = title.replace(/ *\[[^\]]*] */g, "");
+
+          if (i === 0) {
+            playlistText += `\`${i + 1}\`丨**${title}**\n`;
+          } else {
+            playlistText += `\`${i + 1}\`丨${title}\n`;
+          }
+        }
+
+        // Create a new embed
+        const newEmbed = new EmbedBuilder()
+          .setColor("Purple")
+          .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
+          .setThumbnail(
+            "https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png"
+          )
+          .setDescription(playlistText)
+          .setFooter({
+            text: `Cordialement, l'équipe ${message.guild.name}`,
+            iconURL: message.guild.iconURL(),
+          });
+
+        await messageEntry.edit({ embeds: [newEmbed] });
+      } else {
+        messageEntry = await message.channel.send({ embeds: [songAddedEmbed] });
+
+        if (musicEntry) {
+          musicEntry.messageId = messageEntry.id;
+          await musicEntry.save();
+        } else {
+          await Music.create({
+            serverId: serverId2,
+            messageId: messageEntry.id,
+          });
+        }
+      }
+
+      message.delete();
+    }
 
     // Gestion réponse pour salon de LOG
     const serverId = message.guild.id;
@@ -303,9 +394,7 @@ module.exports = {
     }
     // Gestion du salon pour les tickets
     if (message.reference) {
-      if (
-        message.reference.messageId === ticketRequestMessageIds[serverId]
-      ) {
+      if (message.reference.messageId === ticketRequestMessageIds[serverId]) {
         let channel;
         if (message.mentions.channels.size > 0) {
           channel = message.mentions.channels.first();
@@ -341,24 +430,25 @@ module.exports = {
     if (
       message.reference &&
       message.reference.messageId === RoleAdminRequestMessageIds[serverId]
-    ) {if (adminRole) {
-      await ServerConfig.findOneAndUpdate(
-        { serverID: serverId },
-        {
-          ticketAdminRoleID: adminRole.id,
-          ticketAdminRoleName: adminRole.name,
-        },
-        { upsert: true }
-      );
-      await message.reply(
-        `Le rôle d'administrateur sera désormais \`${adminRole.name}\``
-      );
-    } else {
-      await message.reply(
-        `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle d'administration de votre serveur.`
-      );
+    ) {
+      if (adminRole) {
+        await ServerConfig.findOneAndUpdate(
+          { serverID: serverId },
+          {
+            ticketAdminRoleID: adminRole.id,
+            ticketAdminRoleName: adminRole.name,
+          },
+          { upsert: true }
+        );
+        await message.reply(
+          `Le rôle d'administrateur sera désormais \`${adminRole.name}\``
+        );
+      } else {
+        await message.reply(
+          `Rôle invalide! Merci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle d'administration de votre serveur.`
+        );
+      }
     }
-  }
 
     //Experience pour chaque message
     const now = new Date();
@@ -408,7 +498,7 @@ module.exports = {
     const dayOfWeek = now.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     if (isWeekend) {
-        weekendPercentage = 1.1;
+      weekendPercentage = 1.1;
     }
 
     if (timeDifference >= 10) {
