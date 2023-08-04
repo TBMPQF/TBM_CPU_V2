@@ -6,6 +6,7 @@ const warningSchema = new mongoose.Schema({
     userName: { type: String, required: true },
     guildName: { type: String, required: true },
     warnings: { type: Number, default: 0 },
+    muteEnd: { type: Date },
 });
 
 module.exports = mongoose.model('Warning', warningSchema);
