@@ -4,7 +4,6 @@ const Warning = require("./models/warnings");
 // Expression régulière pour les mots interdits
 const forbiddenWords = new RegExp(
   `\\b(${[
-    "ntm",
     "fdp",
     "fils de pute",
     "connard",

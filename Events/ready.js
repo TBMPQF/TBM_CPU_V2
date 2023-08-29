@@ -15,6 +15,10 @@ module.exports = {
   name: "ready",
   execute(bot, member) {
 
+    // Met à jour le message du vocal indiquant le nombre de personne en ligne sur le serveur actuellement
+    
+
+
     // Réinitialise le message de playlist pour la musique
     const serverId = '716810235985133568';
     const channelMusicId = '1136327173343559810';
@@ -72,8 +76,13 @@ module.exports = {
     //Interval pour mettre a jour le salon vocal Minecraft
     setInterval(async () => {
       const server = bot.guilds.cache.first();
-      updateVoiceChannel(server);
+      updateVoiceChannelMinecraft(server);
     }, 60000);
+    //Interval pour mettre a jour le salon vocal membre connecté
+    setInterval(async () => {
+      const server = bot.guilds.cache.first();
+      updateVoiceChannelServer(server);
+    }, 300000);
 
     // Message lors de la suppression du bot d'un serveur
     bot.on("guildDelete", async (guild) => {
@@ -251,7 +260,7 @@ module.exports = {
 };
 
 // Mise a jour du nombre de joueurs sur le serveur Minecraft
-async function updateVoiceChannel(server) {
+async function updateVoiceChannelMinecraft(server) {
   try {
     let channel = server.channels.cache.find((channel) =>
       channel.name.startsWith("👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒")
@@ -292,5 +301,48 @@ async function updateVoiceChannel(server) {
       });
   } catch (error) {
     console.error("Erreur lors de la mise à jour du salon vocal:", error);
+  }
+}
+
+// Mise à jour du nombre de personnes connectées sur le serveur
+async function updateVoiceChannelServer(server) {
+  let channel;
+  try {
+    // Mettre à jour le cache des membres
+    await server.members.fetch();
+
+    channel = server.channels.cache.find((channel) => 
+      channel.name.startsWith("丨𝐎n𝐋ine")
+    );
+
+    if (!channel) {
+      channel = await server.channels.create("丨𝐎n𝐋ine", {
+        type: "GUILD_VOICE",
+        permissionOverwrites: [
+          {
+            id: server.id,
+            deny: ["VIEW_CHANNEL"],
+          },
+        ],
+      });
+    }
+
+    const filteredMembers = server.members.cache.filter(member => 
+      ['online', 'dnd', 'idle'].includes(member.presence?.status) && !member.user.bot
+    );
+
+    const onlineMembers = filteredMembers.size;
+    const memberCount = server.members.cache.filter(member => !member.user.bot).size;
+
+    channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
+      .catch(error => {
+        console.error("Erreur lors de la mise à jour du nom du canal:", error);
+      });
+
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du salon vocal:", error);
+    if (channel) {
+      channel.setName(`丨𝐎n𝐋ine`).catch(err => console.error("Impossible de réinitialiser le nom du canal:", err));
+    }
   }
 }
