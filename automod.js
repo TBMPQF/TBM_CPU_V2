@@ -82,7 +82,7 @@ async function filterMessage(message) {
 
     const warning = await handleWarning(message.author, message.guild);
 
-    let description = `:anger:丨${message.author}丨**𝐀ttention à ton langage puceau.** :anger:\n**𝐍ombre d'avertissement(s) : \`${warning.warnings}\`**`;
+    let description = `:anger:丨${message.author}丨**𝐀ttention à ton language puceau.** :anger:\n**𝐍ombre d'avertissement(s) : \`${warning.warnings}\`**`;
     if (warning.warnings === 2) {
       description +=
         "\n\n:warning:丨𝐀ttention ! 𝐏lus qu'__une erreur__ et tu es __muté__ pour 3 jours.";

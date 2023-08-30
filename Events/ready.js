@@ -15,10 +15,6 @@ module.exports = {
   name: "ready",
   execute(bot, member) {
 
-    // Met à jour le message du vocal indiquant le nombre de personne en ligne sur le serveur actuellement
-    
-
-
     // Réinitialise le message de playlist pour la musique
     const serverId = '716810235985133568';
     const channelMusicId = '1136327173343559810';
@@ -76,6 +72,7 @@ module.exports = {
     //Interval pour mettre a jour le salon vocal Minecraft
     setInterval(async () => {
       const server = bot.guilds.cache.first();
+      checkMultipleStreamers(bot);
       updateVoiceChannelMinecraft(server);
     }, 60000);
     //Interval pour mettre a jour le salon vocal membre connecté
@@ -343,6 +340,92 @@ async function updateVoiceChannelServer(server) {
     console.error("Erreur lors de la mise à jour du salon vocal:", error);
     if (channel) {
       channel.setName(`丨𝐎n𝐋ine`).catch(err => console.error("Impossible de réinitialiser le nom du canal:", err));
+    }
+  }
+}
+
+// Envoie d'un message lorsque un streamer est en ligne
+const axios = require('axios');
+const clientId = '5lxy50s545q3eboj0uut8ntjpniryc'; // Remplacez par votre propre Client-ID
+const clientSecret = 'epybqvr2oc8hu2xtn3bwr1ijyz1f5g'; // Remplacez par votre propre Client Secret
+
+async function getTwitchAccessToken(clientId, clientSecret) {
+  try {
+    const response = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
+    return response.data.access_token;
+  } catch (error) {
+    console.error('Erreur lors de la récupération du token Twitch :', error);
+    return null;
+  }
+}
+
+let twitchHeaders;
+
+const streamers = {
+  'Cyqop': false,
+  'Whoony': false,
+  'Kaystorms': false,
+  'Navator_': false,
+  'MikixFr': false,
+};
+
+(async () => {
+  const accessToken = await getTwitchAccessToken(clientId, clientSecret);
+  if (accessToken) {
+    twitchHeaders = {
+      headers: {
+        'Client-ID': clientId,
+        'Authorization': `Bearer ${accessToken}`
+      }
+    };
+  } else {
+    console.error("Token d'accès non obtenu. Vérifiez vos identifiants.");
+  }
+})();
+
+async function getUserProfilePic(streamer) {
+  try {
+    const response = await axios.get(`https://api.twitch.tv/helix/users?login=${streamer}`, twitchHeaders);
+    return response.data.data[0].profile_image_url;
+  } catch (error) {
+    console.error(`Erreur lors de la récupération du profil Twitch : ${error}`);
+    return null;
+  }
+}
+
+async function checkMultipleStreamers(bot) {
+  for (const [streamer, isLive] of Object.entries(streamers)) {
+    try {
+      const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${streamer}`, twitchHeaders);
+      const streamData = response.data.data[0];
+      const channel = bot.channels.cache.get('812530008823955506');
+
+      if (streamData && !isLive) {
+        const streamTitle = streamData.title;
+        const profilePic = await getUserProfilePic(streamer);
+        const liveEmbed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setTitle(`${streamer} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
+          .setURL(`https://www.twitch.tv/${streamer}`)
+          .setDescription(`**${streamTitle}**\n\n𝐕ient lui donner de la force camarade. @here`)
+          .setThumbnail(profilePic)
+          .setTimestamp();
+
+        await channel.send({ embeds: [liveEmbed] });
+        streamers[streamer] = true;
+      } else if (!streamData && isLive) {
+        const offlineEmbed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne..`)
+          .setDescription('Mais il revient prochainement pour de nouvelles aventures !')
+          .setURL(`https://www.twitch.tv/${streamer}`)
+          .setTimestamp();
+        
+        await channel.send({ embeds: [offlineEmbed] });
+        streamers[streamer] = false;
+      }
+    } catch (error) {
+      console.error(`Error fetching Twitch API: ${error}`);
     }
   }
 }
