@@ -344,10 +344,10 @@ async function updateVoiceChannelServer(server) {
   }
 }
 
-// Envoie d'un message lorsque un streamer est en ligne
+// Envoie d'un message lorsqu'un streamer est en ligne
 const axios = require('axios');
-const clientId = '5lxy50s545q3eboj0uut8ntjpniryc'; // Remplacez par votre propre Client-ID
-const clientSecret = 'epybqvr2oc8hu2xtn3bwr1ijyz1f5g'; // Remplacez par votre propre Client Secret
+const clientId = config.twitch.clientId;
+const clientSecret = config.twitch.clientSecret;
 
 async function getTwitchAccessToken(clientId, clientSecret) {
   try {
@@ -363,10 +363,16 @@ let twitchHeaders;
 
 const streamers = {
   'Cyqop': false,
-  'Whoony': false,
   'Kaystorms': false,
   'Navator_': false,
   'MikixFr': false,
+};
+
+const roleId = '813793302162702426';  
+const discordUsernames = {
+  'Kaystorms': 'kaystorms',
+  'Navator_': 'navator_',
+  'MikixFr': 'mikixfr',
 };
 
 (async () => {
@@ -393,31 +399,48 @@ async function getUserProfilePic(streamer) {
   }
 }
 
+async function getGameName(gameId, twitchHeaders) {
+  try {
+    const response = await axios.get(`https://api.twitch.tv/helix/games?id=${gameId}`, twitchHeaders);
+    const gameData = response.data.data[0];
+    return gameData.name;
+  } catch (error) {
+    console.error('Erreur lors de la récupération du nom du jeu :', error);
+    return null;
+  }
+}
+
 async function checkMultipleStreamers(bot) {
   for (const [streamer, isLive] of Object.entries(streamers)) {
     try {
       const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${streamer}`, twitchHeaders);
       const streamData = response.data.data[0];
       const channel = bot.channels.cache.get('812530008823955506');
+      const discordUsername = discordUsernames[streamer];
+      const guild = bot.guilds.cache.get('716810235985133568');
+      const member = guild.members.cache.find(member => member.user.username === discordUsername);
 
       if (streamData && !isLive) {
         const streamTitle = streamData.title;
+        const gameName = await getGameName(streamData.game_id, twitchHeaders);
         const profilePic = await getUserProfilePic(streamer);
+        await member.roles.add(roleId);
         const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
           .setURL(`https://www.twitch.tv/${streamer}`)
-          .setDescription(`**${streamTitle}**\n\n𝐕ient lui donner de la force camarade. @here`)
+          .setDescription(`**${streamTitle}**\n丨${gameName}\n\n@here, 𝐕enez lui donner de la force.`)
           .setThumbnail(profilePic)
           .setTimestamp();
 
         await channel.send({ embeds: [liveEmbed] });
         streamers[streamer] = true;
       } else if (!streamData && isLive) {
+        await member.roles.remove(roleId);
         const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
-          .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne..`)
-          .setDescription('Mais il revient prochainement pour de nouvelles aventures !')
+          .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne.. :x:`)
+          .setDescription(`丨${gameName}\n\nMais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamer}`)
           .setTimestamp();
         
