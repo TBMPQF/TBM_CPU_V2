@@ -424,7 +424,9 @@ async function checkMultipleStreamers(bot) {
         const streamTitle = streamData.title;
         const gameName = await getGameName(streamData.game_id, twitchHeaders);
         const profilePic = await getUserProfilePic(streamer);
-        await member.roles.add(roleId);
+        if (member) {
+          await member.roles.add(roleId);
+        }
         const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
@@ -436,7 +438,9 @@ async function checkMultipleStreamers(bot) {
         await channel.send({ embeds: [liveEmbed] });
         streamers[streamer] = true;
       } else if (!streamData && isLive) {
-        await member.roles.remove(roleId);
+        if (member) {
+          await member.roles.remove(roleId);
+        }
         const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne.. :x:`)
