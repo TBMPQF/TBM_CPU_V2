@@ -444,7 +444,7 @@ async function checkMultipleStreamers(bot) {
         const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne.. :x:`)
-          .setDescription(`丨${gameName}\n\nMais il revient prochainement pour de nouvelles aventures !`)
+          .setDescription(`Mais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamer}`)
           .setTimestamp();
         
