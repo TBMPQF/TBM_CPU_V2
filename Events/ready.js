@@ -361,18 +361,22 @@ async function getTwitchAccessToken(clientId, clientSecret) {
 
 let twitchHeaders;
 
+// ID Twitch
 const streamers = {
   'Cyqop': false,
   'Kaystorms': false,
   'Navator_': false,
   'MikixFr': false,
+  'je_s_appel_groute': false,
 };
 
 const roleId = '813793302162702426';  
+// ID Discord
 const discordUsernames = {
   'Kaystorms': 'kaystorms',
   'Navator_': 'navator_',
   'MikixFr': 'mikixfr',
+  'je_s_appel_groute': 'je_s_appel_groute',
 };
 
 (async () => {
