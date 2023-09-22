@@ -363,11 +363,12 @@ let twitchHeaders;
 
 // ID Twitch
 const streamers = {
-  'Cyqop': false,
-  'Kaystorms': false,
-  'Navator_': false,
-  'MikixFr': false,
-  'je_s_appel_groute': false,
+  'Cyqop': { isLive: false, lastMessageId: null, startedAt: null },
+  'Kaystorms': { isLive: false, lastMessageId: null, startedAt: null },
+  'Navator_': { isLive: false, lastMessageId: null, startedAt: null },
+  'MikixFr': { isLive: false, lastMessageId: null, startedAt: null },
+  'je_s_appel_groute': { isLive: false, lastMessageId: null, startedAt: null },
+  'PtitMelanie45': { isLive: false, lastMessageId: null, startedAt: null },
 };
 
 const roleId = '813793302162702426';  
@@ -377,6 +378,7 @@ const discordUsernames = {
   'Navator_': 'navator_',
   'MikixFr': 'mikixfr',
   'je_s_appel_groute': 'je_s_appel_groute',
+  'PtitMelanie45' : 'ptitmelanie',
 };
 
 (async () => {
@@ -415,22 +417,23 @@ async function getGameName(gameId, twitchHeaders) {
 }
 
 async function checkMultipleStreamers(bot) {
-  for (const [streamer, isLive] of Object.entries(streamers)) {
+  const channel = bot.channels.cache.get('812530008823955506');
+  const guild = bot.guilds.cache.get('716810235985133568');
+
+  for (const [streamer, data] of Object.entries(streamers)) {
     try {
       const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${streamer}`, twitchHeaders);
       const streamData = response.data.data[0];
-      const channel = bot.channels.cache.get('812530008823955506');
       const discordUsername = discordUsernames[streamer];
-      const guild = bot.guilds.cache.get('716810235985133568');
-      const member = guild.members.cache.find(member => member.user.username === discordUsername);
+      const member = guild.members.cache.find(m => m.user.username === discordUsername);
 
-      if (streamData && !isLive) {
+      if (streamData && !data.isLive) {
         const streamTitle = streamData.title;
         const gameName = await getGameName(streamData.game_id, twitchHeaders);
         const profilePic = await getUserProfilePic(streamer);
-        if (member) {
-          await member.roles.add(roleId);
-        }
+
+        if (member) await member.roles.add(roleId);
+
         const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
@@ -439,22 +442,37 @@ async function checkMultipleStreamers(bot) {
           .setThumbnail(profilePic)
           .setTimestamp();
 
-        await channel.send({ embeds: [liveEmbed] });
-        streamers[streamer] = true;
-      } else if (!streamData && isLive) {
-        if (member) {
-          await member.roles.remove(roleId);
+        if (data.lastMessageId) {
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit({ embeds: [liveEmbed] });
+        } else {
+          const newMessage = await channel.send({ embeds: [liveEmbed] });
+          streamers[streamer].lastMessageId = newMessage.id;
         }
+
+        streamers[streamer].isLive = true;
+
+      } else if (!streamData && data.isLive) {
+        if (member) await member.roles.remove(roleId);
+
         const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne.. :x:`)
           .setDescription(`Mais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamer}`)
           .setTimestamp();
-        
-        await channel.send({ embeds: [offlineEmbed] });
-        streamers[streamer] = false;
+
+        if (data.lastMessageId) {
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit({ embeds: [offlineEmbed] });
+        } else {
+          const newMessage = await channel.send({ embeds: [offlineEmbed] });
+          streamers[streamer].lastMessageId = newMessage.id;
+        }
+
+        streamers[streamer].isLive = false;
       }
+
     } catch (error) {
       console.error(`Error fetching Twitch API: ${error}`);
     }

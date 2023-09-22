@@ -620,7 +620,6 @@ module.exports = {
       const serverConfig = await mongoose
         .model("ServerConfig")
         .findOne({ serverID: interaction.guild.id });
-      const StreamCordBOTId = "375805687529209857";
       const DisboardBOTId = "302050872383242240";
       const AdminRoleID = serverConfig.ticketAdminRoleID;
       await interaction.deferReply({ ephemeral: true });
@@ -629,7 +628,7 @@ module.exports = {
 
       let permissionOverwrites = [
         {
-          id: interaction.guild.roles.everyone,
+          id: interaction.guild.roles.everyone.id,
           deny: [PermissionsBitField.Flags.ViewChannel],
         },
         {
@@ -638,10 +637,6 @@ module.exports = {
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ViewChannel,
           ],
-        },
-        {
-          id: StreamCordBOTId,
-          deny: [PermissionsBitField.Flags.ViewChannel],
         },
         {
           id: DisboardBOTId,
