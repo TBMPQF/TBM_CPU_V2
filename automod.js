@@ -20,41 +20,19 @@ const forbiddenWords = new RegExp(
   "i"
 );
 
-const mutedRoleId = "839824802038677524";
-const roleIdToRemove = "811662602530717738";
+const MUTED_ROLE_ID = "839824802038677524";
+const ROLE_TO_REMOVE_ID = "811662602530717738";
+const LOG_CHANNEL_ID = "1136953262818459718";
 
-setInterval(async () => {
-  const now = new Date();
-  const warnings = await Warning.find({ muteEnd: { $lte: now } });
-
-  for (const warning of warnings) {
-    const guild = client.guilds.cache.get(warning.guildId);
-    const member = guild ? guild.members.cache.get(warning.userId) : null;
-
-    if (member) {
-      const muteRole = guild.roles.cache.get(mutedRoleId);
-      const roleToRemove = guild.roles.cache.get(roleIdToRemove);
-
-      if (muteRole) {
-        member.roles.remove(muteRole).catch(console.error);
-      }
-      if (roleToRemove) {
-        member.roles.add(roleToRemove).catch(console.error);
-      }
-
-      warning.warnings = 0;
-      warning.muteEnd = null;
-      await warning.save();
-    }
-  }
-}, 60 * 1000);
+const WARNING_MESSAGES = {
+  first: ":anger:丨{author}丨**𝐀ttention à ton language puceau.** :anger:\n**𝐍ombre d'avertissement(s) : `{warnings}`**",
+  second: "\n\n:warning:丨𝐀ttention ! 𝐏lus qu'__une erreur__ et tu es __muté__ pour 3 jours.",
+  muted: "丨**𝐁ien joué** {author}, tu as été mis en sourdine pour **`3`** jours en raison de **`3`** avertissements pour __langage inapproprié__.",
+  log: "丨{author} a été muté pour __3 jours__ après **`3`** avertissements pour **`langage inapproprié`**."
+};
 
 async function handleWarning(user, guild) {
-  let warning = await Warning.findOne({
-    userId: user.id,
-    guildId: guild.id,
-  });
-
+  let warning = await Warning.findOne({ userId: user.id, guildId: guild.id });
   if (!warning) {
     warning = new Warning({
       userId: user.id,
@@ -66,71 +44,55 @@ async function handleWarning(user, guild) {
   } else {
     warning.warnings += 1;
   }
-
   await warning.save();
-
   return warning;
 }
 
+async function muteMember(member, warning) {
+  const muteRole = member.guild.roles.cache.get(MUTED_ROLE_ID);
+  const roleToRemove = member.guild.roles.cache.get(ROLE_TO_REMOVE_ID);
+
+  if (muteRole) member.roles.add(muteRole).catch(console.error);
+  if (roleToRemove) member.roles.remove(roleToRemove).catch(console.error);
+
+  const muteEnd = new Date();
+  muteEnd.setDate(muteEnd.getDate() + 3);
+  warning.muteEnd = muteEnd;
+  await warning.save();
+}
+
+async function sendWarningMessage(channel, member, warning) {
+  let description = WARNING_MESSAGES.first.replace("{author}", member.toString()).replace("{warnings}", warning.warnings);
+  if (warning.warnings === 2) description += WARNING_MESSAGES.second;
+
+  const embed = new EmbedBuilder().setDescription(description).setColor("Red");
+  channel.send({ embeds: [embed] });
+}
+
 async function filterMessage(message) {
-  if (message.author.bot || !message.content) return;
+  if (message.author.bot || !message.content || !forbiddenWords.test(message.content)) return;
+  message.delete();
 
-  const messageContent = message.content;
+  const warning = await handleWarning(message.author, message.guild);
+  sendWarningMessage(message.channel, message.member, warning);
 
-  if (forbiddenWords.test(messageContent)) {
-    message.delete();
+  if (warning.warnings >= 3) {
+    muteMember(message.member, warning);
 
-    const warning = await handleWarning(message.author, message.guild);
+    const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
+    const logEmbed = new EmbedBuilder()
+      .setDescription(WARNING_MESSAGES.log.replace("{author}", message.author.tag))
+      .setColor("Red")
+      .setTimestamp();
 
-    let description = `:anger:丨${message.author}丨**𝐀ttention à ton language puceau.** :anger:\n**𝐍ombre d'avertissement(s) : \`${warning.warnings}\`**`;
-    if (warning.warnings === 2) {
-      description +=
-        "\n\n:warning:丨𝐀ttention ! 𝐏lus qu'__une erreur__ et tu es __muté__ pour 3 jours.";
-    }
+    logChannel.send({ embeds: [logEmbed] });
 
-    const embed = new EmbedBuilder()
-      .setDescription(description)
-      .setColor("Red");
+    const userEmbed = new EmbedBuilder()
+      .setDescription(WARNING_MESSAGES.muted.replace("{author}", message.author.tag))
+      .setColor("Red")
+      .setTimestamp();
 
-    message.channel.send({ embeds: [embed] });
-
-    if (warning.warnings >= 3) {
-      const muteRole = message.guild.roles.cache.get(mutedRoleId);
-      const roleToRemove = message.guild.roles.cache.get(roleIdToRemove);
-
-      if (muteRole) {
-        message.member.roles.add(muteRole).catch(console.error);
-        const muteEnd = new Date();
-        muteEnd.setDate(muteEnd.getDate() + 3);
-        warning.muteEnd = muteEnd;
-        await warning.save();
-      }
-
-      if (roleToRemove) {
-        message.member.roles.remove(roleToRemove).catch(console.error);
-      }
-
-      const logEmbed = new EmbedBuilder()
-        .setDescription(
-          `丨${message.author} a été muté pour __3 jours__ après **\`3\`** avertissements pour **\`langage inapproprié\`**.`
-        )
-        .setColor("Red")
-        .setTimestamp();
-
-      const logChannel = message.guild.channels.cache.get(
-        "1136953262818459718"
-      );
-      logChannel.send({ embeds: [logEmbed] });
-
-      const userEmbed = new EmbedBuilder()
-        .setDescription(
-          `丨**𝐁ien joué** ${message.author}, tu as été mis en sourdine pour **\`3\`** jours en raison de **\`3\`** avertissements pour __langage inapproprié__.`
-        )
-        .setColor("Red")
-        .setTimestamp();
-
-      message.channel.send({ embeds: [userEmbed] });
-    }
+    message.channel.send({ embeds: [userEmbed] });
   }
 }
 
