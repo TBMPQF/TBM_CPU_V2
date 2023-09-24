@@ -16,8 +16,9 @@ const userSchema = new mongoose.Schema({
   maxDaily: {type: Number, default: 0},
   malusDaily : {type: Number, default: 0},
   malusDuration : {type: Number, default: 0},
+  voiceTime: { type: Number, default: 0 },
   prestige: { type: Number, default: 0 },
-}, { versionKey: false });
+}, { versionKey: false, strict: true });
 
 userSchema.index({ userID: 1, serverID: 1 }, { unique: true });
 

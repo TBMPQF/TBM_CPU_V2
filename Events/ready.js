@@ -451,7 +451,7 @@ async function checkMultipleStreamers(bot) {
         }
 
         streamers[streamer].isLive = true;
-        streamers[streamer].startedAt = streamData.started_at; // Save the start time
+        streamers[streamer].startedAt = streamData.started_at;
 
       } else if (!streamData && data.isLive) {
         if (member) await member.roles.remove(roleId);
@@ -461,7 +461,7 @@ async function checkMultipleStreamers(bot) {
         const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setTitle(`${streamer} est malheureusement 𝐇ors 𝐋igne.. :x:`)
-          .setDescription(`Il était en live pendant ${streamDuration}. Mais il revient prochainement pour de nouvelles aventures !`)
+          .setDescription(`Il était en live pendant ${streamDuration}.\nMais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamer}`)
           .setTimestamp();
 
@@ -474,7 +474,7 @@ async function checkMultipleStreamers(bot) {
         }
 
         streamers[streamer].isLive = false;
-        streamers[streamer].startedAt = null; // Reset the start time for next time
+        streamers[streamer].startedAt = null;
 
       }
 
@@ -492,5 +492,5 @@ function getStreamDuration(startTime) {
   const hours = Math.floor(duration / 3600);
   const minutes = Math.floor((duration % 3600) / 60);
 
-  return `${hours}h ${minutes}m`;
+  return `\`${hours}heure(s)\` et \`${minutes}minute(s)\``;
 }
