@@ -5,7 +5,7 @@ const {
   EmbedBuilder,
   ChannelType,
   ButtonStyle,
-  Embed,
+  Embed, Discord
 } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("../config");
@@ -1340,6 +1340,41 @@ module.exports = {
         message.delete();
       }, 15000);
     }
+
+    // Bouton Vocal Time
+if (interaction.customId === "VOCAL_TIME_BUTTON") {
+  const userId = interaction.user.id;
+  const serverId = interaction.guild.id;
+
+  User.findOne({ userID: userId, serverID: serverId }, (err, user) => {
+    if (err) {
+      console.error(err);
+      interaction.reply({ content: "Une erreur est survenue lors de la récupération des données.", ephemeral: true });
+      return;
+    }
+
+    if (!user) {
+      interaction.reply({ content: "Impossible de trouver les données de l'utilisateur.", ephemeral: true });
+      return;
+    }
+
+    const totalSeconds = user.voiceTime / 1000;
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    let timeString = '';
+    if (days > 0) timeString += `\`${days}\` jours, `;
+    if (hours > 0) timeString += `\`${hours}\` heures, `;
+    if (minutes > 0) timeString += `\`${minutes}\` minutes et `;
+    if (seconds > 0 || timeString === '') timeString += `\`${seconds}\` secondes`;
+
+    timeString = timeString.trimEnd().replace(/,$/, '');
+
+    interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
+  });
+}
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;

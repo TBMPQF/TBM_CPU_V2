@@ -354,7 +354,7 @@ async function getTwitchAccessToken(clientId, clientSecret) {
     const response = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
     return response.data.access_token;
   } catch (error) {
-    console.error('Erreur lors de la récupération du token Twitch :', error);
+    console.error('[TWITCH] Erreur lors de la récupération du token Twitch :', error);
     return null;
   }
 }
@@ -369,6 +369,7 @@ const streamers = {
   'MikixFr': { isLive: false, lastMessageId: null, startedAt: null },
   'je_s_appel_groute': { isLive: false, lastMessageId: null, startedAt: null },
   'PtitMelanie45': { isLive: false, lastMessageId: null, startedAt: null },
+  'oklmyama': { isLive: false, lastMessageId: null, startedAt: null },
 };
 
 const roleId = '813793302162702426';  
@@ -379,6 +380,7 @@ const discordUsernames = {
   'MikixFr': 'mikixfr',
   'je_s_appel_groute': 'je_s_appel_groute',
   'PtitMelanie45' : 'ptitmelanie',
+  'oklmyama' : 'y4mauchiwa'
 };
 
 (async () => {
@@ -391,7 +393,7 @@ const discordUsernames = {
       }
     };
   } else {
-    console.error("Token d'accès non obtenu. Vérifiez vos identifiants.");
+    console.error("[TWITCH] Token d'accès non obtenu. Vérifiez vos identifiants.");
   }
 })();
 
@@ -479,7 +481,7 @@ async function checkMultipleStreamers(bot) {
       }
 
     } catch (error) {
-      console.error(`Error fetching Twitch API: ${error}`);
+      console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch : ${error}`);
     }
   }
 }
@@ -492,5 +494,5 @@ function getStreamDuration(startTime) {
   const hours = Math.floor(duration / 3600);
   const minutes = Math.floor((duration % 3600) / 60);
 
-  return `\`${hours}heure(s)\` et \`${minutes}minute(s)\``;
+  return `\`${hours} heure(s)\` et \`${minutes} minute(s)\``;
 }

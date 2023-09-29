@@ -53,7 +53,14 @@ module.exports = {
       new ButtonBuilder()
         .setCustomId("LADDER_BUTTON")
         .setEmoji("🏋🏼‍♂️")
-        .setLabel("Classement général")
+        .setLabel("Classement Général")
+        .setStyle(ButtonStyle.Primary)
+    )
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId("VOCAL_TIME_BUTTON")
+        .setEmoji("⏲")
+        .setLabel("Vocal Time")
         .setStyle(ButtonStyle.Primary)
     );
     const embed = new EmbedBuilder()
