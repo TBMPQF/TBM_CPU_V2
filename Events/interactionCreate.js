@@ -69,7 +69,7 @@ module.exports = {
 
       if (lastClaim && now.getTime() - lastClaim.getTime() < msIn47Hours) {
         const timeSinceLastClaim = now.getTime() - lastClaim.getTime();
-
+      
         if (timeSinceLastClaim < msIn23Hours) {
           const timeRemaining = msIn23Hours - timeSinceLastClaim;
           const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
@@ -79,20 +79,16 @@ module.exports = {
           const secondsRemaining = Math.floor(
             (timeRemaining % (60 * 1000)) / 1000
           );
-
+      
           let timeRemainingMessage = "";
           if (hoursRemaining > 0) {
-            timeRemainingMessage += `\`${hoursRemaining} heure(s)\`, `;
+            timeRemainingMessage += `\`${hoursRemaining} heure${hoursRemaining > 1 ? 's' : ''}\`, `;
           }
           if (minutesRemaining > 0) {
-            timeRemainingMessage += `\`${minutesRemaining
-              .toString()
-              .padStart(2, "0")} minute(s)\` et `;
+            timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
           }
-          timeRemainingMessage += `\`${secondsRemaining
-            .toString()
-            .padStart(2, "0")} seconde(s)\``;
-
+          timeRemainingMessage += `\`${secondsRemaining.toString().padStart(2, "0")} seconde${secondsRemaining > 1 ? 's' : ''}\``;
+      
           return interaction.reply({
             content: `丨𝐓u dois attendre encore ${timeRemainingMessage} avant de pouvoir récupérer ton __𝐃aily__ !`,
             ephemeral: true,
@@ -1341,40 +1337,42 @@ module.exports = {
       }, 15000);
     }
 
+    function padNumber(number) {
+      return number < 10 ? `0${number}` : number;
+    }
+    
     // Bouton Vocal Time
-if (interaction.customId === "VOCAL_TIME_BUTTON") {
-  const userId = interaction.user.id;
-  const serverId = interaction.guild.id;
-
-  User.findOne({ userID: userId, serverID: serverId }, (err, user) => {
-    if (err) {
-      console.error(err);
-      interaction.reply({ content: "Une erreur est survenue lors de la récupération des données.", ephemeral: true });
-      return;
+    if (interaction.customId === "VOCAL_TIME_BUTTON") {
+      const userId = interaction.user.id;
+      const serverId = interaction.guild.id;
+    
+      User.findOne({ userID: userId, serverID: serverId }, (err, user) => {
+        if (err) {
+          console.error(err);
+          interaction.reply({ content: "Une erreur est survenue lors de la récupération des données.", ephemeral: true });
+          return;
+        }
+    
+        if (!user) {
+          interaction.reply({ content: "Impossible de trouver les données de l'utilisateur.", ephemeral: true });
+          return;
+        }
+    
+        const totalSeconds = user.voiceTime / 1000;
+        const days = Math.floor(totalSeconds / (24 * 60 * 60));
+        const hours = padNumber(Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60)));
+        const minutes = padNumber(Math.floor((totalSeconds % (60 * 60)) / 60));
+        const seconds = padNumber(Math.floor(totalSeconds % 60));
+    
+        let timeString = '';
+        if (days > 0) timeString += `\`${days} jour${days > 1 ? 's' : ''}\`, `;
+        if (hours > 0 || days > 0) timeString += `\`${hours} heure${hours > 1 ? 's' : ''}\`, `;
+        if (minutes > 0 || hours > 0 || days > 0) timeString += `\`${minutes} minute${minutes > 1 ? 's' : ''}\` et `;
+        timeString += `\`${seconds} seconde${seconds > 1 ? 's' : ''}\``;
+    
+        interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
+      });
     }
-
-    if (!user) {
-      interaction.reply({ content: "Impossible de trouver les données de l'utilisateur.", ephemeral: true });
-      return;
-    }
-
-    const totalSeconds = user.voiceTime / 1000;
-    const days = Math.floor(totalSeconds / (24 * 60 * 60));
-    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
-    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-
-    let timeString = '';
-    if (days > 0) timeString += `\`${days}\` jours, `;
-    if (hours > 0) timeString += `\`${hours}\` heures, `;
-    if (minutes > 0) timeString += `\`${minutes}\` minutes et `;
-    if (seconds > 0 || timeString === '') timeString += `\`${seconds}\` secondes`;
-
-    timeString = timeString.trimEnd().replace(/,$/, '');
-
-    interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
-  });
-}
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
