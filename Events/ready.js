@@ -154,7 +154,9 @@ module.exports = {
     });
 
     // Message de connexion du bot
+    const myServerID = '716810235985133568';
     bot.guilds.cache.forEach((server) => {
+      if (server.id === myServerID) {
       ServerConfig.findOne({ serverID: server.id })
         .then((serverConfig) => {
           if (serverConfig) {
@@ -200,6 +202,7 @@ module.exports = {
             error
           );
         });
+      }
     });
 
     // Interval de messages pour le Daily.

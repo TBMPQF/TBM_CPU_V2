@@ -57,8 +57,17 @@ async function updateUserXP(member, userVoiceData, xpToAdd) {
   try {
       if (!member || !member.id) throw new Error('Membre ou membre.id est indéfini');
 
-      const user = await User.findOne({ userID: member.id, serverID: member.guild.id });
-      if (!user) throw new Error('Utilisateur non trouvé dans la base de données');
+      let user = await User.findOne({ userID: member.id, serverID: member.guild.id });
+      
+      if (!user) {
+        console.log(`Creating new user for ${member.id} in guild ${member.guild.id}`);
+        user = new User({
+          userID: member.id,
+          username: member.user.tag,
+          serverID: member.guild.id,
+          serverName: member.guild.name,
+        });
+      }
 
       const duration = Date.now() - userVoiceData.joinTimestamp;
       user.voiceTime = (user.voiceTime || 0) + duration;
