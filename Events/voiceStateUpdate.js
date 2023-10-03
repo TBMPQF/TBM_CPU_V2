@@ -88,7 +88,6 @@ async function distributeXP(bot) {
       
       const xpToAdd = Math.floor(Math.random() * (20 - 10 + 1) + 10);
       await updateUserXP(member, userVoiceData, xpToAdd);
-      console.log(`[VOICE XP] ${userVoiceData.username} a gagné ${xpToAdd} XP pour sa présence en vocal.`);
       
     } catch (error) {
       console.error(`Erreur lors de la distribution de XP à l'utilisateur ${userId}:`, error);

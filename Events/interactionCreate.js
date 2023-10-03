@@ -34,6 +34,7 @@ const {
   createAudioResource,
 } = require("@discordjs/voice");
 const { queue } = require("../models/queue");
+const SearchMateMessage = require('../models/apexSearchMate');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -1373,6 +1374,53 @@ module.exports = {
         interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
       });
     }
+
+    if (interaction.customId === "SEARCHMATE_APEX_BUTTON") {
+
+      const existingMessage = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
+      if (existingMessage) {
+          return interaction.reply({ content: 'Doucement, attends tranquillement! Prends toi un coca et respire.', ephemeral: true });
+      }
+  
+      // Embed message and role ping
+      const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
+      const embed = new EmbedBuilder()
+          .setTitle('Recherche de mate!')
+          .setDescription(`${interaction.user.username} recherche son mate pour Apex Legends!`)
+          .setColor('Red')
+          .setTimestamp();
+  
+      // Envoyer le message directement dans le canal
+      const sentMessage = await interaction.channel.send({ content: `${apexRole}`, embeds: [embed] });
+  
+      // Save to database
+      const newSearchMessage = new SearchMateMessage({
+          userId: interaction.user.id,
+          guildId: interaction.guild.id,
+          messageId: sentMessage.id,
+      });
+      await newSearchMessage.save();
+  
+      // Timer pour suppression avec décompte
+      let timeLeft = 3600; // temps en secondes
+      const timerId = setInterval(async () => {
+          timeLeft--;
+  
+          // Modifier le message pour mettre à jour le timer
+          embed.setDescription(`${interaction.user.username} recherche son mate pour Apex Legends!\nTemps restant: ${timeLeft} secondes`);
+          await sentMessage.edit({ embeds: [embed] });
+  
+          if (timeLeft <= 0) {
+              clearInterval(timerId);
+              try {
+                  await sentMessage.delete();
+                  await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
+              } catch (error) {
+                  console.error('Erreur lors de la suppression du message:', error);
+              }
+          }
+      }, 1000); // intervalle de mise à jour
+  }
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;

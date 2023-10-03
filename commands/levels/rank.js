@@ -59,7 +59,7 @@ module.exports = {
     .addComponents(
       new ButtonBuilder()
         .setCustomId("VOCAL_TIME_BUTTON")
-        .setEmoji("⏲")
+        .setEmoji("🎤")
         .setLabel("Vocal Time")
         .setStyle(ButtonStyle.Primary)
     );
