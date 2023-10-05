@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const User = require("../models/experience");
 const ServerConfig = require("../models/serverConfig");
-const rolesByLevel = require("../models/roleRewards"); 
 
 module.exports = {
   name: "guildMemberAdd",
@@ -18,9 +17,11 @@ module.exports = {
       (role) => role.name === welcomeRoleName
     );
     let welcomeRoleNoName = 'PAS DÉFINI';
+    let footerText = `${member.user.username} nouvelle recrue`;
     if (welcomeRole) {
       member.roles.add(welcomeRole);
-      welcomeRoleNoName = welcomeRole.name
+      welcomeRoleNoName = welcomeRole.name;
+      footerText = `${member.user.username} nouvelle recrue au rang de ${welcomeRoleNoName}`;
     }
 
     const newUser = new User({
@@ -33,7 +34,9 @@ module.exports = {
 
     try {
       await newUser.save();
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
 
     const reglementChannel = member.guild.channels.cache.get(
       serverConfig.reglementChannelID
@@ -49,16 +52,27 @@ module.exports = {
       ? rolesChannel.toString()
       : "PAS DÉFINI";
 
+    let description = `Bienvenue <@${member.user.id}>, tu viens de rejoindre **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !`;
+
+    if (reglementChannelString !== "PAS DÉFINI" && rolesChannelString !== "PAS DÉFINI") {
+        description += `\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes rôles ${rolesChannelString}.`;
+    } else {
+        if (reglementChannelString !== "PAS DÉFINI") {
+            description += `\nN'oublie pas de \`lire/valider\` le ${reglementChannelString}.`;
+        }
+        if (rolesChannelString !== "PAS DÉFINI") {
+            description += `\nN'oublie pas de prendre tes rôles ${rolesChannelString}.`;
+        }
+    }
+
     const WelcomeEmbed = new EmbedBuilder()
       .setTitle(`\`Oh! Un nouveau membre\` :warning:`)
       .setColor("#ffc394")
-      .setDescription(
-        `Bienvenue <@${member.user.id}>, tu viens de rejoindre **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes rôles ${rolesChannelString}.`
-      )
+      .setDescription(description)
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
       .setTimestamp()
       .setFooter({
-        text: `${member.user.username} nouvelle recrue au rang de ${welcomeRoleName}`,
+        text: footerText,
         iconURL: `${member.user.displayAvatarURL({
           dynamic: true,
           size: 512,

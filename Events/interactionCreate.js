@@ -1249,6 +1249,169 @@ module.exports = {
       }, 60000);
     }
 
+    //Bouton suppresion de données dans la bdd pour réinitialisé
+    if (interaction.customId === "LOG_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.logChannelID = null;
+      serverConfig.logChannelName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ des 𝐋og a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "ROLECHANNEL_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.roleChannelID = null;
+      serverConfig.roleChannelName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ des 𝐑ôles a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "REGL_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.reglementChannelID = null;
+      serverConfig.reglementChannelName = null;
+      serverConfig.roleReglementID = null;
+      serverConfig.roleReglementName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ ainsi que le __rôle__ du 𝐑èglement a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "WELCOME_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.welcomeChannelID = null;
+      serverConfig.welcomeChannelName = null;
+      serverConfig.roleWelcomeID = null;
+      serverConfig.roleWelcomeName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ ainsi que le __rôle__ de 𝐖elcome ont été réinitialisées avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "IMPLICATION_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.implicationsChannelID = null;
+      serverConfig.implicationsChannelName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ pour l\'𝐈mplications a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "SUGG_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.suggestionsChannelID = null;
+      serverConfig.suggestionsChannelName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ pour les 𝐒uggestions a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "DAILY_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.dailyChannelID = null;
+      serverConfig.dailyChannelName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ pour le 𝐃aily a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+    if (interaction.customId === "ROLES_DESAC") {
+
+    }
+    if (interaction.customId === "TICKET_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    
+      if (!serverConfig) {
+        console.error('ServerConfig not found for server ID:', serverID);
+        return;
+      }
+    
+      serverConfig.ticketChannelID = null;
+      serverConfig.ticketChannelName = null;
+      serverConfig.ticketAdminRoleID = null;
+      serverConfig.ticketAdminRoleName = null;
+    
+      try {
+        await serverConfig.save();
+        await interaction.reply('Le __salon__ et le __rôle admin__ pour les 𝐓icket a été réinitialisé avec succès !');
+      } catch (error) {
+        console.error('Error updating ServerConfig:', error);
+      }
+    }
+
     //Bouton supprimé suggestion
     if (interaction.customId === "SUPPSUGG") {
       const serverConfig = await ServerConfig.findOne({
@@ -1384,7 +1547,7 @@ module.exports = {
   
       const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
       const embed = new EmbedBuilder()
-          .setTitle('Recherche de mate!')
+          .setTitle('Recherche de mate ! ')
           .setDescription(`\n\`${interaction.user.username}\` recherche son mate pour **Apex Legends** !`)
           .setColor('Red')
           .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
@@ -1427,10 +1590,10 @@ module.exports = {
                 await sentMessage.delete();
                 await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
             } catch (error) {
-                console.error('Erreur lors de la suppression du message:', error);
+                console.error('[APEX SEARCH] Erreur lors de la suppression du message :', error);
             }
         }
-    }, 1000); // intervalle de mise à jour
+    }, 1000);
 }
 
     if (interaction.channel === null) return;

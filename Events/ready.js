@@ -132,7 +132,7 @@ module.exports = {
           .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).\n\`N'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\``
+            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).\n\`N'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n\n\n__Avec moi, ta communauté à accès__ :\n\n◟ Système d'expérience complet. (message + vocal)\n◟Système d'avertissement en cas de mot désobligeant.\n◟Système de ticket.\n◟Un système de suggestion.\n◟Et bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()

@@ -319,7 +319,7 @@ module.exports = {
             )
             .addComponents(
               new ButtonBuilder()
-                .setCustomId("ROLES_DESAC")
+                .setCustomId("TICKET_DESAC")
                 .setEmoji("❌")
                 .setLabel("Désactivé")
                 .setStyle(ButtonStyle.Danger)

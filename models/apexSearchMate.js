@@ -9,6 +9,6 @@ const searchMateMessageSchema = new mongoose.Schema({
         default: Date.now,
         index: { expires: '1h' },
     },
-});
+}, { versionKey: false, strict: true });
 
 module.exports = mongoose.model('SearchMateMessage', searchMateMessageSchema);

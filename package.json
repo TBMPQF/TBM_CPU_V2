@@ -24,6 +24,7 @@
     "fs": "^0.0.1-security",
     "mc-ping-updated": "^0.1.1",
     "minecraft-server-util": "^5.1.1",
+    "moment-timezone": "^0.5.43",
     "mongoose": "^6.7.1",
     "node": "^19.8.1",
     "node-fetch": "^2.6.9",

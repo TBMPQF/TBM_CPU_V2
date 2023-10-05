@@ -40,7 +40,7 @@ module.exports = {
         .setColor("Red")
         .setTitle(`――――――――∈ \`𝐀PEX 𝐋EGENDS\` ∋――――――――`)
         .setThumbnail("https://www.freepnglogos.com/uploads/apex-legends-logo-png/apex-game-png-logo-21.png")
-        .setDescription("salut")
+        .setDescription("Que tu sois un **Mirage** ou même un **Caustic** des plus toxique, tu peux être en galère pour trouver ton partenaire de rêve ! \n\n__Nous t'invitons__ tous à faire ta demande pour trouver celui qui te fera enfin passer diamant (ou.. l'inverse).")
         .setFooter({
           text: `Cordialement, l'équipe ${interaction.guild.name}`,
           iconURL: interaction.guild.iconURL(),
