@@ -15,7 +15,7 @@ module.exports = {
 
       xpDistributionInterval = setInterval(() => distributeXP(bot), 420000);
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de l\'état vocal:', error);
+      console.error('[XP VOCAL] Erreur lors de la mise à jour de l\'état vocal :', error);
     }
   }
 };
@@ -55,12 +55,11 @@ function initializeUserVoiceData(newState) {
 
 async function updateUserXP(member, userVoiceData, xpToAdd) {
   try {
-      if (!member || !member.id) throw new Error('Membre ou membre.id est indéfini');
+      if (!member || !member.id) throw new Error('[XP VOCAL] Membre ou membre.id est indéfini.');
 
       let user = await User.findOne({ userID: member.id, serverID: member.guild.id });
       
       if (!user) {
-        console.log(`Creating new user for ${member.id} in guild ${member.guild.id}`);
         user = new User({
           userID: member.id,
           username: member.user.tag,
@@ -76,7 +75,7 @@ async function updateUserXP(member, userVoiceData, xpToAdd) {
       await user.save();
       await levelUp(member, user, user.xp);
   } catch (error) {
-      console.error('Erreur lors de la mise à jour de l’XP utilisateur:', error);
+      console.error('[XP VOCAL] Erreur lors de la mise à jour de l’XP utilisateur :', error);
   }
 }
 
@@ -86,11 +85,11 @@ async function distributeXP(bot) {
       const member = await getMemberFromId(userId, userVoiceData.serverId, bot);
       if (!member || !member.voice.channel || member.voice.channel.members.size < 2) continue;
       
-      const xpToAdd = Math.floor(Math.random() * (20 - 10 + 1) + 10);
+      const xpToAdd = Math.floor(Math.random() * (12 - 10 + 1) + 5);
       await updateUserXP(member, userVoiceData, xpToAdd);
       
     } catch (error) {
-      console.error(`Erreur lors de la distribution de XP à l'utilisateur ${userId}:`, error);
+      console.error(`[XP VOCAL] Erreur lors de la distribution de XP à l'utilisateur ${userId} :`, error);
     }
   }
 }

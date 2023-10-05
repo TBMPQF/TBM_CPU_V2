@@ -679,7 +679,7 @@ module.exports = {
 
       if (!AdminRoleID) {
         await channel.send(
-          "⚠丨__**Attention**__丨Le rôle d'administrateur __n'est pas__ défini pour la gestion des tickets."
+          "⚠丨__**Attention**__丨Le rôle d'administrateur __n'est pas__ défini pour la gestion des tickets. Un modérateur vient d'être contacté pour traité le problème dans les plus bref délais, désolé de l'attente."
         );
       }
 
@@ -1249,7 +1249,7 @@ module.exports = {
       }, 60000);
     }
 
-    //Bouton suppresion de données dans la bdd pour réinitialisé
+    //Bouton suppresion de données dans la bdd pour la réinitialisé
     if (interaction.customId === "LOG_DESAC") {
       const serverID = interaction.guild.id;
       const serverConfig = await ServerConfig.findOne({ serverID: serverID });
@@ -1538,6 +1538,7 @@ module.exports = {
       });
     }
 
+    //Bouton lancer une recherche Apex Legends
     if (interaction.customId === "SEARCHMATE_APEX_BUTTON") {
 
       const existingMessage = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
@@ -1547,12 +1548,12 @@ module.exports = {
   
       const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
       const embed = new EmbedBuilder()
-          .setTitle('Recherche de mate ! ')
-          .setDescription(`\n\`${interaction.user.username}\` recherche son mate pour **Apex Legends** !`)
+          .setTitle('𝐑𝐄𝐂𝐇𝐄𝐑𝐂𝐇𝐄 𝐃𝐄 𝐌𝐀𝐓𝐄 !')
+          .setDescription(`${apexRole}\n\`${interaction.user.username}\` recherche son mate pour **Apex Legends** !`)
           .setColor('Red')
           .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
   
-      const sentMessage = await interaction.channel.send({ content: `${apexRole}`, embeds: [embed] });
+      const sentMessage = await interaction.reply({embeds: [embed]});
   
       const newSearchMessage = new SearchMateMessage({
           userId: interaction.user.id,
@@ -1594,7 +1595,44 @@ module.exports = {
             }
         }
     }, 1000);
-}
+    }
+
+    //Bouton pour crée un vocal pour Apex Legends
+    const userChannels = new Map();
+    if (interaction.customId === "OPENVOC_APEX_BUTTON") {
+      const parentChannel = interaction.channel;
+
+      if (userChannels.has(interaction.user.id)) {
+        return await interaction.reply({
+          content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
+          ephemeral: true,
+        });
+      }
+
+      let permissionOverwrites = [
+          {
+              id: interaction.guild.roles.everyone.id,
+              allow: [PermissionsBitField.Flags.ViewChannel],
+          }
+      ];
+
+      try {
+          let channel = await interaction.guild.channels.create({
+              name: `丨${interaction.user.username}ᴷᴼᴿᴾ`,
+              parent: parentChannel.parentId,
+              type: ChannelType.GuildVoice,
+              userLimit: 3,
+              permissionOverwrites: permissionOverwrites,
+          });
+
+          userChannels.set(interaction.user.id, channel);
+
+          await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', ephemeral: true });
+      } catch (error) {
+          console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
+          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
+      }
+    }
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
