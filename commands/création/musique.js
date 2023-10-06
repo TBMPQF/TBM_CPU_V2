@@ -49,7 +49,7 @@ module.exports = {
     const RoleEmbed = new EmbedBuilder()
       .setColor("Purple")
       .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
-      .setThumbnail("https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png")
+      .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
       .setDescription(playlistText)
       .setFooter({
         text: `Cordialement, l'équipe ${interaction.guild.name}`,

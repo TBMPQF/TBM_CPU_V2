@@ -40,7 +40,7 @@ module.exports = {
         .setColor("Red")
         .setTitle(`――――――――∈ \`𝐀PEX 𝐋EGENDS\` ∋――――――――`)
         .setThumbnail("https://www.freepnglogos.com/uploads/apex-legends-logo-png/apex-game-png-logo-21.png")
-        .setDescription("Que tu sois un **Mirage** ou même un **Caustic** des plus toxique, tu peux être en galère pour trouver ton partenaire de rêve ! \n\n__Nous t'invitons__ tous à faire ta demande pour trouver celui qui te fera enfin passer diamant (ou.. l'inverse).\n\nTu peux également crée directement ton salon vocal pour que tes amies te rejoignent. :last_quarter_moon_with_face:\n\n◟Pssst tu peux aussi voir tes statistiques en nous **__répondant__** ta plateforme -> **PC**, **XBOX**, **PLAY** suivis de ton pseudo IG \`(exemple : PC, TBMPQF)\`")
+        .setDescription("Que tu sois un **Mirage** ou même un **Caustic** des plus toxique, tu peux être en galère pour trouver ton partenaire de rêve ! \n\n__Nous t'invitons__ tous à faire ta demande pour trouver celui qui te fera enfin passer diamant (ou.. l'inverse).\n\nTu peux également créer directement ton salon vocal pour que tes ami(e)s te rejoignent. :last_quarter_moon_with_face:\n\n◟Pssst tu peux aussi voir tes statistiques en nous **__répondant__** ta plateforme -> **PC**, **XBOX**, **PLAY** suivis de ton pseudo IG \`(exemple : PC, TBMPQF)\`")
         .setFooter({
           text: `Cordialement, l'équipe ${interaction.guild.name}`,
           iconURL: interaction.guild.iconURL(),

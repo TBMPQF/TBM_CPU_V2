@@ -1,4 +1,4 @@
-const { ActivityType, EmbedBuilder } = require("discord.js");
+const { ActivityType, EmbedBuilder, ChannelType } = require("discord.js");
 const Discord = require("discord.js");
 const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
@@ -10,10 +10,81 @@ const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
 const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 const Music = require("../models/music")
 const queue = require('../models/queue')
+const SearchMateMessage = require('../models/apexSearchMate');
+const userChannels = require('../models/userChannels');
 
 module.exports = {
   name: "ready",
   execute(bot, member) {
+    //Gestion qui supprime le vocal lorsqu'il tombe à 0 utilisateurs
+    const createdVoiceCategoryID = '716810236417278034';
+    bot.on('voiceStateUpdate', (oldState, newState) => {
+      if (oldState.channel && oldState.channel.members.size === 0) {
+          const voiceChannel = oldState.channel;
+  
+          if (voiceChannel.parentId === createdVoiceCategoryID) {
+              for (let [userId, userChannel] of userChannels) {
+                  if (userChannel.id === voiceChannel.id) {
+                      voiceChannel.delete('Channel is empty')
+                      .then(deletedChannel => {
+                          userChannels.delete(userId);
+                      })
+                      .catch(err => {
+                          console.log('Error while trying to delete channel:', err);
+                      });
+  
+                      break;
+                  }
+              }
+          }
+      }
+  });
+
+    //Lecture de fermeture d'un salon vocal pour permettre d'en reouvrir un pour Apex
+    bot.on('channelDelete', channel => {
+      if (ChannelType.GuildVoice) {
+        for (let [userId, userChannel] of userChannels) {
+          if (userChannel.id === channel.id) {
+            userChannels.delete(userId);
+            break;
+          }
+        }
+      }
+    });
+
+    //Suppresion du message en BDD ainsi que de la recherche Apex Mate lors d'un démarrage en cas de crash
+    (async () => {
+      try {
+        const ongoingSearches = await SearchMateMessage.find({});
+    
+        for (const search of ongoingSearches) {
+          const guild = bot.guilds.cache.get(search.guildId);
+          if (guild) {
+            const channel = guild.channels.cache.get(search.channelId);
+            if (channel) {
+              try {
+                const messageToDelete = await channel.messages.fetch(search.messageId);
+                if (messageToDelete) {
+                  await messageToDelete.delete();
+                } else {
+                  console.warn('[APEX SEARCH] Message pas trouvé.');
+                }
+              } catch (err) {
+                console.error('[APEX SEARCH] Erreur lors de la suppression du message:', err);
+              }
+              
+              try {
+                await SearchMateMessage.deleteOne({ _id: search._id });
+              } catch (err) {
+                console.error('[APEX SEARCH] Erreur lors de la suppression en BDD :', err);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[APEX SEARCH] Erreur lors de l\'event :', err);
+      }
+    })();
 
     // Réinitialise le message de playlist pour la musique
     const serverId = '716810235985133568';
@@ -31,8 +102,8 @@ module.exports = {
           const newEmbed = new EmbedBuilder()
             .setColor("Purple")
             .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
-            .setThumbnail("https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png")
-            .setDescription("**丨𝐋a playlist est vide pour le moment丨**")
+            .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
+            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préféré__ pour l'ajouté dans la playlist.")
             .setFooter({
               text: `Cordialement, l'équipe ${bot.guilds.cache.get(serverId).name}`,
               iconURL: bot.guilds.cache.get(serverId).iconURL(),

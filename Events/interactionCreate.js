@@ -35,6 +35,7 @@ const {
 } = require("@discordjs/voice");
 const { queue } = require("../models/queue");
 const SearchMateMessage = require('../models/apexSearchMate');
+const userChannels = require('../models/userChannels');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -1553,14 +1554,18 @@ module.exports = {
           .setColor('Red')
           .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
   
-      const sentMessage = await interaction.reply({embeds: [embed]});
-  
-      const newSearchMessage = new SearchMateMessage({
-          userId: interaction.user.id,
-          guildId: interaction.guild.id,
-          messageId: sentMessage.id,
-      });
-      await newSearchMessage.save();
+          const sentMessageResponse = await interaction.reply({embeds: [embed]});
+          const sentMessageId = sentMessageResponse instanceof require('discord.js').Message ? 
+                                 sentMessageResponse.id : 
+                                 (await interaction.fetchReply()).id;
+          
+          const newSearchMessage = new SearchMateMessage({
+              userId: interaction.user.id,
+              guildId: interaction.guild.id,
+              channelId: interaction.channel.id,
+              messageId: sentMessageId,
+          });
+          await newSearchMessage.save();
   
     let timeLeft = 60 * 60;
 
@@ -1594,11 +1599,10 @@ module.exports = {
                 console.error('[APEX SEARCH] Erreur lors de la suppression du message :', error);
             }
         }
-    }, 1000);
+    }, 60000);
     }
 
     //Bouton pour crée un vocal pour Apex Legends
-    const userChannels = new Map();
     if (interaction.customId === "OPENVOC_APEX_BUTTON") {
       const parentChannel = interaction.channel;
 
@@ -1632,6 +1636,11 @@ module.exports = {
           console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
           await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
       }
+    }
+
+    //Bouton statistique d'Apex Legends
+    if (interaction.customId === "STATS_APEX_BUTTON") {
+
     }
 
     if (interaction.channel === null) return;
