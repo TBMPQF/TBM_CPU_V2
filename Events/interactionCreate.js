@@ -13,6 +13,7 @@ const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const interactionSetConfig = require("./interactionsetconfig");
 const ServerRole = require("../models/serverRole");
+const axios = require('axios');
 const {
   logRequestMessageIds,
   welcomeRequestMessageIds,
@@ -36,6 +37,7 @@ const {
 const { queue } = require("../models/queue");
 const SearchMateMessage = require('../models/apexSearchMate');
 const userChannels = require('../models/userChannels');
+const ApexStats = require('../models/apexStats');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -1639,9 +1641,55 @@ module.exports = {
     }
 
     //Bouton statistique d'Apex Legends
-    if (interaction.customId === "STATS_APEX_BUTTON") {
+    if (interaction.customId === 'STATS_APEX_BUTTON') {
+      try {
+          const discordId = interaction.user.id;
+  
+          let user = await ApexStats.findOne({ discordId: discordId });
+  
+          if (!user) {
+              await interaction.reply({ content: "Veuillez fournir votre plateforme et identifiant de jeu...", ephemeral: true });
+              const filter = m => m.author.id === discordId;
+              const collector = interaction.channel.createMessageCollector({ filter, time: 60000, max: 1 });
+  
+              collector.on('collect', async (message) => {
+                  const [platform, gameUsername] = message.content.split(',').map(item => item.trim());
+                  
+                  if (!platform || !gameUsername) {
+                      return interaction.followUp({ content: 'Les données fournies sont incorrectes. Assurez-vous de fournir la plateforme et l’identifiant de jeu.', ephemeral: true });
+                  }
+  
+                  const server = message.guild.name; 
+                  
+                  user = new ApexStats({ discordId, username: interaction.user.username, server, platform, gameUsername });
+                  await user.save();
+  
+                  interaction.followUp({ content: `Vos informations ont été enregistrées ! Plateforme: ${platform}, Identifiant de jeu: ${gameUsername}` });
+              });
+  
+              collector.on('end', (collected) => {
+                  if (collected.size === 0) {
+                      interaction.followUp({ content: 'Temps écoulé. Veuillez cliquer à nouveau sur le bouton pour réessayer.', ephemeral: true });
+                  }
+              });
+          } else {
+            const response = await axios.get(`https://api.apexlegendsstatus.com/api/users/${user.platform}/${user.gameUsername}`, {
+              headers: {
+                  'Authorization': 'b21e374e-07ce-48ea-af9d-39de6e27e62c'
+              }
+          });
 
-    }
+          const stats = response.data.stats;
+          await interaction.reply({ content: `Vos statistiques: ${JSON.stringify(stats)}`, ephemeral: true });
+      }
+      } catch (error) {
+          console.error('Erreur lors de la récupération des données utilisateur:', error);
+          await interaction.reply({ content: "**Pour l'instant, je rencontre des erreurs lors de la récupération de vos informations. Réessaye plus tard... Ou demain.**", ephemeral: true });
+      }
+  }
+
+  
+  
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;

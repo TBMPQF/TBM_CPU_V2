@@ -103,7 +103,7 @@ module.exports = {
             .setColor("Purple")
             .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
             .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préféré__ pour l'ajouté dans la playlist.")
+            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist.")
             .setFooter({
               text: `Cordialement, l'équipe ${bot.guilds.cache.get(serverId).name}`,
               iconURL: bot.guilds.cache.get(serverId).iconURL(),
