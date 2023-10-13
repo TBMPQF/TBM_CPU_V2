@@ -1604,21 +1604,27 @@ module.exports = {
     //Bouton pour crée un vocal pour Apex Legends
     if (interaction.customId === "OPENVOC_APEX_BUTTON") {
       const parentChannel = interaction.channel;
-
+  
       if (userChannels.has(interaction.user.id)) {
-        return await interaction.reply({
-          content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
-          ephemeral: true,
-        });
+          return await interaction.reply({
+              content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
+              ephemeral: true,
+          });
       }
-
+  
+      const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
+  
       let permissionOverwrites = [
           {
               id: interaction.guild.roles.everyone.id,
-              allow: [PermissionsBitField.Flags.ViewChannel],
+              deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Connect],
+          },
+          {
+              id: apexRole.id,
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Connect],
           }
       ];
-
+  
       try {
           let channel = await interaction.guild.channels.create({
               name: `丨${interaction.user.username}ᴷᴼᴿᴾ`,
@@ -1627,15 +1633,15 @@ module.exports = {
               userLimit: 3,
               permissionOverwrites: permissionOverwrites,
           });
-
+  
           userChannels.set(interaction.user.id, channel);
-
+  
           await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', ephemeral: true });
       } catch (error) {
           console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
           await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
       }
-    }
+  }
 
     //Bouton statistique d'Apex Legends
     if (interaction.customId === 'STATS_APEX_BUTTON') {
