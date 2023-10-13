@@ -7,8 +7,8 @@ const searchMateMessageSchema = new mongoose.Schema({
     messageId: String,
     expireAt: {
         type: Date,
-        default: Date.now,
-        index: { expires: '1h' },
+        default: () => Date.now() + 30*60*1000,
+        index: { expires: '30m' }, 
     },
 }, { versionKey: false, strict: true });
 

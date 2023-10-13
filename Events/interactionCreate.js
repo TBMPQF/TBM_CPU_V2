@@ -1556,54 +1556,51 @@ module.exports = {
           .setColor('Red')
           .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
   
-          const sentMessageResponse = await interaction.reply({embeds: [embed]});
-          const sentMessageId = sentMessageResponse instanceof require('discord.js').Message ? 
-                                 sentMessageResponse.id : 
-                                 (await interaction.fetchReply()).id;
-          
-          const newSearchMessage = new SearchMateMessage({
-              userId: interaction.user.id,
-              guildId: interaction.guild.id,
-              channelId: interaction.channel.id,
-              messageId: sentMessageId,
-          });
-          await newSearchMessage.save();
+      const sentMessageResponse = await interaction.reply({embeds: [embed]});
+      const sentMessage = sentMessageResponse instanceof require('discord.js').Message ? 
+                          sentMessageResponse : 
+                          await interaction.fetchReply();
   
-    let timeLeft = 60 * 60;
-
-    const formatTime = (time) => {
-      const hours = Math.floor(time / 3600);
-      const minutes = Math.floor((time % 3600) / 60);
-      const seconds = time % 60;
-      return `${
-          hours ? hours.toString().padStart(2, '0') + ' heure' + (hours > 1 ? 's' : '') + ' ' : ''
-      }${
-          minutes ? minutes.toString().padStart(2, '0') + ' minute' + (minutes > 1 ? 's' : '') + ' ' : ''
-      }${
-          (seconds || (minutes && seconds === 0) || (!hours && !minutes)) ? seconds.toString().padStart(2, '0') + ' seconde' + (seconds === 1 ? '' : 's') : ''
-      }`.trim();
-  };
-
-    const timerId = setInterval(async () => {
-        timeLeft--;
-
-        embed.setFooter({text : `Temps restant : ${formatTime(timeLeft)}`,
-        iconURL: interaction.guild.iconURL(),
+      const sentMessageId = sentMessage.id;
+      
+      const newSearchMessage = new SearchMateMessage({
+          userId: interaction.user.id,
+          guildId: interaction.guild.id,
+          channelId: interaction.channel.id,
+          messageId: sentMessageId,
       });
-        await sentMessage.edit({ embeds: [embed] });
-
-        if (timeLeft <= 0) {
-            clearInterval(timerId);
-            try {
-                await sentMessage.delete();
-                await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
-            } catch (error) {
-                console.error('[APEX SEARCH] Erreur lors de la suppression du message :', error);
-            }
-        }
-    }, 60000);
-    }
-
+      await newSearchMessage.save();
+  
+      let timeLeft = 30 * 60;
+  
+      const formatTime = (time) => {
+        const minutes = Math.floor(time / 60);
+    
+        if (minutes === 0) return '𝐐uelques secondes...';
+    
+        return `${minutes.toString().padStart(2, '0')} minute${minutes > 1 ? 's' : ''}`;
+    };
+  
+      const timerId = setInterval(async () => {
+          timeLeft -= 60;
+  
+          embed.setFooter({
+              text: `Temps restant : ${formatTime(timeLeft)}`,
+              iconURL: interaction.guild.iconURL(),
+          });
+          await sentMessage.edit({ embeds: [embed] });
+  
+          if (timeLeft <= 0) {
+              clearInterval(timerId);
+              try {
+                  await sentMessage.delete();
+                  await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
+              } catch (error) {
+                  console.error('[APEX SEARCH] Erreur lors de la suppression du message :', error);
+              }
+          }
+      }, 60000);
+  }
     //Bouton pour crée un vocal pour Apex Legends
     if (interaction.customId === "OPENVOC_APEX_BUTTON") {
       const parentChannel = interaction.channel;
