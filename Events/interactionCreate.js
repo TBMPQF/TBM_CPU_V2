@@ -1689,19 +1689,29 @@ module.exports = {
 
               const response = await axios.get(API_URL);
               const stats = response.data;
-              console.log(JSON.stringify(stats, null, 2));
 
               const playerName = stats.global.name;
               const level = stats.global.level;
-              const totalKills = stats.legends.all.kills
-              const totalMatches = stats.legends.all.matches
+              const selected_legend = stats.legends.selected.LegendName;
 
-              const formattedStats = `**Statistiques d'Apex Legends pour ${playerName} :**
-              - **Niveau :** ${level}
-              - **Total de kills :** ${totalKills}
-              - **Parties jouées :** ${totalMatches}`;
+              let kills_on_selected = "N/A";
+              if(stats.legends.all[selected_legend] && stats.legends.all[selected_legend].stats && stats.legends.all[selected_legend].stats.length > 0) {
+                kills_on_selected = stats.legends.all[selected_legend].stats[0].value;
+              }
 
-              await interaction.reply({ content: formattedStats, ephemeral: true });
+              const rank_name = stats.global.rank.rankName;
+              const rank_div = stats.global.rank.rankDiv;
+              const rank_score = stats.global.rank.rankScore;
+              const legend_banner = stats.legends.selected.ImgAssets.banner;
+
+              const Stats_Apex_Embed = new EmbedBuilder()
+                  .setTitle(`◟__${playerName}__`)
+                  .setDescription(`\n\n__𝐍iveaux__ : ${level}\n__𝐏ersonnage sélectionné__ : ${selected_legend}\n__𝐊ills avec ${selected_legend}__ : ${kills_on_selected}\n\n__𝐑ang__ : ${rank_name}${rank_div}\n__𝐒core de rang__ : ${rank_score}`)
+                  .setImage(legend_banner)
+                  .setColor('Red');
+
+              await interaction.reply({embeds: [Stats_Apex_Embed], ephemeral: true });
+
           }
       } catch (error) {
           console.error('Erreur lors de la récupération des données utilisateur:', error);
