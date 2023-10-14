@@ -36,7 +36,7 @@ const {
 } = require("@discordjs/voice");
 const { queue } = require("../models/queue");
 const SearchMateMessage = require('../models/apexSearchMate');
-const userChannels = require('../models/userChannels');
+const VocalChannel = require('../models/apexVocal');
 const ApexStats = require('../models/apexStats');
 
 mongoose.connect(config.mongourl, {
@@ -86,10 +86,10 @@ module.exports = {
       
           let timeRemainingMessage = "";
           if (hoursRemaining > 0) {
-            timeRemainingMessage += `\`${hoursRemaining} heure${hoursRemaining > 1 ? 's' : ''}\`, `;
-          }
-          if (minutesRemaining > 0) {
-            timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
+              timeRemainingMessage += `\`${hoursRemaining} heure${hoursRemaining > 1 ? 's' : ''}\`, `;
+              timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
+          } else if (minutesRemaining > 0) {
+              timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
           }
           timeRemainingMessage += `\`${secondsRemaining.toString().padStart(2, "0")} seconde${secondsRemaining > 1 ? 's' : ''}\``;
       
@@ -1604,16 +1604,18 @@ module.exports = {
     //Bouton pour crée un vocal pour Apex Legends
     if (interaction.customId === "OPENVOC_APEX_BUTTON") {
       const parentChannel = interaction.channel;
-  
-      if (userChannels.has(interaction.user.id)) {
-          return await interaction.reply({
-              content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
-              ephemeral: true,
-          });
+    
+      const existingChannel = await VocalChannel.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
+
+      if (existingChannel) {
+        return await interaction.reply({
+          content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
+          ephemeral: true,
+        });
       }
-  
+    
       const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
-  
+    
       let permissionOverwrites = [
           {
               id: interaction.guild.roles.everyone.id,
@@ -1624,7 +1626,7 @@ module.exports = {
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Connect],
           }
       ];
-  
+    
       try {
           let channel = await interaction.guild.channels.create({
               name: `丨${interaction.user.username}ᴷᴼᴿᴾ`,
@@ -1633,15 +1635,20 @@ module.exports = {
               userLimit: 3,
               permissionOverwrites: permissionOverwrites,
           });
-  
-          userChannels.set(interaction.user.id, channel);
-  
+    
+          const newVocalChannel = new VocalChannel({
+              userId: interaction.user.id,
+              guildId: interaction.guild.id,
+              channelId: channel.id
+          });
+          await newVocalChannel.save();
+    
           await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', ephemeral: true });
       } catch (error) {
           console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
           await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
       }
-  }
+    }
 
     //Bouton statistique d'Apex Legends
     if (interaction.customId === 'STATS_APEX_BUTTON') {

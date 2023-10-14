@@ -12,42 +12,46 @@ const Music = require("../models/music")
 const queue = require('../models/queue')
 const SearchMateMessage = require('../models/apexSearchMate');
 const userChannels = require('../models/userChannels');
+const VocalChannel = require('../models/apexVocal');
 
 module.exports = {
   name: "ready",
   execute(bot, member) {
-    //Gestion qui supprime le vocal lorsqu'il tombe à 0 utilisateurs
+    //Gestion qui supprime le vocal d'Apex lorsqu'il tombe à 0 utilisateurs
     const createdVoiceCategoryID = '716810236417278034';
-    bot.on('voiceStateUpdate', (oldState, newState) => {
+    bot.on('voiceStateUpdate', async (oldState, newState) => {
       if (oldState.channel && oldState.channel.members.size === 0) {
-          const voiceChannel = oldState.channel;
-  
-          if (voiceChannel.parentId === createdVoiceCategoryID) {
-              for (let [userId, userChannel] of userChannels) {
-                  if (userChannel.id === voiceChannel.id) {
-                      voiceChannel.delete('Channel is empty')
-                      .then(deletedChannel => {
-                          userChannels.delete(userId);
-                      })
-                      .catch(err => {
-                          console.log('Error while trying to delete channel:', err);
-                      });
-  
-                      break;
-                  }
-              }
+        const voiceChannel = oldState.channel;
+    
+        if (voiceChannel.parentId === createdVoiceCategoryID) {
+          const dbEntry = await VocalChannel.findOne({ channelId: voiceChannel.id });
+    
+          if (dbEntry) {
+            try {
+              await voiceChannel.delete('Channel is empty');
+              await VocalChannel.deleteOne({ channelId: voiceChannel.id });
+            } catch (error) {
+              console.log('[APEX VOCAL] Erreur lors de la suppression du salon vocal :', error);
+            }
           }
+        }
       }
-  });
+    });
 
     //Lecture de fermeture d'un salon vocal pour permettre d'en reouvrir un pour Apex
-    bot.on('channelDelete', channel => {
+    bot.on('channelDelete', async channel => {
       if (ChannelType.GuildVoice) {
         for (let [userId, userChannel] of userChannels) {
           if (userChannel.id === channel.id) {
             userChannels.delete(userId);
             break;
           }
+        }
+    
+        try {
+          await VocalChannel.deleteOne({ channelId: channel.id });
+        } catch (error) {
+          console.error('[APEX VOCAL] Erreur lors de la suppression de la référence du canal dans la base de données:', error);
         }
       }
     });
@@ -480,7 +484,6 @@ async function getUserProfilePic(streamer) {
     return null;
   }
 }
-
 async function getGameName(gameId, twitchHeaders) {
   try {
     const response = await axios.get(`https://api.twitch.tv/helix/games?id=${gameId}`, twitchHeaders);
@@ -491,7 +494,6 @@ async function getGameName(gameId, twitchHeaders) {
     return null;
   }
 }
-
 async function checkMultipleStreamers(bot) {
   const channel = bot.channels.cache.get('812530008823955506');
   const guild = bot.guilds.cache.get('716810235985133568');
@@ -559,7 +561,6 @@ async function checkMultipleStreamers(bot) {
     }
   }
 }
-
 function getStreamDuration(startTime) {
   const now = new Date();
   const start = new Date(startTime);
