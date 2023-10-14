@@ -1693,31 +1693,85 @@ module.exports = {
               const playerName = stats.global.name;
               const level = stats.global.level;
               const selected_legend = stats.legends.selected.LegendName;
-
-              let kills_on_selected = "N/A";
-              if(stats.legends.all[selected_legend] && stats.legends.all[selected_legend].stats && stats.legends.all[selected_legend].stats.length > 0) {
-                kills_on_selected = stats.legends.all[selected_legend].stats[0].value;
-              }
-
               const rank_name = stats.global.rank.rankName;
               const rank_div = stats.global.rank.rankDiv;
               const rank_score = stats.global.rank.rankScore;
               const legend_banner = stats.legends.selected.ImgAssets.banner;
+              const rankThumbnail = getRankThumbnail(rank_name);
+              const prestigeLevel = stats.global.levelPrestige;
+              let levelWithStars = `${level}`;
 
-              const Stats_Apex_Embed = new EmbedBuilder()
-                  .setTitle(`◟__${playerName}__`)
-                  .setDescription(`\n\n__𝐍iveaux__ : ${level}\n__𝐏ersonnage sélectionné__ : ${selected_legend}\n__𝐊ills avec ${selected_legend}__ : ${kills_on_selected}\n\n__𝐑ang__ : ${rank_name}${rank_div}\n__𝐒core de rang__ : ${rank_score}`)
-                  .setImage(legend_banner)
-                  .setColor('Red');
+              if (prestigeLevel > 0) {
+                  const stars = '⭐'.repeat(prestigeLevel);
+                  levelWithStars = `${level} ${stars}`;
+              }
+              let selectedLegendName = stats.legends.selected.LegendName;
 
-              await interaction.reply({embeds: [Stats_Apex_Embed], ephemeral: true });
-
+              if (stats.legends.all[selectedLegendName] && stats.legends.all[selectedLegendName].data) {
+                const trackers = stats.legends.all[selectedLegendName].data;
+                
+                let trackerInfo = "";
+                for (let i = 0; i < trackers.length && i < 3; i++) {
+                    let tracker = trackers[i];
+                    if (tracker && tracker.name && tracker.value) {
+                        let formattedValue = formatNumberWithSpaces(tracker.value);
+                        let stylizedName = stylizeFirstLetter(tracker.name);
+                        trackerInfo += `**${stylizedName}** : \`${formattedValue}\`\n`;
+                    }
+                }
+                
+                const Stats_Apex_Embed = new EmbedBuilder()
+                    .setTitle(`◟**${playerName}**`)
+                    .setDescription(`\n\n**𝐍iveaux** : \`${levelWithStars}\`\n**𝐏ersonnage** : **\`${selected_legend}\`**\n\n${trackerInfo}\n**𝐑ang** : \`${rank_name} ${rank_div}\`\n**𝐒core** : \`${rank_score} / 1000 LP\``)
+                    .setImage(legend_banner)
+                    .setThumbnail(rankThumbnail)
+                    .setColor('Red');
+            
+                await interaction.reply({ embeds: [Stats_Apex_Embed], ephemeral: true });
+            }
           }
       } catch (error) {
           console.error('Erreur lors de la récupération des données utilisateur:', error);
           await interaction.reply({ content: "**Pour l'instant, je rencontre des erreurs lors de la récupération de vos informations. Réessaye plus tard... Ou demain.**", ephemeral: true });
       }
     }
+    function formatNumberWithSpaces(num) {
+      return num.toLocaleString('fr-FR');
+    }
+    function stylizeFirstLetter(text) {
+      const alphabet = {
+          'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 
+          'H': '𝐇', 'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 
+          'O': '𝐎', 'P': '𝐏', 'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 
+          'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 'Y': '𝐘', 'Z': '𝐙'
+      };
+  
+      const firstLetter = text.charAt(0).toUpperCase();
+      if (alphabet[firstLetter]) {
+          return text.replace(firstLetter, alphabet[firstLetter]);
+      }
+      return text;
+    }
+    function getRankThumbnail(rankName) {
+      switch (rankName.toLowerCase()) {
+          case 'rookie':
+              return 'https://i0.wp.com/www.alphr.com/wp-content/uploads/2022/02/BR_Unranked.png?resize=425%2C425&ssl=1';
+          case 'bronze':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_bronze_rs15.png';
+          case 'silver':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_silver_rs7.png';
+          case 'gold':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_gold_rs7.png';
+          case 'platinium':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_platinum_rs7.png';
+          case 'diamond':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_diamond_rs7.png';
+          case 'master':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_master_rs7.png';
+          case 'predator':
+              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
+      }
+  }
     
 
     if (interaction.channel === null) return;
