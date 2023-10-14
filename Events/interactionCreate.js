@@ -1684,32 +1684,31 @@ module.exports = {
                   }
               });
           } else {
-            
-              const API_URL = `https://public-api.tracker.gg/v2/apex/standard/profile/${user.platform}/${user.gameUsername}`;
-              
+              const APEX_API_KEY = '4f9f4b7d2b84f7424a492a3aad84a08c';
+              const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${user.gameUsername}&platform=${user.platform}`;
 
-              let response = await axios.get(API_URL,
-                {
-                  headers: {
-                    "TRN-Api-Key": "703cdd43-3f68-42ae-87fa-b05ce8210a33"
-                  }
-                }
-              )
-              populateProfile(response.data.data)
-              
-              //const stats = response.data.data.segments[0].stats;
+              const response = await axios.get(API_URL);
+              const stats = response.data;
+              console.log(JSON.stringify(stats, null, 2));
 
-              //await interaction.reply({ content: `Vos statistiques: ${JSON.stringify(stats)}`, ephemeral: true });
+              const playerName = stats.global.name;
+              const level = stats.global.level;
+              const totalKills = stats.legends.all.kills
+              const totalMatches = stats.legends.all.matches
+
+              const formattedStats = `**Statistiques d'Apex Legends pour ${playerName} :**
+              - **Niveau :** ${level}
+              - **Total de kills :** ${totalKills}
+              - **Parties jouées :** ${totalMatches}`;
+
+              await interaction.reply({ content: formattedStats, ephemeral: true });
           }
       } catch (error) {
-        if (error.response && error.response.status === 403) {
-            console.error('Erreur d\'authentification avec l\'API. Vérifiez votre clé API et vos en-têtes.');
-        } else {
-            console.error('Erreur lors de la récupération des données utilisateur:', error);
-        }
-        await interaction.reply({ content: "**Pour l'instant, je rencontre des erreurs lors de la récupération de vos informations. Réessaye plus tard... Ou demain.**", ephemeral: true });
-        }
+          console.error('Erreur lors de la récupération des données utilisateur:', error);
+          await interaction.reply({ content: "**Pour l'instant, je rencontre des erreurs lors de la récupération de vos informations. Réessaye plus tard... Ou demain.**", ephemeral: true });
+      }
     }
+    
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
