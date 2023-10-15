@@ -87,7 +87,6 @@ module.exports = {
           }
         }
 
-        // Create a new embed
         const newEmbed = new EmbedBuilder()
           .setColor("Purple")
           .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)

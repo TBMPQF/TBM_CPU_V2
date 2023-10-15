@@ -1725,7 +1725,11 @@ module.exports = {
                     .setDescription(`\n\n**𝐍iveaux** : \`${levelWithStars}\`\n**𝐏ersonnage** : **\`${selected_legend}\`**\n\n${trackerInfo}\n**𝐑ang** : \`${rank_name} ${rank_div}\`\n**𝐒core** : \`${rank_score} / 1000 LP\``)
                     .setImage(legend_banner)
                     .setThumbnail(rankThumbnail)
-                    .setColor('Red');
+                    .setColor('Red')
+                    .setFooter({
+                      text: `Enregistre tes persos sur apexlegendsstatus.com`,
+                      iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
+                    });
             
                 await interaction.reply({ embeds: [Stats_Apex_Embed], ephemeral: true });
             }
@@ -1771,7 +1775,7 @@ module.exports = {
           case 'predator':
               return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
       }
-  }
+    }
     
 
     if (interaction.channel === null) return;
