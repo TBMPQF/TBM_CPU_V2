@@ -1655,29 +1655,26 @@ module.exports = {
     if (interaction.customId === 'STATS_APEX_BUTTON') {
       try {
           const discordId = interaction.user.id;
-
           let user = await ApexStats.findOne({ discordId: discordId });
-
+  
           if (!user) {
               await interaction.reply({ content: "Veuillez fournir votre plateforme et identifiant de jeu...", ephemeral: true });
               const filter = m => m.author.id === discordId;
               const collector = interaction.channel.createMessageCollector({ filter, time: 60000, max: 1 });
-
+  
               collector.on('collect', async (message) => {
                   const [platform, gameUsername] = message.content.split(',').map(item => item.trim());
-
                   if (!platform || !gameUsername) {
                       return interaction.followUp({ content: 'Les données fournies sont incorrectes. Assurez-vous de fournir la plateforme et l’identifiant de jeu.', ephemeral: true });
                   }
-
+  
                   const server = message.guild.name;
-
                   user = new ApexStats({ discordId, username: interaction.user.username, server, platform, gameUsername });
                   await user.save();
-
+  
                   interaction.followUp({ content: `Vos informations ont été enregistrées ! Plateforme: ${platform}, Identifiant de jeu: ${gameUsername}` });
               });
-
+  
               collector.on('end', (collected) => {
                   if (collected.size === 0) {
                       interaction.followUp({ content: 'Temps écoulé. Veuillez cliquer à nouveau sur le bouton pour réessayer.', ephemeral: true });
@@ -1686,10 +1683,9 @@ module.exports = {
           } else {
               const APEX_API_KEY = '4f9f4b7d2b84f7424a492a3aad84a08c';
               const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${user.gameUsername}&platform=${user.platform}`;
-
               const response = await axios.get(API_URL);
               const stats = response.data;
-
+  
               const playerName = stats.global.name;
               const level = stats.global.level;
               const selected_legend = stats.legends.selected.LegendName;
@@ -1700,39 +1696,45 @@ module.exports = {
               const rankThumbnail = getRankThumbnail(rank_name);
               const prestigeLevel = stats.global.levelPrestige;
               let levelWithStars = `${level}`;
-
+  
               if (prestigeLevel > 0) {
                   const stars = '⭐'.repeat(prestigeLevel);
                   levelWithStars = `${level} ${stars}`;
               }
+  
               let selectedLegendName = stats.legends.selected.LegendName;
-
-              if (stats.legends.all[selectedLegendName] && stats.legends.all[selectedLegendName].data) {
-                const trackers = stats.legends.all[selectedLegendName].data;
-                
-                let trackerInfo = "";
-                for (let i = 0; i < trackers.length && i < 3; i++) {
-                    let tracker = trackers[i];
-                    if (tracker && tracker.name && tracker.value) {
-                        let formattedValue = formatNumberWithSpaces(tracker.value);
-                        let stylizedName = stylizeFirstLetter(tracker.name);
-                        trackerInfo += `**${stylizedName}** : \`${formattedValue}\`\n`;
-                    }
-                }
-                
-                const Stats_Apex_Embed = new EmbedBuilder()
-                    .setTitle(`◟**${playerName}**`)
-                    .setDescription(`\n\n**𝐍iveaux** : \`${levelWithStars}\`\n**𝐏ersonnage** : **\`${selected_legend}\`**\n\n${trackerInfo}\n**𝐑ang** : \`${rank_name} ${rank_div}\`\n**𝐒core** : \`${rank_score} / 1000 LP\``)
-                    .setImage(legend_banner)
-                    .setThumbnail(rankThumbnail)
-                    .setColor('Red')
-                    .setFooter({
-                      text: `Enregistre tes persos sur apexlegendsstatus.com`,
-                      iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
-                    });
-            
-                await interaction.reply({ embeds: [Stats_Apex_Embed], ephemeral: true });
-            }
+  
+              if (stats.legends.all[selectedLegendName]) {
+                  const trackers = stats.legends.all[selectedLegendName].data;
+  
+                  if (trackers && trackers.length > 0) {
+                      let trackerInfo = "";
+                      for (let i = 0; i < trackers.length && i < 3; i++) {
+                          let tracker = trackers[i];
+                          if (tracker && tracker.name && tracker.value) {
+                              let formattedValue = formatNumberWithSpaces(tracker.value);
+                              let stylizedName = stylizeFirstLetter(tracker.name);
+                              trackerInfo += `**${stylizedName}** : \`${formattedValue}\`\n`;
+                          }
+                      }
+  
+                      const Stats_Apex_Embed = new EmbedBuilder()
+                          .setTitle(`◟**${playerName}**`)
+                          .setDescription(`\n\n**𝐍iveaux** : \`${levelWithStars}\`\n**𝐏ersonnage** : **\`${selected_legend}\`**\n\n${trackerInfo}\n**𝐑ang** : \`${rank_name} ${rank_div}\`\n**𝐒core** : \`${rank_score} / 1000 LP\``)
+                          .setImage(legend_banner)
+                          .setThumbnail(rankThumbnail)
+                          .setColor('Red')
+                          .setFooter({
+                              text: `Enregistre tes stats sur apexlegendsstatus.com`,
+                              iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
+                          });
+                      await interaction.reply({ embeds: [Stats_Apex_Embed], ephemeral: true });
+                  } else {
+                      await interaction.reply({ content: "**Nous n'avons pas pu trouver les trackers pour ta légende. Rajoute des trackers ou choisis une autre légende.**", ephemeral: true });
+                  }
+              } else {
+                  await interaction.reply({ content: "**La légende sélectionnée n'est pas présente dans les données. Rajoute des trackers ou choisis une autre légende.**", ephemeral: true });
+              }
           }
       } catch (error) {
           console.error('Erreur lors de la récupération des données utilisateur:', error);
