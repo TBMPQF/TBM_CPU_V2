@@ -31,7 +31,6 @@ module.exports = {
 
     async function initializeStreamers() {
       const streamersFromDB = await ApexStreamer.find();
-      console.log("Streamers récupérés de la BDD:", streamersFromDB);
       streamersFromDB.forEach(streamer => {
         streamers[streamer.twitchUsername] = {
           isLive: streamer.isLive,
@@ -39,38 +38,20 @@ module.exports = {
           startedAt: null
         };
       });
-  }
-
-    async function getAllStreamersFromDB() {
-      try {
-        const streamersFromDB = await ApexStreamer.find();
-        const streamers = {};
-
-        streamersFromDB.forEach(streamer => {
-          streamers[streamer.twitchUsername] = { isLive: false, lastMessageId: null, startedAt: null };
-        });
-
-        return streamers;
-      } catch (error) {
-        console.error("Erreur lors de la récupération des streamers de la base de données:", error);
-        return {};
-      }
     }
-    (async () => {
-      const streamers = await getAllStreamersFromDB();
-    })();
 
     const roleId = '813793302162702426';
 
     async function getTwitchAccessToken() {
       try {
-          const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
-          return response.data.access_token;
+        const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
+        return response.data.access_token;
       } catch (error) {
-          console.error('[TWITCH] Erreur lors de la récupération du token Twitch :', error);
-          return null;
+        console.error('[TWITCH] Erreur lors de la récupération du token Twitch :', error);
+        return null;
       }
     }
+
     async function fetchFromTwitch(endpoint, params = {}) {
       try {
         const url = new URL(`${TWITCH_BASE_API}/${endpoint}`);
@@ -81,8 +62,8 @@ module.exports = {
         return null;
       }
     }
+
     async function initializeTwitchHeaders() {
-      console.log("Initialisation des en-têtes Twitch...");
       const accessToken = await getTwitchAccessToken();
       if (accessToken) {
         twitchHeaders = {
@@ -95,10 +76,12 @@ module.exports = {
         console.error("[TWITCH] Token d'accès non obtenu. Vérifiez vos identifiants.");
       }
     }
+
     async function getUserProfilePic(streamer) {
       const response = await fetchFromTwitch('users', { login: streamer });
       return response?.data.data[0].profile_image_url;
     }
+
     async function getGameName(gameId) {
       const response = await fetchFromTwitch('games', { id: gameId });
       return response?.data.data[0].name;
@@ -107,91 +90,89 @@ module.exports = {
     let bootUpCheck = true;
 
     async function checkMultipleStreamers(bot) {
+      await initializeStreamers();
       const channel = bot.channels.cache.get('812530008823955506');
       const guild = bot.guilds.cache.get('716810235985133568');
-
+  
       for (const [twitchUsername, data] of Object.entries(streamers)) {
-        try {
-          const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${twitchUsername}`, twitchHeaders);
-          console.log("Réponse de Twitch pour", twitchUsername, ":", response.data);
-          const streamData = response.data.data[0];
-          
-          const streamerEntry = await ApexStreamer.findOne({ twitchUsername: twitchUsername });
-          if(!streamerEntry) continue;
-          
-          const discordUsername = streamerEntry.discordUsername;
-          const member = guild.members.cache.find(m => m.user.tag === discordUsername);
-          if (!member) continue;
-
-          if (streamData && !data.isLive) {
-            const streamTitle = streamData.title;
-            const gameName = await getGameName(streamData.game_id, twitchHeaders);
-            const profilePic = await getUserProfilePic(twitchUsername);
-
-            if (member) {
-              member.roles.add(roleId).then(() => {
-              }).catch(error => {
-                  console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
-              });
+          try {
+              const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${twitchUsername}`, twitchHeaders);
+              const streamData = response.data.data[0];
+              
+              const streamerEntry = await ApexStreamer.findOne({ twitchUsername: twitchUsername });
+              if(!streamerEntry) continue;
+              
+              const discordUsername = streamerEntry.discordUsername;
+              if (!discordUsername) continue;
+              const member = guild.members.cache.find(m => m.user.tag === discordUsername);
+              if (!member) continue;
+  
+              if (streamData && !data.isLive) {
+                  const streamTitle = streamData.title;
+                  const gameName = await getGameName(streamData.game_id, twitchHeaders);
+                  const profilePic = await getUserProfilePic(twitchUsername);
+  
+                  if (member) {
+                      member.roles.add(roleId).catch(error => {
+                          console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
+                      });
+                  }
+  
+                  const liveEmbed = new EmbedBuilder()
+                      .setColor('#9146FF')
+                      .setTitle(`${twitchUsername} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
+                      .setURL(`https://www.twitch.tv/${twitchUsername}`)
+                      .setDescription(`**${streamTitle}**\n\n丨*${gameName}*\n\n@here, 𝐕enez lui donner de la force.`)
+                      .setThumbnail(profilePic)
+                      .setTimestamp();
+  
+                  if (data.lastMessageId) {
+                      const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+                      messageToUpdate.edit({ embeds: [liveEmbed] });
+                  } else {
+                      const newMessage = await channel.send({ embeds: [liveEmbed] });
+                      streamers[twitchUsername].lastMessageId = newMessage.id;
+                      streamers[twitchUsername].startedAt = new Date();
+                      streamerEntry.isLive = true;
+                      streamerEntry.lastMessageId = newMessage.id;
+                      await streamerEntry.save();
+                  }
+  
+              } else if (!streamData && data.isLive) {
+                  if (member) await member.roles.remove(roleId);
+  
+                  const streamDuration = getStreamDuration(data.startedAt);
+                  
+                  const offlineEmbed = new EmbedBuilder()
+                      .setColor('#9146FF')
+                      .setTitle(`${twitchUsername} est malheureusement 𝐇ors 𝐋igne.. :x:`)
+                      .setDescription(`Il était en live pendant ${streamDuration}.\n\nMais il revient prochainement pour de nouvelles aventures !`)
+                      .setURL(`https://www.twitch.tv/${twitchUsername}`)
+                      .setTimestamp();
+  
+                  if (data.lastMessageId) {
+                      const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+                      messageToUpdate.edit({ embeds: [offlineEmbed] });
+                      streamers[twitchUsername].isLive = false;
+                      streamerEntry.isLive = false;
+                      await streamerEntry.save();
+                  } else {
+                      const newMessage = await channel.send({ embeds: [offlineEmbed] });
+                      streamers[twitchUsername].lastMessageId = newMessage.id;
+                      streamers[twitchUsername].isLive = false;
+                      streamerEntry.isLive = false;
+                      streamerEntry.lastMessageId = newMessage.id;
+                      await streamerEntry.save();
+                  }
+              }
+  
+          } catch (error) {
+              console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch : ${error}`);
           }
-
-            streamerEntry.isLive = true;
-            streamerEntry.lastMessageId = newMessage.id;
-            await streamerEntry.save();
-
-            if (bootUpCheck) continue;
-
-            const liveEmbed = new EmbedBuilder()
-              .setColor('#9146FF')
-              .setTitle(`${twitchUsername} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
-              .setURL(`https://www.twitch.tv/${twitchUsername}`)
-              .setDescription(`**${streamTitle}**\n丨${gameName}\n\n@here, 𝐕enez lui donner de la force.`)
-              .setThumbnail(profilePic)
-              .setTimestamp();
-
-            if (data.lastMessageId) {
-              const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-              messageToUpdate.edit({ embeds: [liveEmbed] });
-            } else {
-              const newMessage = await channel.send({ embeds: [liveEmbed] });
-              console.log(`Message envoyé pour le streamer ${twitchUsername}`);
-              streamers[twitchUsername].lastMessageId = newMessage.id;
-            }
-
-          } else if (!streamData && data.isLive) {
-            if (member) await member.roles.remove(roleId);
-
-            const streamDuration = getStreamDuration(data.startedAt);
-
-            streamerEntry.isLive = false;
-            streamerEntry.lastMessageId = newMessage.id;
-            await streamerEntry.save();
-
-            if (bootUpCheck) continue; 
-
-            const offlineEmbed = new EmbedBuilder()
-              .setColor('#9146FF')
-              .setTitle(`${twitchUsername} est malheureusement 𝐇ors 𝐋igne.. :x:`)
-              .setDescription(`Il était en live pendant ${streamDuration}.\nMais il revient prochainement pour de nouvelles aventures !`)
-              .setURL(`https://www.twitch.tv/${twitchUsername}`)
-              .setTimestamp();
-
-            if (data.lastMessageId) {
-              const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-              messageToUpdate.edit({ embeds: [offlineEmbed] });
-            } else {
-              const newMessage = await channel.send({ embeds: [offlineEmbed] });
-              streamers[twitchUsername].lastMessageId = newMessage.id;
-            }
-          }
-
-        } catch (error) {
-          console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch : ${error}`);
-        }
       }
-
+  
       bootUpCheck = false;
-    }
+  }
 
     function getStreamDuration(startTime) {
       const now = new Date();
@@ -207,12 +188,10 @@ module.exports = {
     const CHECK_INTERVAL = 1 * 60 * 1000;
 
     async function startTwitchCheck(bot) {
-      console.log("Démarrage de la vérification Twitch...");
         await initializeTwitchHeaders();
         await initializeStreamers();
         checkMultipleStreamers(bot);
         setInterval(() => { 
-           console.log("Vérification des streamers...");
            checkMultipleStreamers(bot);
           },  CHECK_INTERVAL);
     }

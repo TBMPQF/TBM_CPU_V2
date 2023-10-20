@@ -3,17 +3,17 @@ const mongoose = require('mongoose');
 const apexStreamerSchema = new mongoose.Schema({
   discordId: {
     type: String,
-    required: true,
+    required: false,
     unique: true
   },
   discordUsername: {
     type: String,
-    required: true,
+    required: false,
     unique: true
   },
   discordServer: {
     type: String,
-    required: true
+    required: false
   },
   twitchUsername: {
     type: String,
