@@ -6,6 +6,6 @@ const apexStatsSchema = new mongoose.Schema({
   server: { type: String, required: true },
   platform: { type: String, required: true },
   gameUsername: { type: String, required: true },
-}, { versionKey: false, strict: true });
+}, { versionKey: false, strict: true, collection: 'Apex Stats' });
 
 module.exports = mongoose.model('ApexStats', apexStatsSchema);
