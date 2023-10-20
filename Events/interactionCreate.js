@@ -1677,7 +1677,7 @@ module.exports = {
   
               collector.on('end', (collected) => {
                   if (collected.size === 0) {
-                      interaction.followUp({ content: 'Temps écoulé. Veuillez cliquer à nouveau sur le bouton pour réessayer.', ephemeral: true });
+                      interaction.followUp({ content: 'Ehhh le temps est écoulé. Clique à nouveau sur le bouton pour réessayer.', ephemeral: true });
                   }
               });
           } else {
