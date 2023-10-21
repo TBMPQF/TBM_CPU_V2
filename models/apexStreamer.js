@@ -27,6 +27,10 @@ const apexStreamerSchema = new mongoose.Schema({
   lastMessageId: {
     type: String,
     default: null
+  },
+  startedAt: {
+    type: Date,
+    default: null
   }
 }, { versionKey: false, strict: true });
 

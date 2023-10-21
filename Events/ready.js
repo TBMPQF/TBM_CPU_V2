@@ -133,6 +133,7 @@ module.exports = {
                       const newMessage = await channel.send({ embeds: [liveEmbed] });
                       streamers[twitchUsername].lastMessageId = newMessage.id;
                       streamers[twitchUsername].startedAt = new Date();
+                      streamerEntry.startedAt = new Date();
                       streamerEntry.isLive = true;
                       streamerEntry.lastMessageId = newMessage.id;
                       await streamerEntry.save();
@@ -141,12 +142,12 @@ module.exports = {
               } else if (!streamData && data.isLive) {
                   if (member) await member.roles.remove(roleId);
   
-                  const streamDuration = getStreamDuration(data.startedAt);
+                  const streamDuration = getStreamDuration(data.startedAt || streamerEntry.startedAt);
                   
                   const offlineEmbed = new EmbedBuilder()
                       .setColor('#9146FF')
                       .setTitle(`${twitchUsername} est malheureusement 𝐇ors 𝐋igne.. :x:`)
-                      .setDescription(`Il était en live pendant ${streamDuration}.\n\nMais il revient prochainement pour de nouvelles aventures !`)
+                      .setDescription(`𝐈l était en live pendant ${streamDuration}.\n\n𝐌ais il revient _prochainement_ pour de nouvelles aventures !`)
                       .setURL(`https://www.twitch.tv/${twitchUsername}`)
                       .setTimestamp();
   
@@ -161,6 +162,8 @@ module.exports = {
                       streamers[twitchUsername].lastMessageId = newMessage.id;
                       streamers[twitchUsername].isLive = false;
                       streamerEntry.isLive = false;
+                      streamers[twitchUsername].startedAt = null;
+                      streamerEntry.startedAt = null;
                       streamerEntry.lastMessageId = newMessage.id;
                       await streamerEntry.save();
                   }
@@ -172,17 +175,26 @@ module.exports = {
       }
   
       bootUpCheck = false;
-  }
+    }
 
+    function formatPlural(number, singular, plural = null) {
+      return `${number} ${number === 1 ? singular : (plural || singular + 's')}`;
+    }
+    
     function getStreamDuration(startTime) {
+      if (!startTime) return "Données de durée non disponibles";
+    
       const now = new Date();
       const start = new Date(startTime);
       const duration = Math.abs(now - start) / 1000;
-
+    
       const hours = Math.floor(duration / 3600);
       const minutes = Math.floor((duration % 3600) / 60);
-
-      return `\`${hours} heure(s)\` et \`${minutes} minute(s)\``;
+    
+      const hoursText = formatPlural(hours, 'heure');
+      const minutesText = formatPlural(minutes, 'minute');
+    
+      return `${hoursText} et ${minutesText}`;
     }
 
     const CHECK_INTERVAL = 1 * 60 * 1000;

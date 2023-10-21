@@ -6,6 +6,7 @@ cat << EOF > ./config.json
   "twitch": {
     "clientId": "$TWITCH_ID",
     "clientSecret": "$TWITCH_SECRET"
-  }
+  },
+  "apex_api": "$APEX_API"
 }
 EOF

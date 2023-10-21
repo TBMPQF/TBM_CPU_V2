@@ -38,6 +38,7 @@ const { queue } = require("../models/queue");
 const SearchMateMessage = require('../models/apexSearchMate');
 const VocalChannel = require('../models/apexVocal');
 const ApexStats = require('../models/apexStats');
+const Music = require("../models/music")
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -349,15 +350,7 @@ module.exports = {
     async function handleVoiceChannel(interaction, notInChannelMessage) {
       const voiceChannel = interaction.member.voice.channel;
       if (!voiceChannel) {
-        const msg = await interaction.reply({
-          embeds: [
-            {
-              description: notInChannelMessage,
-              color: 0x800080,
-            },
-          ],
-        });
-        setTimeout(() => msg.delete(), 5000);
+        await sendAndDeleteMessage(interaction, notInChannelMessage, 5000);
         return null;
       }
       return voiceChannel;
@@ -373,7 +366,7 @@ module.exports = {
       const serverId = interaction.guild.id;
 
       if (!queue[serverId] || queue[serverId].length === 0) {
-        sendAndDeleteMessage(
+        await sendAndDeleteMessage(
           interaction,
           ":snowflake:丨𝐋a playlist est actuellement vide.",
           5000
@@ -388,9 +381,9 @@ module.exports = {
       });
 
       const player = createAudioPlayer();
-      playNextSong(interaction, serverId, player, queue);
+      await playNextSong(interaction, serverId, player, queue);
 
-      sendAndDeleteMessage(
+      await sendAndDeleteMessage(
         interaction,
         ":saxophone:丨𝐉e lance la musique poulet !",
         5000
@@ -398,78 +391,98 @@ module.exports = {
     }
 
     async function playNextSong(interaction, serverId, player, queue) {
-      if (!queue[serverId] || queue[serverId].length === 0) {
-        if (connections[serverId]) connections[serverId].disconnect();
-        return;
+      try {
+        console.log('Lecture de la prochaine chanson', { identifiantServeur: serverId, longueurFileDAttente: queue[serverId]?.length || 0 })
+        if (!queue[serverId] || queue[serverId].length === 0) {
+          console.log('La file d\'attente est vide. Déconnexion...');
+          connections[serverId]?.disconnect();
+          return;
+        }
+
+        const song = queue[serverId].shift();
+        console.log('Lecture de la chanson', { serverId, songTitle: song.title });
+        const stream = ytdl(song.url, { filter: "audioonly", quality: "highestaudio" });
+
+        stream.on("error", (error) => console.error(`Erreur lors de la lecture de la musique : ${error.message}`));
+
+        const resource = createAudioResource(stream);
+        player.play(resource);
+        connections[serverId]?.subscribe(player);
+
+        player.on("error", (error) => console.error(`Erreur : ${error.message} avec la chanson : ${song}`));
+
+        player.on("idle", async () => {
+          console.log('Le lecteur est inactif, passage à la chanson suivante');
+          await playNextSong(interaction, serverId, player, queue);
+          await updateMusicEmbed(interaction, serverId, queue);
+        });
+      } catch(error){
+        console.error('Erreur dans la fonction playNextSong :', error);
       }
-
-      const song = queue[serverId].shift();
-      const stream = ytdl(song.url, {
-        filter: "audioonly",
-        quality: "highestaudio",
-      });
-
-      stream.on("error", (error) =>
-        console.error(
-          `Une erreur est survenue lors de la lectur de la musique : ${error.message}`
-        )
-      );
-
-      const resource = createAudioResource(stream);
-      player.play(resource);
-      if (connections[serverId]) {
-        connections[serverId].subscribe(player);
-      } else {
-        console.log(
-          `Could not establish connection for server ID: ${serverId}`
-        );
-      }
-
-      player.on("error", (error) =>
-        console.error(`Erreur: ${error.message} avec le son : ${song}`)
-      );
-
-      player.on("idle", async () => {
-        playNextSong(interaction, serverId, player, queue);
-        await updateEmbedMessage(interaction, serverId, queue);
-      });
     }
 
-    async function updateEmbedMessage(interaction, serverId, queue) {
-      const playlistText = queue[serverId]
-        .map(
-          (song, i) => `${i + 1}. ${i === 0 ? `**${song.title}**` : song.title}`
-        )
-        .join("\n");
+    async function updateMusicEmbed(interaction, serverId, queue) {
+      try {
+        const musicEntry = await Music.findOne({ serverId });
+        if (!musicEntry) {
+          console.error('Music entry not found in the database');
+          return;
+        }
+        console.log('ID du message récupéré', musicEntry.messageId);
+    
+        const messageId = musicEntry.messageId;
+        await updateEmbedMessage(interaction, serverId, queue, messageId);
+      } catch (error) {
+        console.error('Error in updateMusicEmbed:', error);
+      }
+    }
 
-      const newEmbed = new EmbedBuilder()
-        .setColor("Purple")
-        .setTitle("――――――――∈ `MUSIQUE` ∋――――――――")
-        .setThumbnail(
-          "https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png"
-        )
-        .setDescription(playlistText)
-        .setFooter({
-          text: `Cordialement, l'équipe ${interaction.guild.name}`,
-          iconURL: interaction.guild.iconURL(),
-        });
+    async function updateEmbedMessage(interaction, serverId, queue, messageId) {
+      try {
+        console.log('Mise à jour de l\'embed', { serverId, queueLength: queue[serverId]?.length });
+        if (!queue[serverId] || queue[serverId].length === 0) {
+          console.error("La playlist est vide pour le serveur:", serverId);
+          return;
+        }
 
-      const messageEntry = await interaction.channel.messages.fetch(
-        musicEntry.messageId
-      );
-      await messageEntry.edit({ embeds: [newEmbed] });
+        let playlistText = queue[serverId]
+          .map((song, i) => `${i + 1}. ${i === 0 ? `**${song.title}**` : song.title}`)
+          .join("\n");
+
+        if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
+        if (playlistText.length === 0) playlistText = "La playlist est vide.";
+
+        const newEmbed = new EmbedBuilder()
+          .setColor("#800080")
+          .setTitle("――――――――∈ `MUSIQUE` ∋――――――――")
+          .setThumbnail("https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png")
+          .setDescription(playlistText)
+          .setFooter({ text: `Cordialement, l'équipe ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() });
+
+        const messageEntry = await interaction.channel.messages.fetch(messageId);
+        if (messageEntry) {
+          console.log('Message trouvé. Mise à jour de l\'embed.', { messageId: musicEntry.messageId });
+          await messageEntry.edit({ embeds: [newEmbed] });
+        } else {
+          console.error("Le message à modifier n'a pas été trouvé:", musicEntry.messageId);
+        }
+      } catch (error) {
+        console.error('Erreur dans la fonction updateEmbedMessage :', error);
+      }
     }
 
     async function sendAndDeleteMessage(interaction, description, delay) {
-      const msg = await interaction.reply({
-        embeds: [
-          {
-            description,
-            color: 0x800080,
-          },
-        ],
-      });
-      setTimeout(() => msg.delete(), delay);
+      try {
+        console.log('Envoi et suppression programmée d’un message', { description, delai: delay });
+        const msg = await interaction.reply({
+          embeds: [{ description, color: 0x800080 }],
+          fetchReply: true,
+        });
+        setTimeout(() => msg.delete().catch(console.error), delay);
+        console.log('Message envoyé et programmé pour la suppression');
+      } catch (error) {
+        console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
+      }
     }
 
     //Arrêter la musique
@@ -1681,7 +1694,7 @@ module.exports = {
                   }
               });
           } else {
-              const APEX_API_KEY = '4f9f4b7d2b84f7424a492a3aad84a08c';
+              const APEX_API_KEY = config.apex_api;
               const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${user.gameUsername}&platform=${user.platform}`;
               const response = await axios.get(API_URL);
               const stats = response.data;
