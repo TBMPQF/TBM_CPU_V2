@@ -78,7 +78,7 @@ async function levelUp(obj, user, newXP) {
 
     if (levelDownChannel) {
       levelDownChannel.send(
-        `**${author}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`** à cause de tes pari pourris... La prochaine fois tu feras attention !`
+        `**${author}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**... La prochaine fois tu feras attention !`
       );
     }
 
@@ -97,51 +97,51 @@ async function levelUp(obj, user, newXP) {
 
 async function handleRole(obj, newLevel, channel, direction, prestige) {
   const roleRewards = await getRoleRewards(obj.guild.id);
-
   const currentPrestigeRoleRewards = roleRewards[prestige] || [];
   const roleIndex = LEVELS.indexOf(newLevel);
 
   if (roleIndex !== -1) {
-    const roleReward = currentPrestigeRoleRewards[roleIndex];
-
-    if (roleReward) {
-      const role = obj.guild.roles.cache.get(roleReward.roleId);
-
-      if (direction === "up") {
-        const previousRoleReward = currentPrestigeRoleRewards[roleIndex - 1];
-
-        if (previousRoleReward) {
-          const previousRole = obj.guild.roles.cache.get(
-            previousRoleReward.roleId
+    if (direction === "up") {
+      // Ajoute le rôle du nouveau niveau
+      const newRoleReward = currentPrestigeRoleRewards[roleIndex];
+      if (newRoleReward) {
+        const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
+        if (newRole) {
+          await obj.member.roles.add(newRole);
+          channel.send(
+            `**        丨** 𝐓u débloques le grade ${newRole}. Félicitation ! - :tada:`
           );
-
-          if (previousRole) {
-            await obj.member.roles.remove(previousRole);
-          }
         }
-      } else if (direction === "down") {
-        const previousRoleReward = currentPrestigeRoleRewards[roleIndex];
-
-        if (previousRoleReward) {
-          const previousRole = obj.guild.roles.cache.get(
-            previousRoleReward.roleId
-          );
-
-          if (previousRole) {
-            await obj.member.roles.remove(previousRole);
+      }
+      // Retire le rôle du niveau précédent
+      if (roleIndex > 0) {
+        const oldRoleReward = currentPrestigeRoleRewards[roleIndex - 1];
+        if (oldRoleReward) {
+          const oldRole = obj.guild.roles.cache.get(oldRoleReward.roleId);
+          if (oldRole) {
+            await obj.member.roles.remove(oldRole);
           }
         }
       }
-
-      if (role) {
-        await obj.member.roles.add(role);
-        channel.send(
-          `**        丨** 𝐓u ${
-            direction === "up" ? "débloques le" : "es rétrogradé au"
-          } grade ${role}. ${
-            direction === "up" ? "Félicitation" : "Courage"
-          } ! - :${direction === "up" ? "tada" : "muscle"}:`
-        );
+    } else if (direction === "down") {
+      // Retire le rôle du niveau précédent
+      const oldRoleReward = currentPrestigeRoleRewards[roleIndex + 1];
+      if (oldRoleReward) {
+        const oldRole = obj.guild.roles.cache.get(oldRoleReward.roleId);
+        if (oldRole) {
+          await obj.member.roles.remove(oldRole);
+        }
+      }
+      // Ajoute le rôle du nouveau niveau
+      const newRoleReward = currentPrestigeRoleRewards[roleIndex];
+      if (newRoleReward) {
+        const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
+        if (newRole) {
+          await obj.member.roles.add(newRole);
+          channel.send(
+            `**        丨** 𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
+          );
+        }
       }
     }
   }
