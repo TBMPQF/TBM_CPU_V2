@@ -83,8 +83,18 @@ module.exports = {
     }
 
     async function getGameName(gameId) {
-      const response = await fetchFromTwitch('games', { id: gameId });
-      return response?.data.data[0].name;
+      try {
+        const response = await fetchFromTwitch('games', { id: gameId });
+        if (response && response.data && response.data.data && response.data.data.length > 0 && response.data.data[0].name) {
+          return response.data.data[0].name;
+        } else {
+          console.error(`[TWITCH] Aucun nom de jeu trouvé pour l'ID ${gameId}`);
+          return "Nom de jeu inconnu";
+        }
+      } catch (error) {
+        console.error(`[TWITCH] Erreur lors de la récupération du nom du jeu pour l'ID ${gameId} : ${error}`);
+        return "Nom de jeu inconnu";
+      }
     }
 
     let bootUpCheck = true;
