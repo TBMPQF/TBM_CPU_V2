@@ -117,40 +117,42 @@ module.exports = {
               const member = guild.members.cache.find(m => m.user.tag === discordUsername);
               if (!member) continue;
   
-              if (streamData && !data.isLive) {
-                  const streamTitle = streamData.title;
-                  const gameName = await getGameName(streamData.game_id, twitchHeaders);
-                  const profilePic = await getUserProfilePic(twitchUsername);
+              if (streamData) {
+                  if (!data.isLive || bootUpCheck) {
+                      const streamTitle = streamData.title;
+                      const gameName = await getGameName(streamData.game_id, twitchHeaders);
+                      const profilePic = await getUserProfilePic(twitchUsername);
   
-                  if (member) {
                       member.roles.add(roleId).catch(error => {
                           console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
                       });
-                  }
   
-                  const liveEmbed = new EmbedBuilder()
-                      .setColor('#9146FF')
-                      .setTitle(`${twitchUsername} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
-                      .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                      .setDescription(`**${streamTitle}**\n\n丨*${gameName}*\n\n@here, 𝐕enez lui donner de la force.`)
-                      .setThumbnail(profilePic)
-                      .setTimestamp();
+                      const liveEmbed = new EmbedBuilder()
+                          .setColor('#9146FF')
+                          .setTitle(`${twitchUsername} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
+                          .setURL(`https://www.twitch.tv/${twitchUsername}`)
+                          .setDescription(`**${streamTitle}**\n\n丨*${gameName}*\n\n@here, 𝐕ient on lui donne de la force.`)
+                          .setThumbnail(profilePic)
+                          .setTimestamp();
   
-                  if (data.lastMessageId) {
-                      const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-                      messageToUpdate.edit({ embeds: [liveEmbed] });
-                  } else {
-                      const newMessage = await channel.send({ embeds: [liveEmbed] });
-                      streamers[twitchUsername].lastMessageId = newMessage.id;
-                      streamers[twitchUsername].startedAt = new Date();
-                      streamerEntry.startedAt = new Date();
+                      if (data.lastMessageId) {
+                          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+                          messageToUpdate.edit({ embeds: [liveEmbed] });
+                      } else {
+                          const newMessage = await channel.send({ embeds: [liveEmbed] });
+                          data.lastMessageId = newMessage.id;
+                          data.startedAt = new Date();
+                          streamerEntry.lastMessageId = newMessage.id;
+                          streamerEntry.startedAt = new Date();
+                      }
+                      data.isLive = true;
                       streamerEntry.isLive = true;
-                      streamerEntry.lastMessageId = newMessage.id;
                       await streamerEntry.save();
                   }
-  
-              } else if (!streamData && data.isLive) {
-                  if (member) await member.roles.remove(roleId);
+              } else if (data.isLive) {
+                  member.roles.remove(roleId).catch(error => {
+                      console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
+                  });
   
                   const streamDuration = getStreamDuration(data.startedAt || streamerEntry.startedAt);
                   
@@ -164,28 +166,25 @@ module.exports = {
                   if (data.lastMessageId) {
                       const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
                       messageToUpdate.edit({ embeds: [offlineEmbed] });
-                      streamers[twitchUsername].isLive = false;
-                      streamerEntry.isLive = false;
-                      await streamerEntry.save();
                   } else {
                       const newMessage = await channel.send({ embeds: [offlineEmbed] });
-                      streamers[twitchUsername].lastMessageId = newMessage.id;
-                      streamers[twitchUsername].isLive = false;
-                      streamerEntry.isLive = false;
-                      streamers[twitchUsername].startedAt = null;
-                      streamerEntry.startedAt = null;
-                      streamerEntry.lastMessageId = newMessage.id;
-                      await streamerEntry.save();
+                      data.lastMessageId = newMessage.id;
                   }
+                  data.isLive = false;
+                  data.startedAt = null;
+                  streamerEntry.isLive = false;
+                  streamerEntry.startedAt = null;
+                  streamerEntry.lastMessageId = data.lastMessageId;
+                  await streamerEntry.save();
               }
   
           } catch (error) {
-              console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch : ${error}`);
+              console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch pour ${twitchUsername}: ${error}`);
           }
       }
   
       bootUpCheck = false;
-    }
+  }
 
     function formatPlural(number, singular, plural = null) {
       return `${number} ${number === 1 ? singular : (plural || singular + 's')}`;

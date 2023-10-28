@@ -111,6 +111,14 @@ module.exports = {
         user.maxDaily = user.consecutiveDaily;
       }
 
+      const SPECIAL_DAILY_STREAK = 100;
+      if (user.consecutiveDaily === SPECIAL_DAILY_STREAK) {
+        const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
+        if (specialChannel) {
+          specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`100\` jours __consécutifs__ de bonus quotidien ! 🎉`);
+        }
+      }
+
       const baseXP = 200;
       const weeksConsecutive = Math.floor(user.consecutiveDaily / daysInWeek);
       const bonusXP = baseXP * 0.02 * weeksConsecutive;
