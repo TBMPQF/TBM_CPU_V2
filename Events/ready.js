@@ -200,8 +200,8 @@ module.exports = {
       const hours = Math.floor(duration / 3600);
       const minutes = Math.floor((duration % 3600) / 60);
     
-      const hoursText = formatPlural(hours, '_heure_');
-      const minutesText = formatPlural(minutes, '_minute_');
+      const hoursText = formatPlural(hours, 'heure');
+      const minutesText = formatPlural(minutes, 'minute');
     
       return `\`${hoursText}\` et \`${minutesText}\``;
     }

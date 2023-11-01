@@ -297,12 +297,28 @@ module.exports = {
         user.lastDaily = new Date(Date.now());
         await user.save();
 
-        return interaction.reply({
-          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. Tes copains ne diront plus que tu es un rat ! Par contre.. __Un malus__ de \`${malus}\` a été appliqué pour \`${
-            user.malusDuration
-          } jour(s)\`.`,
+        await interaction.reply({
+          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. Tes copains ne diront plus que tu es un rat ! Par contre.. __Un malus__ de \`${malus}\` a été appliqué pour \`${malusDuration} jour(s)\`.`,
           ephemeral: true,
         });
+
+        const recoveredDailyLog = new EmbedBuilder()
+          .setColor("Orange")
+          .setTitle(`\`${interaction.user.username}\`丨𝐕ient de récupéré son Daily manqué !`)
+          .setDescription(`\nSérie recupérée : \`${user.consecutiveDaily}\`.\nXP dépensé : \`${costXP.toLocaleString()}\` XP.\nMalus appliqué : \`${malus}\` XP pour \`${malusDuration}\` jours`)
+          .setFooter({
+            text: `XP restant : \`${user.xp.toLocaleString()}\``,
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true, size: 64 })
+          })
+          .setTimestamp();
+
+      const serverInfo = await ServerConfig.findOne({ serverID: interaction.guild.id });
+        if (serverInfo && serverInfo.logChannelID) {
+          const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
+          if (logChannel) {
+            logChannel.send({ embeds: [recoveredDailyLog] });
+          }
+        }
       } else {
         return interaction.reply({
           content: `丨**L'application met trop de temps à répondre -> contact mon créateur \`tbmpqf\`.**`,
