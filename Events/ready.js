@@ -122,18 +122,23 @@ module.exports = {
                       const streamTitle = streamData.title;
                       const gameName = await getGameName(streamData.game_id, twitchHeaders);
                       const profilePic = await getUserProfilePic(twitchUsername);
-  
+                      const streamThumbnailUrl = await getStreamThumbnailUrl(streamData.id, twitchHeaders);
+                      const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
+                      
                       member.roles.add(roleId).catch(error => {
                           console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
                       });
-  
+                      
                       const liveEmbed = new EmbedBuilder()
                           .setColor('#9146FF')
-                          .setTitle(`${twitchUsername} est maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !`)
+                          .setAuthor({ name: `${twitchUsername}`, iconURL: `https://i.imgur.com/AfFp7pu.png`, url: `https://www.twitch.tv/${twitchUsername}` })
+                          .setTitle(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 ! ${streamTitle}`)
                           .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                          .setDescription(`**${streamTitle}**\n\n丨*${gameName}*\n\n@here, 𝐕ient on lui donne de la force.`)
-                          .setThumbnail(profilePic)
-                          .setTimestamp();
+                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !丨\n@here, 𝐕ient on lui donne de la force.*${gameName}*`)
+                          .setThumbnail(gameThumbnailUrl)
+                          .setImage(streamThumbnailUrl)
+                          .setTimestamp()
+                          .setFooter({text: `Twitch`, iconURL: `https://static.vecteezy.com/system/resources/thumbnails/018/930/502/small/twitch-logo-twitch-icon-transparent-free-png.png`})
   
                       if (data.lastMessageId) {
                           const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
@@ -184,26 +189,35 @@ module.exports = {
       }
   
       bootUpCheck = false;
-  }
+    }
 
-    function formatPlural(number, singular, plural = null) {
-      return `${number} ${number === 1 ? singular : (plural || singular + 's')}`;
+    function formatPlural(number, text) {
+      return `${number} ${text}${number > 1 ? 's' : ''}`;
     }
     
     function getStreamDuration(startTime) {
-      if (!startTime) return "Données de durée non disponibles";
+      if (!startTime) {
+          console.log("La valeur de startTime n'est pas définie.");
+          return "Données de durée non disponibles";
+      }
     
       const now = new Date();
       const start = new Date(startTime);
-      const duration = Math.abs(now - start) / 1000;
     
+      if (isNaN(start.getTime())) {
+          console.log(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
+          return "Données de durée non disponibles";
+      }
+  
+      const duration = Math.abs(now - start) / 1000;
+  
       const hours = Math.floor(duration / 3600);
       const minutes = Math.floor((duration % 3600) / 60);
-    
-      const hoursText = formatPlural(hours, 'heure');
-      const minutesText = formatPlural(minutes, 'minute');
-    
-      return `\`${hoursText}\` et \`${minutesText}\``;
+  
+      const hoursText = hours > 0 ? `${hours} ${formatPlural(hours, 'heure')}` : '';
+      const minutesText = minutes > 0 ? `${minutes} ${formatPlural(minutes, 'minute')}` : '';
+  
+      return `${hoursText}${hours > 0 && minutes > 0 ? ' et ' : ''}${minutesText}`;
     }
 
     const CHECK_INTERVAL = 1 * 60 * 1000;
