@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const searchMateMessageSchema = new mongoose.Schema({
-    userId: String,
-    guildId: String,
-    channelId: String,
-    messageId: String,
+    userId: { type: String, required: true },
+    guildId: { type: String, required: true },
+    channelId: { type: String, required: true },
+    messageId: { type: String, required: true },
     expireAt: {
         type: Date,
         default: () => Date.now() + 30*60*1000,

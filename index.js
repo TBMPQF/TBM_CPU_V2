@@ -4,6 +4,9 @@ const bot = new Client({ intents: new IntentsBitField(3276799) });
 bot.commands = new Collection();
 bot.config = require("./config");
 
+const mongoose = require("mongoose");
+mongoose.set('strictQuery', true);
+
 const { connect } = require("mongoose");
 connect(bot.config.mongourl, {
   useNewUrlParser: true,
