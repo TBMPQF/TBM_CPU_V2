@@ -97,6 +97,56 @@ module.exports = {
       }
     }
 
+    async function getStreamThumbnailUrl(streamId) {
+      try {
+        const response = await fetchFromTwitch('streams', { user_id: streamId });
+        if (response && response.data && response.data.data && response.data.data.length > 0) {
+          let thumbnailUrl = response.data.data[0].thumbnail_url;
+          if (!thumbnailUrl) {
+            console.error(`[TWITCH] Pas de miniature pour le stream ID ${streamId}`);
+            return null;
+          }
+          thumbnailUrl = thumbnailUrl.replace('{width}', '1280').replace('{height}', '720');
+          return thumbnailUrl;
+        } else {
+          console.error(`[TWITCH] Pas de données pour le stream ID ${streamId}`);
+          return null;
+        }
+      } catch (error) {
+        // Log the error response to get more details
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error(`[TWITCH] Error Data: `, error.response.data);
+          console.error(`[TWITCH] Error Status: `, error.response.status);
+          console.error(`[TWITCH] Error Headers: `, error.response.headers);
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error(`[TWITCH] No response received: `, error.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('[TWITCH] Error Message: ', error.message);
+        }
+        console.error(`[TWITCH] Error config: `, error.config);
+        return null;
+      }
+    }
+
+    async function getGameThumbnailUrl(gameId) {
+      try {
+        const response = await fetchFromTwitch('games', { id: gameId });
+        if (response && response.data && response.data.data && response.data.data.length > 0) {
+          return response.data.data[0].box_art_url.replace('{width}', '285').replace('{height}', '380');
+        } else {
+          console.error(`[TWITCH] Aucune image trouvée pour le jeu ID ${gameId}`);
+          return null;
+        }
+      } catch (error) {
+        console.error(`[TWITCH] Erreur lors de la récupération de l'image pour le jeu ID ${gameId}:`, error);
+        return null;
+      }
+    }
+
     let bootUpCheck = true;
 
     async function checkMultipleStreamers(bot) {
@@ -131,14 +181,14 @@ module.exports = {
                       
                       const liveEmbed = new EmbedBuilder()
                           .setColor('#9146FF')
-                          .setAuthor({ name: `${twitchUsername}`, iconURL: `https://i.imgur.com/AfFp7pu.png`, url: `https://www.twitch.tv/${twitchUsername}` })
-                          .setTitle(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 ! ${streamTitle}`)
+                          .setAuthor({ name: `${twitchUsername}`, iconURL: `${profilePic}`, url: `https://www.twitch.tv/${twitchUsername}` })
+                          .setTitle(`${streamTitle}`)
                           .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !丨\n@here, 𝐕ient on lui donne de la force.*${gameName}*`)
+                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n丨@here -> 𝐕ient on lui donne de la force.\n\n*${gameName}*`)
                           .setThumbnail(gameThumbnailUrl)
                           .setImage(streamThumbnailUrl)
                           .setTimestamp()
-                          .setFooter({text: `Twitch`, iconURL: `https://static.vecteezy.com/system/resources/thumbnails/018/930/502/small/twitch-logo-twitch-icon-transparent-free-png.png`})
+                          .setFooter({text: `Twitch`, iconURL: `https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png`})
   
                       if (data.lastMessageId) {
                           const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
@@ -160,12 +210,16 @@ module.exports = {
                   });
   
                   const streamDuration = getStreamDuration(data.startedAt || streamerEntry.startedAt);
+                  const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
+                  const profilePic = await getUserProfilePic(twitchUsername);
                   
                   const offlineEmbed = new EmbedBuilder()
                       .setColor('#9146FF')
-                      .setTitle(`${twitchUsername} est malheureusement 𝐇ors 𝐋igne.. :x:`)
+                      .setAuthor({ name: `${twitchUsername}`, iconURL: `${profilePic}`, url: `https://www.twitch.tv/${twitchUsername}` })
+                      .setTitle(`𝐇ors 𝐋igne.. :x:`)
                       .setDescription(`𝐈l était en live pendant ${streamDuration}.\n\n𝐌ais il revient _prochainement_ pour de nouvelles aventures !`)
                       .setURL(`https://www.twitch.tv/${twitchUsername}`)
+                      .setThumbnail(gameThumbnailUrl)
                       .setTimestamp();
   
                   if (data.lastMessageId) {
