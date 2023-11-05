@@ -210,7 +210,6 @@ module.exports = {
                   });
   
                   const streamDuration = getStreamDuration(data.startedAt || streamerEntry.startedAt);
-                  const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
                   const profilePic = await getUserProfilePic(twitchUsername);
                   
                   const offlineEmbed = new EmbedBuilder()
@@ -219,7 +218,6 @@ module.exports = {
                       .setTitle(`𝐇ors 𝐋igne.. :x:`)
                       .setDescription(`𝐈l était en live pendant ${streamDuration}.\n\n𝐌ais il revient _prochainement_ pour de nouvelles aventures !`)
                       .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                      .setThumbnail(gameThumbnailUrl)
                       .setTimestamp();
   
                   if (data.lastMessageId) {
