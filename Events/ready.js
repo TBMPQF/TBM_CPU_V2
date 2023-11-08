@@ -18,6 +18,7 @@ const ApexStreamer = require('../models/apexStreamer');
 module.exports = {
   name: "ready",
   execute(bot, member) {
+    
 
     // Envoie d'un message lorsqu'un streamer est en ligne
     const axios = require('axios');
@@ -28,6 +29,67 @@ module.exports = {
 
     let twitchHeaders;
     let streamers = {};
+
+    async function retrieveAndDisplayThumbnailsForAllStreamers() {
+      try {
+        const streamers = await ApexStreamer.find({});
+        
+        for (const streamer of streamers) {
+          const username = streamer.twitchUsername;
+          try {
+            const thumbnailUrl = await getLiveStreamThumbnailByUsername(username);
+          } catch (error) {
+            console.error(`Erreur pour ${username}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des noms d’utilisateur Twitch de la base de données:', error);
+      }
+    }
+    
+    retrieveAndDisplayThumbnailsForAllStreamers();
+    setInterval(retrieveAndDisplayThumbnailsForAllStreamers, 1 * 60 * 1000); // 30 minutes en millisecondes
+
+    async function getLiveStreamThumbnailByUsername(username) {
+      await initializeTwitchHeaders();
+
+      const userId = await getUserID(username);
+
+      if (!userId) {
+        console.error(`Impossible de récupérer l'ID pour l'utilisateur ${username}`);
+        return null;
+      }
+
+      try {
+        const response = await axios.get(`https://api.twitch.tv/helix/streams?user_id=${userId}`, twitchHeaders);
+        const streams = response.data.data;
+
+        if (streams.length > 0) {
+          const streamInfo = streams[0];
+          const thumbnailUrl = streamInfo.thumbnail_url
+            .replace('{width}', '640').replace('{height}', '360').concat(`?timestamp=${new Date().getTime()}`);
+          return thumbnailUrl;
+        } else {
+          return '';
+        }
+      } catch (error) {
+        console.error('Erreur lors de la requête à l’API Twitch:', error);
+        throw error;
+      }
+    }
+
+    async function getUserID(username) {
+      await initializeTwitchHeaders();
+      const endpoint = 'users';
+      const params = { login: username };
+      
+      const response = await fetchFromTwitch(endpoint, params);
+      if (response && response.data.data.length > 0) {
+        return response.data.data[0].id;
+      } else {
+        return null;
+      }
+    }
 
     async function initializeStreamers() {
       const streamersFromDB = await ApexStreamer.find();
@@ -97,41 +159,6 @@ module.exports = {
       }
     }
 
-    async function getStreamThumbnailUrl(streamId) {
-      try {
-        const response = await fetchFromTwitch('streams', { user_id: streamId });
-        if (response && response.data && response.data.data && response.data.data.length > 0) {
-          let thumbnailUrl = response.data.data[0].thumbnail_url;
-          if (!thumbnailUrl) {
-            console.error(`[TWITCH] Pas de miniature pour le stream ID ${streamId}`);
-            return null;
-          }
-          thumbnailUrl = thumbnailUrl.replace('{width}', '1280').replace('{height}', '720');
-          return thumbnailUrl;
-        } else {
-          console.error(`[TWITCH] Pas de données pour le stream ID ${streamId}`);
-          return null;
-        }
-      } catch (error) {
-        // Log the error response to get more details
-        if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error(`[TWITCH] Error Data: `, error.response.data);
-          console.error(`[TWITCH] Error Status: `, error.response.status);
-          console.error(`[TWITCH] Error Headers: `, error.response.headers);
-        } else if (error.request) {
-          // The request was made but no response was received
-          console.error(`[TWITCH] No response received: `, error.request);
-        } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('[TWITCH] Error Message: ', error.message);
-        }
-        console.error(`[TWITCH] Error config: `, error.config);
-        return null;
-      }
-    }
-
     async function getGameThumbnailUrl(gameId) {
       try {
         const response = await fetchFromTwitch('games', { id: gameId });
@@ -172,7 +199,7 @@ module.exports = {
                       const streamTitle = streamData.title;
                       const gameName = await getGameName(streamData.game_id, twitchHeaders);
                       const profilePic = await getUserProfilePic(twitchUsername);
-                      const streamThumbnailUrl = await getStreamThumbnailUrl(streamData.id, twitchHeaders);
+                      const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(twitchUsername, twitchHeaders);
                       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
                       
                       member.roles.add(roleId).catch(error => {
@@ -184,8 +211,14 @@ module.exports = {
                           .setAuthor({ name: `${twitchUsername}`, iconURL: `${profilePic}`, url: `https://www.twitch.tv/${twitchUsername}` })
                           .setTitle(`${streamTitle}`)
                           .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n丨@here -> 𝐕ient on lui donne de la force.\n\n*${gameName}*`)
+                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n丨@here -> 𝐕ient on lui donne de la force.`)
                           .setThumbnail(gameThumbnailUrl)
+                          .addFields({ name: '\u200B', value: '\u200B' })
+                          .addFields(
+                            { name: `${gameName}`, value: `\u200B`, inline: true },
+                            { name: `\u200B`, value: `\u200B`, inline: true },
+                            { name: `:eyes:`, value: `\u200B`, inline: true },
+                          )
                           .setImage(streamThumbnailUrl)
                           .setTimestamp()
                           .setFooter({text: `Twitch`, iconURL: `https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png`})
@@ -218,7 +251,9 @@ module.exports = {
                       .setTitle(`𝐇ors 𝐋igne.. :x:`)
                       .setDescription(`𝐈l était en live pendant ${streamDuration}.\n\n𝐌ais il revient _prochainement_ pour de nouvelles aventures !`)
                       .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                      .setTimestamp();
+                      .setImage(`https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLTd4qUFQs27yYwgrhP-KT1o1HWDi2IcrrGA&usqp=CAU`)
+                      .setTimestamp()
+                      .setFooter({text: `Twitch`, iconURL: `https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png`})
   
                   if (data.lastMessageId) {
                       const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
@@ -249,7 +284,7 @@ module.exports = {
     
     function getStreamDuration(startTime) {
       if (!startTime) {
-          console.log("La valeur de startTime n'est pas définie.");
+          console.error("La valeur de startTime n'est pas définie.");
           return "Données de durée non disponibles";
       }
     
@@ -324,7 +359,7 @@ module.exports = {
       }
     });
 
-    //Suppresion du message en BDD ainsi que de la recherche Apex Mate lors d'un démarrage en cas de crash
+    //Suppresion du message en BDD ainsi que de la recherche Apex Mate lors d'un démarrage en cas de crash ou simple redemarrage
     (async () => {
       try {
         const ongoingSearches = await SearchMateMessage.find({});
