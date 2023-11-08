@@ -213,7 +213,6 @@ module.exports = {
                           .setURL(`https://www.twitch.tv/${twitchUsername}`)
                           .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n丨@here -> 𝐕ient on lui donne de la force.`)
                           .setThumbnail(gameThumbnailUrl)
-                          .addFields({ name: '\u200B', value: '\u200B' })
                           .addFields(
                             { name: `${gameName}`, value: `\u200B`, inline: true },
                             { name: `\u200B`, value: `\u200B`, inline: true },
