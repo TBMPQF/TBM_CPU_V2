@@ -278,7 +278,7 @@ module.exports = {
     }
 
     function formatPlural(number, text) {
-      return `${number} ${text}${number > 1 ? 's' : ''}`;
+      return `${text}${number > 1 ? 's' : ''}`;
     }
     
     function getStreamDuration(startTime) {
