@@ -228,7 +228,7 @@ module.exports = {
                       } else {
                           const newMessage = await channel.send({ embeds: [liveEmbed] });
                           data.lastMessageId = newMessage.id;
-                          data.startedAt = new Date();
+                          data.startedAt = new Date(streamData.started_at)
                           streamerEntry.lastMessageId = newMessage.id;
                           streamerEntry.startedAt = new Date();
                       }
@@ -241,7 +241,7 @@ module.exports = {
                       console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
                   });
   
-                  const streamDuration = getStreamDuration(data.startedAt || streamerEntry.startedAt);
+                  const streamDuration = getStreamDuration(data.startedAt);
                   const profilePic = await getUserProfilePic(twitchUsername);
                   
                   const offlineEmbed = new EmbedBuilder()

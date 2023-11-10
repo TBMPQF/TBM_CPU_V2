@@ -143,13 +143,13 @@ module.exports = {
       let dailyMessage = "";
 
       if (lastClaim == null) {
-        dailyMessage = `\`${interaction.user.username}\`丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
       } else if (resetConsecutiveDaily) {
-        dailyMessage = `\`${interaction.user.username}\`丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\`. :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\`. :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
       } else if (user.consecutiveDaily === 1) {
-        dailyMessage = `\`${interaction.user.username}\`丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
       } else {
-        dailyMessage = `\`${interaction.user.username}\`丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\`. :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\`. :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
       }
 
       user.lastDaily = now;
@@ -157,6 +157,10 @@ module.exports = {
       const dailyEmbed = new EmbedBuilder()
         .setColor("Gold")
         .setTitle(dailyMessage)
+        .setAuthor({
+          name: interaction.user.username,
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+        })
         .setFooter({
           text: `丨`,
           iconURL: interaction.user.displayAvatarURL({
@@ -194,8 +198,12 @@ module.exports = {
       if (serverInfo || !serverInfo.logChannelID) {
         const XPLOG = new EmbedBuilder()
           .setColor("Orange")
+          .setAuthor({
+            name: interaction.user.username,
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+          })
           .setTitle(
-            `\`${interaction.user.username}\`丨𝐕ient de récuperer son bonus quotidien. 💸`
+            `丨𝐕ient de récuperer son bonus quotidien. 💸`
           )
           .setFooter({
             text: `丨`,
@@ -304,10 +312,14 @@ module.exports = {
 
         const recoveredDailyLog = new EmbedBuilder()
           .setColor("Orange")
-          .setTitle(`\`${interaction.user.username}\`丨𝐕ient de récupéré son Daily manqué !`)
-          .setDescription(`\nSérie recupérée : \`${user.consecutiveDaily}\`.\nXP dépensé : \`${costXP.toLocaleString()}\` XP.\nMalus appliqué : \`${malus}\` XP pour \`${malusDuration}\` jours`)
+          .setAuthor({
+            name: interaction.user.username,
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+          })
+          .setTitle(`丨𝐕ient de récupéré son Daily manqué !`)
+          .setDescription(`\n_Série recupérée_ : \`${user.consecutiveDaily}\`.\n\n_XP dépensé_ : \`${costXP.toLocaleString()}\` XP.\n\n_Malus appliqué_ : \`${malus}\` XP pour \`${malusDuration}\` jours.`)
           .setFooter({
-            text: `XP restant : \`${user.xp.toLocaleString()}\``,
+            text: `XP restant : ${user.xp.toLocaleString()}`,
             iconURL: interaction.user.displayAvatarURL({ dynamic: true, size: 64 })
           })
           .setTimestamp();
