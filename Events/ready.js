@@ -319,13 +319,14 @@ module.exports = {
 
     startTwitchCheck(bot);
 
-    //Gestion qui supprime le vocal d'Apex lorsqu'il tombe à 0 utilisateurs
-    const createdVoiceCategoryID = '716810236417278034';
+    //Gestion qui supprime le vocal de jeu crée lorsqu'il tombe à 0 utilisateurs
+    const ApexVoiceCategoryID = '716810236417278034';
+    const CODVoiceCategoryID = '908478418939707493';
     bot.on('voiceStateUpdate', async (oldState, newState) => {
       if (oldState.channel && oldState.channel.members.size === 0) {
         const voiceChannel = oldState.channel;
     
-        if (voiceChannel.parentId === createdVoiceCategoryID) {
+        if (voiceChannel.parentId === ApexVoiceCategoryID || voiceChannel.parentId === CODVoiceCategoryID) {
           const dbEntry = await VocalChannel.findOne({ channelId: voiceChannel.id });
     
           if (dbEntry) {
@@ -333,7 +334,7 @@ module.exports = {
               await voiceChannel.delete('Channel is empty');
               await VocalChannel.deleteOne({ channelId: voiceChannel.id });
             } catch (error) {
-              console.log('[APEX VOCAL] Erreur lors de la suppression du salon vocal :', error);
+              console.log('[GAME VOCAL] Erreur lors de la suppression du salon vocal :', error);
             }
           }
         }

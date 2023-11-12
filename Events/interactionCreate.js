@@ -896,51 +896,6 @@ module.exports = {
       logChannel.send({ embeds: [NOPSUGGLOG] });
     }
 
-    // Actualisation du ping
-    if (interaction.customId === "PING_BUTTON") {
-      let reloadPing = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("PING_BUTTON")
-          .setEmoji("🔄")
-          .setLabel("Actualiser")
-          .setStyle(ButtonStyle.Success)
-      );
-      const pingUser = Date.now() - interaction.createdTimestamp;
-      let emojiUser;
-      if (pingUser < 200) {
-        emojiUser = "🟢";
-      } else if (pingUser < 400 && pingUser > 200) {
-        emojiUser = "🟠";
-      } else if (pingUser > 400) {
-        emojiUser = "🔴";
-      }
-      // Ping de l'API de discord
-      const APIPing = bot.ws.ping;
-      let APIemoji;
-      if (APIPing < 200) {
-        APIemoji = "🟢";
-      } else if (APIPing < 400 && APIPing > 200) {
-        APIemoji = "🟠";
-      } else if (APIPing > 400) {
-        APIemoji = "🔴";
-      }
-
-      let PingEmbed = new EmbedBuilder()
-        .setDescription(
-          `
-          \`${emojiUser}\`丨Votre ping : **${pingUser}ms** :fish:
-          \`${APIemoji}\`丨BOT TBM_CPU ping : **${APIPing}ms**`
-        )
-        .setColor("#b3c7ff");
-
-      await interaction.deferUpdate();
-      await interaction.editReply({
-        embeds: [PingEmbed],
-        components: [reloadPing],
-        ephemeral: true,
-      });
-    }
-
     //Gestion du SetConfig
     if (interaction.customId === "LOG_BUTTON") {
       const message = await interaction.reply({
@@ -1651,6 +1606,67 @@ module.exports = {
       }, 60000);
     }
 
+    //Bouton lancer une recherche Call of Duty
+    if (interaction.customId === "SEARCHMATE_COD_BUTTON") {
+
+      const existingMessage = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
+      if (existingMessage) {
+          return interaction.reply({ content: 'Doucement, attends tranquillement ! Prends toi un coca et respire.', ephemeral: true });
+      }
+  
+      const codRole = interaction.guild.roles.cache.find(role => role.name === "Call of Duty");
+      const embed = new EmbedBuilder()
+          .setTitle('𝐑𝐄𝐂𝐇𝐄𝐑𝐂𝐇𝐄 𝐃𝐄 𝐌𝐀𝐓𝐄 !')
+          .setDescription(`${codRole}\n\`${interaction.user.username}\` recherche son mate pour **Call of Duty** !`)
+          .setColor('Red')
+          .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+  
+      const sentMessageResponse = await interaction.reply({embeds: [embed]});
+      const sentMessage = sentMessageResponse instanceof require('discord.js').Message ? 
+                          sentMessageResponse : 
+                          await interaction.fetchReply();
+  
+      const sentMessageId = sentMessage.id;
+      
+      const newSearchMessage = new SearchMateMessage({
+          userId: interaction.user.id,
+          guildId: interaction.guild.id,
+          channelId: interaction.channel.id,
+          messageId: sentMessageId,
+      });
+      await newSearchMessage.save();
+  
+      let timeLeft = 30 * 60;
+  
+      const formatTime = (time) => {
+        const minutes = Math.floor(time / 60);
+    
+        if (minutes === 0) return '𝐐uelques secondes...';
+    
+        return `${minutes.toString().padStart(2, '0')} minute${minutes > 1 ? 's' : ''}`;
+    };
+  
+      const timerId = setInterval(async () => {
+          timeLeft -= 60;
+  
+          embed.setFooter({
+              text: `Temps restant : ${formatTime(timeLeft)}`,
+              iconURL: interaction.guild.iconURL(),
+          });
+          await sentMessage.edit({ embeds: [embed] });
+  
+          if (timeLeft <= 0) {
+              clearInterval(timerId);
+              try {
+                  await sentMessage.delete();
+                  await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
+              } catch (error) {
+                  console.error('[COD SEARCH] Erreur lors de la suppression du message :', error);
+              }
+          }
+      }, 60000);
+    }
+
     //Bouton pour crée un vocal pour Apex Legends
     if (interaction.customId === "OPENVOC_APEX_BUTTON") {
       const parentChannel = interaction.channel;
@@ -1696,6 +1712,52 @@ module.exports = {
           await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', ephemeral: true });
       } catch (error) {
           console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
+          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
+      }
+    }
+    //Bouton pour crée un vocal pour Call of Duty
+    if (interaction.customId === "OPENVOC_COD_BUTTON") {
+      const parentChannel = interaction.channel;
+      const existingChannel = await VocalChannel.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
+
+      if (existingChannel) {
+        return await interaction.reply({
+          content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
+          ephemeral: true,
+        });
+      }
+    
+      const codRole = interaction.guild.roles.cache.find(role => role.name === "Call of Duty");
+      let permissionOverwrites = [
+          {
+              id: interaction.guild.roles.everyone.id,
+              deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Connect],
+          },
+          {
+              id: codRole.id,
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Connect],
+          }
+      ];
+    
+      try {
+          let channel = await interaction.guild.channels.create({
+              name: `丨${interaction.user.username}ᴷᴼᴿᴾ`,
+              parent: parentChannel.parentId,
+              type: ChannelType.GuildVoice,
+              userLimit: 6,
+              permissionOverwrites: permissionOverwrites,
+          });
+    
+          const newVocalChannel = new VocalChannel({
+              userId: interaction.user.id,
+              guildId: interaction.guild.id,
+              channelId: channel.id
+          });
+          await newVocalChannel.save();
+    
+          await interaction.reply({ content: 'Ton salon vocal **Call of Duty** a été créé avec succès !', ephemeral: true });
+      } catch (error) {
+          console.error('[COD VOCAL] Erreur lors de la création du canal pour Call of Duty:', error);
           await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
       }
     }
@@ -1826,6 +1888,10 @@ module.exports = {
           case 'predator':
               return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
       }
+    }
+    // Bouton statistique Call of Duty
+    if (interaction.customId === 'STATS_COD_BUTTON') {
+      await interaction.reply({ content: "Ceci n'est malheuresement pas encore disponible.", ephemeral: true });
     }
     
 
