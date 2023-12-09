@@ -51,18 +51,19 @@ if (user && user.joinedAt) {
 }
 
     const RemoveMember = new EmbedBuilder()
+      .setAuthor({
+        name: member.user.username,
+        iconURL: member.user.displayAvatarURL({ dynamic: true })
+      })
       .setTitle(
-        `\`${member.user.username}\` nous a quitté ! :sob:`
+        `丨𝐕ient de nous quitté ! :sob:`
       )
       .setDescription(`Il a résisté pendant \`${timeOnServer}\` !`)
       .setColor("Red")
       .setTimestamp()
       .setFooter({
         text: `丨`,
-        iconURL: `${member.user.displayAvatarURL({
-          dynamic: true,
-          size: 512,
-        })}`,
+        iconURL: `https://image.noelshack.com/fichiers/2023/46/1/1699895268-pictogramme-de-secours-luminaires-exit-pictogram.png`,
       });
 
     const logChannel = bot.channels.cache.get(serverConfig.logChannelID);

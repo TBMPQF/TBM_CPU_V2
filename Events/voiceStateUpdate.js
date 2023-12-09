@@ -1,56 +1,64 @@
 const User = require("../models/experience");
 const voiceUsers = new Map();
 const levelUp = require('../models/levelUp');
-let xpDistributionInterval; 
+let xpDistributionInterval;
 
 module.exports = {
   name: 'voiceStateUpdate',
   async execute(oldState, newState, bot) {
     try {
-      handleVoiceStateUpdate(oldState, newState, bot);
+      handleVoiceStateUpdate(oldState, newState);
 
-      if (xpDistributionInterval) {
-        clearInterval(xpDistributionInterval);
+      if (!xpDistributionInterval) {
+        xpDistributionInterval = setInterval(() => distributeXP(bot), 420000);
       }
-
-      xpDistributionInterval = setInterval(() => distributeXP(bot), 420000);
     } catch (error) {
       console.error('[XP VOCAL] Erreur lors de la mise à jour de l\'état vocal :', error);
     }
   }
 };
 
-async function handleVoiceStateUpdate(oldState, newState, bot) {
+async function handleVoiceStateUpdate(oldState, newState) {
   if (newState.member.user.bot) {
     return;
   }
-  const userVoiceData = voiceUsers.get(newState.id) || initializeUserVoiceData(newState);
+
+  let userVoiceData = voiceUsers.get(newState.id) || initializeUserVoiceData(newState);
 
   if (!oldState.channelId && newState.channelId) {
+    userVoiceData.joinTimestamp = Date.now();
   } else if (oldState.channelId && !newState.channelId) {
-    voiceUsers.delete(oldState.id);
+    updateDuration(newState.id, userVoiceData);
+    voiceUsers.delete(newState.id);
     return;
   }
 
-  const isAlone = newState.channel && newState.channel.members && newState.channel.members.size === 1;
+  voiceUsers.set(newState.id, userVoiceData);
+}
 
-  if (isAlone) {
-    userVoiceData.lastAloneTimestamp = userVoiceData.lastAloneTimestamp || Date.now();
-  } else if (userVoiceData.lastAloneTimestamp) {
-    userVoiceData.aloneDuration += Date.now() - userVoiceData.lastAloneTimestamp;
-    delete userVoiceData.lastAloneTimestamp;
-  }
+function updateDuration(userId, userVoiceData) {
+  const duration = Date.now() - userVoiceData.joinTimestamp;
+  userVoiceData.totalDuration += duration;
+  userVoiceData.joinTimestamp = Date.now(); // Reset join timestamp
 }
 
 function initializeUserVoiceData(newState) {
-  const userVoiceData = {
+  return {
     joinTimestamp: Date.now(),
     username: newState.member.user.tag,
     serverId: newState.guild.id,
-    aloneDuration: 0,
+    totalDuration: 0 // Total time in vocal
   };
-  voiceUsers.set(newState.id, userVoiceData);
-  return userVoiceData;
+}
+
+async function distributeXP(bot) {
+  for (const [userId, userVoiceData] of voiceUsers.entries()) {
+    const member = await getMemberFromId(userId, userVoiceData.serverId, bot);
+    if (!member || !member.voice.channel || member.voice.channel.members.size < 2) continue;
+
+    const xpToAdd = Math.floor(Math.random() * (12 - 10 + 1) + 5); // Random XP between 5 and 12
+    await updateUserXP(member, userVoiceData, xpToAdd);
+  }
 }
 
 async function updateUserXP(member, userVoiceData, xpToAdd) {
@@ -76,21 +84,6 @@ async function updateUserXP(member, userVoiceData, xpToAdd) {
       await levelUp(member, user, user.xp);
   } catch (error) {
       console.error('[XP VOCAL] Erreur lors de la mise à jour de l’XP utilisateur :', error);
-  }
-}
-
-async function distributeXP(bot) {
-  for (const [userId, userVoiceData] of voiceUsers.entries()) {
-    try {
-      const member = await getMemberFromId(userId, userVoiceData.serverId, bot);
-      if (!member || !member.voice.channel || member.voice.channel.members.size < 2) continue;
-      
-      const xpToAdd = Math.floor(Math.random() * (12 - 10 + 1) + 5);
-      await updateUserXP(member, userVoiceData, xpToAdd);
-      
-    } catch (error) {
-      console.error(`[XP VOCAL] Erreur lors de la distribution de XP à l'utilisateur ${userId} :`, error);
-    }
   }
 }
 

@@ -111,12 +111,12 @@ module.exports = {
         user.maxDaily = user.consecutiveDaily;
       }
 
-      const SPECIAL_DAILY_STREAK = 100;
-      if (user.consecutiveDaily === SPECIAL_DAILY_STREAK) {
-        const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
-        if (specialChannel) {
-          specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`100\` jours __consécutifs__ de bonus quotidien ! 🎉`);
-        }
+      const SPECIAL_DAILY_STREAK = 50;
+      if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
+          const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
+          if (specialChannel) {
+              specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`);
+          }
       }
 
       const baseXP = 200;
@@ -270,7 +270,7 @@ module.exports = {
     }
 
     function calculateCostXP(consecutiveDaily) {
-      // Chaque jour de la série coûte 1000 xp
+      // Chaque jour de la série coûte 750 xp
       return consecutiveDaily * 750;
     }
 
