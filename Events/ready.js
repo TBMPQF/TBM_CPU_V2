@@ -494,11 +494,11 @@ module.exports = {
 
     loadSlashCommands(bot);
 
-    //Interval pour mettre a jour le salon vocal Minecraft
+    //Interval pour mettre a jour le salon vocal Minecraft et check les lives Twitch
     setInterval(async () => {
       const server = bot.guilds.cache.first();
       checkMultipleStreamers(bot);
-      updateVoiceChannelMinecraft(server);
+      updateCategoryMinecraft(server);
     }, 60000);
     //Interval pour mettre a jour le salon vocal membre connecté
     setInterval(async () => {
@@ -685,47 +685,31 @@ module.exports = {
 };
 
 // Mise a jour du nombre de joueurs sur le serveur Minecraft
-async function updateVoiceChannelMinecraft(server) {
+async function updateCategoryMinecraft(server) {
   try {
-    let channel = server.channels.cache.find((channel) =>
-      channel.name.startsWith("👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒")
+    let category = server.channels.cache.find(channel => 
+      channel.type === ChannelType.GuildCategory && channel.name.startsWith("丨MINECRAFT丨")
     );
 
-    if (!channel) {
-      channel = await server.channels.create(CHANNEL_NAME, {
-        type: "GUILD_VOICE",
-        permissionOverwrites: [
-          {
-            id: server.id,
-            deny: ["VIEW_CHANNEL"],
-          },
-        ],
-      });
+    if (!category) {
+      console.error("[MINECRAFT] Catégorie non trouvée pour mettre à jour le nombre d'utilisateurs connecté");
+      return;
     }
 
     fetch(`https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_DOMAIN}`)
-      .then((response) => {
-        if (response.headers.get("content-type") === "application/json") {
-          return response.json();
-        } else {
-          throw new Error("Invalide JSON réponse");
-        }
-      })
-      .then((data) => {
+      .then(response => response.json())
+      .then(data => {
         if (data.online) {
-          channel.setName(
-            `👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒 ${data.players.online} / ${data.players.max}`
-          );
-        } else {
-          channel.setName(`👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒`);
+          const newCategoryName = `丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`;
+          category.setName(newCategoryName)
+            .catch(error => console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error));
         }
       })
-      .catch((error) => {
-        console.error(error);
-        channel.setName(`👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒`);
+      .catch(error => {
+        console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft:", error);
       });
   } catch (error) {
-    console.error("Erreur lors de la mise à jour du salon vocal:", error);
+    console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error);
   }
 }
 
@@ -733,9 +717,7 @@ async function updateVoiceChannelMinecraft(server) {
 async function updateVoiceChannelServer(server) {
   let channel;
   try {
-    // Mettre à jour le cache des membres
     await server.members.fetch();
-
     channel = server.channels.cache.find((channel) => 
       channel.name.startsWith("丨𝐎n𝐋ine")
     );
@@ -751,7 +733,6 @@ async function updateVoiceChannelServer(server) {
         ],
       });
     }
-
     const filteredMembers = server.members.cache.filter(member => 
       ['online', 'dnd', 'idle'].includes(member.presence?.status) && !member.user.bot
     );
@@ -761,13 +742,13 @@ async function updateVoiceChannelServer(server) {
 
     channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
       .catch(error => {
-        console.error("Erreur lors de la mise à jour du nom du canal:", error);
+        console.error("[ONLINE] Erreur lors de la mise à jour du nom du canal:", error);
       });
 
   } catch (error) {
-    console.error("Erreur lors de la mise à jour du salon vocal:", error);
+    console.error("[ONLINE] Erreur lors de la mise à jour du salon vocal:", error);
     if (channel) {
-      channel.setName(`丨𝐎n𝐋ine`).catch(err => console.error("Impossible de réinitialiser le nom du canal:", err));
+      channel.setName(`丨𝐎n𝐋ine`).catch(err => console.error("[ONLINE] Impossible de réinitialiser le nom du canal:", err));
     }
   }
 }
