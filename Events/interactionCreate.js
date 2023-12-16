@@ -270,8 +270,8 @@ module.exports = {
     }
 
     function calculateCostXP(consecutiveDaily) {
-      // Chaque jour de la série coûte 750 xp
-      return consecutiveDaily * 750;
+      // Chaque jour de la série coûte 600 xp
+      return consecutiveDaily * 600;
     }
 
     function calculateMalus(consecutiveDaily) {
@@ -1445,13 +1445,11 @@ module.exports = {
           ephemeral: true,
         });
       }
-      // Vérifie si le message est dans un thread
       const thread = channel.threads.cache.find((x) => x.name === "food-talk");
 
       if (interaction.channel.thread) {
         await thread.delete();
       } else {
-        // Supprime le message
         await interaction.message.delete();
       }
 
@@ -1516,31 +1514,31 @@ module.exports = {
     if (interaction.customId === "VOCAL_TIME_BUTTON") {
       const userId = interaction.user.id;
       const serverId = interaction.guild.id;
-    
+
       User.findOne({ userID: userId, serverID: serverId }, (err, user) => {
         if (err) {
           console.error(err);
           interaction.reply({ content: "Une erreur est survenue lors de la récupération des données.", ephemeral: true });
           return;
         }
-    
+
         if (!user) {
           interaction.reply({ content: "Impossible de trouver les données de l'utilisateur.", ephemeral: true });
           return;
         }
-    
-        const totalSeconds = user.voiceTime / 1000;
+
+        const totalSeconds = user.voiceTime; // Assurez-vous que voiceTime est déjà en secondes
         const days = Math.floor(totalSeconds / (24 * 60 * 60));
         const hours = padNumber(Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60)));
         const minutes = padNumber(Math.floor((totalSeconds % (60 * 60)) / 60));
         const seconds = padNumber(Math.floor(totalSeconds % 60));
-    
+
         let timeString = '';
         if (days > 0) timeString += `\`${days} jour${days > 1 ? 's' : ''}\`, `;
         if (hours > 0 || days > 0) timeString += `\`${hours} heure${hours > 1 ? 's' : ''}\`, `;
         if (minutes > 0 || hours > 0 || days > 0) timeString += `\`${minutes} minute${minutes > 1 ? 's' : ''}\` et `;
         timeString += `\`${seconds} seconde${seconds > 1 ? 's' : ''}\``;
-    
+
         interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
       });
     }

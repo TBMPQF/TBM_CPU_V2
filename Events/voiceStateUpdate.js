@@ -1,94 +1,66 @@
-const User = require("../models/experience");
-const voiceUsers = new Map();
-const levelUp = require('../models/levelUp');
-let xpDistributionInterval;
+const { voiceUsers, updateVoiceTimeForUser, initializeXpDistributionInterval } = require('../models/shared');
+const InVocal = require("../models/inVocal");
+const moment = require('moment-timezone');
 
 module.exports = {
   name: 'voiceStateUpdate',
   async execute(oldState, newState, bot) {
     try {
-      handleVoiceStateUpdate(oldState, newState);
-
-      if (!xpDistributionInterval) {
-        xpDistributionInterval = setInterval(() => distributeXP(bot), 420000);
-      }
+      handleVoiceStateUpdate(oldState, newState, bot);
+      initializeXpDistributionInterval(bot);
     } catch (error) {
-      console.error('[XP VOCAL] Erreur lors de la mise à jour de l\'état vocal :', error);
+      console.error('[VOICE STATE] Erreur lors de la mise à jour de l\'état vocal :', error);
     }
   }
 };
 
 async function handleVoiceStateUpdate(oldState, newState) {
-  if (newState.member.user.bot) {
-    return;
-  }
+  if (newState.member.user.bot) return;
 
-  let userVoiceData = voiceUsers.get(newState.id) || initializeUserVoiceData(newState);
-
-  if (!oldState.channelId && newState.channelId) {
-    userVoiceData.joinTimestamp = Date.now();
+  if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+    await updateInVocalEntry(newState);
+  } else if (!oldState.channelId && newState.channelId) {
+    voiceUsers.set(newState.member.id, { joinTimestamp: Date.now(), serverId: newState.guild.id });
+    await createInVocalEntry(newState);
   } else if (oldState.channelId && !newState.channelId) {
-    updateDuration(newState.id, userVoiceData);
-    voiceUsers.delete(newState.id);
-    return;
-  }
-
-  voiceUsers.set(newState.id, userVoiceData);
-}
-
-function updateDuration(userId, userVoiceData) {
-  const duration = Date.now() - userVoiceData.joinTimestamp;
-  userVoiceData.totalDuration += duration;
-  userVoiceData.joinTimestamp = Date.now(); // Reset join timestamp
-}
-
-function initializeUserVoiceData(newState) {
-  return {
-    joinTimestamp: Date.now(),
-    username: newState.member.user.tag,
-    serverId: newState.guild.id,
-    totalDuration: 0 // Total time in vocal
-  };
-}
-
-async function distributeXP(bot) {
-  for (const [userId, userVoiceData] of voiceUsers.entries()) {
-    const member = await getMemberFromId(userId, userVoiceData.serverId, bot);
-    if (!member || !member.voice.channel || member.voice.channel.members.size < 2) continue;
-
-    const xpToAdd = Math.floor(Math.random() * (12 - 10 + 1) + 5); // Random XP between 5 and 12
-    await updateUserXP(member, userVoiceData, xpToAdd);
+    await updateVoiceTimeForUser(oldState.member.id);
+    await deleteInVocalEntry(oldState);
+    voiceUsers.delete(oldState.member.id);
   }
 }
 
-async function updateUserXP(member, userVoiceData, xpToAdd) {
+async function updateInVocalEntry(newState) {
   try {
-      if (!member || !member.id) throw new Error('[XP VOCAL] Membre ou membre.id est indéfini.');
-
-      let user = await User.findOne({ userID: member.id, serverID: member.guild.id });
-      
-      if (!user) {
-        user = new User({
-          userID: member.id,
-          username: member.user.tag,
-          serverID: member.guild.id,
-          serverName: member.guild.name,
-        });
-      }
-
-      const duration = Date.now() - userVoiceData.joinTimestamp;
-      user.voiceTime = (user.voiceTime || 0) + duration;
-      user.xp = (user.xp || 0) + xpToAdd;
-
-      await user.save();
-      await levelUp(member, user, user.xp);
+    const inVocal = await InVocal.findOne({ discordId: newState.member.id, serverId: newState.guild.id });
+    if (inVocal) {
+      inVocal.vocalName = newState.channel.name;
+      await inVocal.save();
+    }
   } catch (error) {
-      console.error('[XP VOCAL] Erreur lors de la mise à jour de l’XP utilisateur :', error);
+    console.error('Erreur lors de la mise à jour de l\'entrée InVocal:', error);
+  }
+}
+const joinTimestamp = moment().tz("Europe/Paris").toDate();
+async function createInVocalEntry(newState) {
+  const newInVocal = new InVocal({
+    discordId: newState.member.id,
+    serverId: newState.guild.id,
+    username: newState.member.user.tag,
+    vocalName: newState.channel.name,
+    joinTimestamp: joinTimestamp
+  });
+
+  try {
+    await newInVocal.save();
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement de l\'utilisateur en vocal:', error);
   }
 }
 
-async function getMemberFromId(userId, serverId, bot) {
-  const guild = await bot.guilds.fetch(serverId);
-  if (!guild) return null;
-  return guild.members.fetch(userId);
+async function deleteInVocalEntry(oldState) {
+  try {
+    await InVocal.deleteOne({ discordId: oldState.member.id, serverId: oldState.guild.id });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'entrée InVocal:', error);
+  }
 }

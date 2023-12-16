@@ -14,11 +14,57 @@ const SearchMateMessage = require('../models/apexSearchMate');
 const userChannels = require('../models/userChannels');
 const VocalChannel = require('../models/apexVocal');
 const ApexStreamer = require('../models/apexStreamer');
+const InVocal = require("../models/inVocal")
+const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
+const moment = require('moment-timezone');
 
 module.exports = {
   name: "ready",
-  execute(bot, member) {
+  async execute(bot, member) {
     
+    //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
+    bot.guilds.cache.forEach(async guild => {
+      await guild.members.fetch();
+      guild.channels.cache.forEach(channel => {
+        if (channel.type === ChannelType.GuildVoice) {
+          channel.members.forEach(async member => {
+            const isMemberRegistered = await InVocal.findOne({ discordId: member.id, serverId: guild.id });
+            if (!member.user.bot && !isMemberRegistered) {
+              const newInVocal = new InVocal({
+                discordId: member.id,
+                serverId: guild.id,
+                username: member.user.tag,
+                vocalName: channel.name,
+                joinTimestamp: moment().tz("Europe/Paris").toDate()
+              });
+              await newInVocal.save();
+              voiceUsers.set(member.id, { joinTimestamp: Date.now(), serverId: guild.id });
+            }
+          });
+        }
+      });
+    });
+
+    try {
+      const inVocalEntries = await InVocal.find({});
+      inVocalEntries.forEach(async entry => {
+        if (bot.guilds.cache.has(entry.serverId)) {
+          const guild = bot.guilds.cache.get(entry.serverId);
+          const member = guild.members.cache.get(entry.discordId);
+          const joinTimestamp = moment().tz("Europe/Paris").toDate();
+          
+          if (member && member.voice.channel) {
+            voiceUsers.set(member.id, { joinTimestamp: joinTimestamp, serverId: guild.id });
+          } else {
+            await InVocal.deleteOne({ discordId: entry.discordId, serverId: entry.serverId });
+          }
+        }
+      });
+
+      initializeXpDistributionInterval(bot);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des utilisateurs en vocal:', error);
+    }
 
     // Envoie d'un message lorsqu'un streamer est en ligne
     const axios = require('axios');
@@ -426,7 +472,7 @@ module.exports = {
       console.error(`Failed to fetch music entry: ${error}`);
     });
 
-    //Donne l'heure exact lors du démarrage dans la console
+    //Donne l'heure Française
     function formatTwoDigits(num) {
       return num < 10 ? `0${num}` : num.toString();
     }
@@ -438,6 +484,7 @@ module.exports = {
     const minutes = formatTwoDigits(date.getMinutes());
     const dateHeureFrancaise = `${jour}/${mois}/${annee} à ${heures}:${minutes}`;
 
+    //Message connexion bot dans les logs
     console.log(
       "\x1b[33m" +
         `${bot.user.username} connecté le ` +

@@ -64,8 +64,12 @@ module.exports = {
         .setStyle(ButtonStyle.Primary)
     );
     const embed = new EmbedBuilder()
+      .setAuthor({
+        name: interaction.user.username,
+        iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+      })
       .setColor("Random")
-      .setTitle(`\`${target.username}\`丨${position}${positionEmoji}`)
+      .setTitle(`丨${position}${positionEmoji}`)
       .setDescription(
         `\n\n𝐓u as : \*\*${user.xp.toLocaleString()} / ${xpRequiredForNextLevel.toLocaleString()}\*\* XP.\n𝐓u es niveau : \*\*${user.level.toString()}\*\*.\n𝐓u es prestige : \*\*${
           user.prestige
@@ -73,7 +77,7 @@ module.exports = {
           user.messageCount
         }\*\* messages.\n\n𝐏rogression : ${progressBar} \*\*${percentage}\*\*%`
       )
-      .setThumbnail(target.displayAvatarURL({ dynamic: true }));
+      
 
     const reply = await interaction.reply({
       embeds: [embed],
