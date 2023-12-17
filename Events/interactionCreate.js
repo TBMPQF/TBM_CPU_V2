@@ -343,7 +343,7 @@ module.exports = {
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
       return interaction.reply({
         content:
-          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas, **ce qui ne te tue pas te rend plus fort**... ou pas ! 😅",
+          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas -> **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
         ephemeral: true,
       });
     }
@@ -373,7 +373,10 @@ module.exports = {
           } else if (choice == "MINECRAFT") {
             const roleID = "811663653140168741";
             handleRole(interaction, member, roleID, "Minecraft");
-          }
+          } else if (choice == "DISCORDJS") {
+            const roleID = "1185978943745040384";
+            handleRole(interaction, member, roleID, "Discord JS");
+          } 
         });
       } else if (interaction.customId === interactionSetConfig.name) {
         interactionSetConfig.execute(interaction);
