@@ -52,7 +52,7 @@ module.exports = {
       ? rolesChannel.toString()
       : "PAS DÉFINI";
 
-    let description = `Bienvenue <@${member.user.id}>, tu viens de rejoindre **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !`;
+    let description = `Bienvenue <@${member.user.id}>, \nTu viens de rejoindre **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !`;
 
     if (reglementChannelString !== "PAS DÉFINI" && rolesChannelString !== "PAS DÉFINI") {
         description += `\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes rôles ${rolesChannelString}.`;

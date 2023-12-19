@@ -247,6 +247,7 @@ module.exports = {
                       const profilePic = await getUserProfilePic(twitchUsername);
                       const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(twitchUsername, twitchHeaders);
                       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
+                      const viewersCount = streamData.viewer_count;
                       
                       member.roles.add(roleId).catch(error => {
                           console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
@@ -262,7 +263,7 @@ module.exports = {
                           .addFields(
                             { name: `${gameName}`, value: `\u200B`, inline: true },
                             { name: `\u200B`, value: `\u200B`, inline: true },
-                            { name: `:eyes:`, value: `\u200B`, inline: true },
+                            { name: `:eyes: ${viewersCount} spectateurs`, value: `\u200B`, inline: true },
                           )
                           .setImage(streamThumbnailUrl)
                           .setTimestamp()
@@ -665,22 +666,22 @@ module.exports = {
       { name: ``, type: ActivityType.Listening },
     ];
 
-    let i = 0;
-    setInterval(() => {
-      let activity = activities[i];
+      let i = 0;
+      setInterval(() => {
+        let activity = activities[i];
 
-      if (activity.type === ActivityType.Listening) {
-        activity.name = `丨${bot.guilds.cache.size}丨 𝐒erveurs`;
-      }
+        if (activity.type === ActivityType.Listening) {
+          activity.name = `丨${bot.guilds.cache.size}丨 𝐒erveurs`;
+        }
 
-      bot.user.setPresence({
-        activities: [activity],
-        status: "dnd",
-      });
+        bot.user.setPresence({
+          activities: [activity],
+          status: "dnd",
+        });
 
-      if (i === activities.length - 1) i = 0;
-      else i++;
-    }, 2 * 60 * 1000);
+        if (i === activities.length - 1) i = 0;
+        else i++;
+      }, 2 * 60 * 1000);
   },
 };
 

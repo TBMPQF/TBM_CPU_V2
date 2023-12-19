@@ -62,8 +62,7 @@ if (user && user.joinedAt) {
       .setColor("Red")
       .setTimestamp()
       .setFooter({
-        text: `丨`,
-        iconURL: `https://image.noelshack.com/fichiers/2023/46/1/1699895268-pictogramme-de-secours-luminaires-exit-pictogram.png`,
+        text: `丨`
       });
 
     const logChannel = bot.channels.cache.get(serverConfig.logChannelID);

@@ -115,7 +115,12 @@ module.exports = {
       if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
           const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
           if (specialChannel) {
-              specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`);
+              specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`)
+                  .then(message => {
+                      const reactions = ['🇱', '🇴', '🇸', '🇪', '🇷'];
+                      reactions.forEach(reaction => message.react(reaction));
+                  })
+                  .catch(console.error); // Gestion des erreurs
           }
       }
 
@@ -162,11 +167,7 @@ module.exports = {
           iconURL: interaction.user.displayAvatarURL({ dynamic: true })
         })
         .setFooter({
-          text: `丨`,
-          iconURL: interaction.user.displayAvatarURL({
-            dynamic: true,
-            size: 64,
-          }),
+          text: `丨`
         })
         .setTimestamp();
 
@@ -205,20 +206,9 @@ module.exports = {
           .setTitle(
             `丨𝐕ient de récuperer son bonus quotidien. 💸`
           )
-          .setFooter({
-            text: `丨`,
-            iconURL: interaction.user.displayAvatarURL({
-              dynamic: true,
-              size: 64,
-            }),
-          })
           .setTimestamp()
           .setFooter({
-            text: `Série en cours : ${user.consecutiveDaily}`,
-            iconURL: `${interaction.user.displayAvatarURL({
-              dynamic: true,
-              size: 512,
-            })}`,
+            text: `丨Série en cours : ${user.consecutiveDaily}`
           });
 
         if (serverInfo && serverInfo.logChannelID) {
@@ -819,14 +809,11 @@ module.exports = {
       const ACCEPTSUGGLOG = new EmbedBuilder()
         .setColor("Blue")
         .setTitle(
-          `:ok: \`${interaction.user.username}\` 𝐕ient de réagir positivement à la suggestion :\n\n\`"${embed.description}"\`.`
+          `:ok:丨𝐕ient de réagir __positivement__ à la suggestion :\n\n\`"${embed.description}"\`.`
         )
-        .setFooter({
-          text: `丨`,
-          iconURL: interaction.user.displayAvatarURL({
-            dynamic: true,
-            size: 64,
-          }),
+        .setAuthor({
+          name: interaction.user.username,
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
         })
         .setTimestamp();
 
@@ -884,14 +871,11 @@ module.exports = {
       const NOPSUGGLOG = new EmbedBuilder()
         .setColor("Blue")
         .setTitle(
-          `:x: \`${interaction.user.username}\` 𝐕ient de réagir négativement à la suggestion :\n\n\`"${embed.description}"\`.`
+          `:x:丨𝐕ient de réagir __négativement__ à la suggestion :\n\n\`"${embed.description}"\`.`
         )
-        .setFooter({
-          text: `丨`,
-          iconURL: interaction.user.displayAvatarURL({
-            dynamic: true,
-            size: 64,
-          }),
+        .setAuthor({
+          name: interaction.user.username,
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
         })
         .setTimestamp();
 
@@ -1530,7 +1514,7 @@ module.exports = {
           return;
         }
 
-        const totalSeconds = user.voiceTime; // Assurez-vous que voiceTime est déjà en secondes
+        const totalSeconds = user.voiceTime;
         const days = Math.floor(totalSeconds / (24 * 60 * 60));
         const hours = padNumber(Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60)));
         const minutes = padNumber(Math.floor((totalSeconds % (60 * 60)) / 60));
