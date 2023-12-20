@@ -71,7 +71,7 @@ module.exports = {
     const { clientId, clientSecret } = config.twitch;
     const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
     const TWITCH_BASE_API = 'https://api.twitch.tv/helix';
-    const CHECK_INTERVAL = 1 * 60 * 1000; // 1 minutes
+    const CHECK_INTERVAL = 1 * 60 * 1000; // 10 minutes
     const roleId = '813793302162702426';
 
     let twitchHeaders;
@@ -227,7 +227,6 @@ module.exports = {
           try {
               const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${twitchUsername}`, twitchHeaders);
               const streamData = response.data.data[0];
-              
               const streamerEntry = await ApexStreamer.findOne({ twitchUsername: twitchUsername });
               if(!streamerEntry) continue;
               
@@ -235,12 +234,14 @@ module.exports = {
               if (!member) continue;
   
               if (streamData) {
-                  if (!data.isLive || bootUpCheck) {
-                      handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders);
-                  }
-              } else if (data.isLive) {
-                  handleStreamerOffline(streamerEntry, member, channel, data);
-              }
+                if (!data.isLive || bootUpCheck) {
+                    handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders);
+                } else {
+                    updateLiveStreamInfo(streamData, streamerEntry, channel, data, twitchHeaders);
+                }
+            } else if (data.isLive) {
+                handleStreamerOffline(streamerEntry, member, channel, data);
+            }
   
           } catch (error) {
               console.error(`[TWITCH] Erreur lors de la récupération de l'API Twitch pour ${twitchUsername}: ${error}`);
@@ -322,6 +323,38 @@ module.exports = {
       streamerEntry.startedAt = null;
       streamerEntry.lastMessageId = data.lastMessageId;
       await streamerEntry.save();
+    }
+    async function updateLiveStreamInfo(streamData, streamerEntry, channel, data, twitchHeaders) {
+      // Récupération des informations actuelles du stream
+      const streamTitle = streamData.title;
+      const gameName = await getGameName(streamData.game_id, twitchHeaders);
+      const profilePic = await getUserProfilePic(streamData.user_login);
+      const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
+      const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
+      const viewersCount = streamData.viewer_count;
+  
+      // Construction de l'embed avec les nouvelles informations
+      const liveEmbed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
+          .setTitle(streamTitle)
+          .setURL(`https://www.twitch.tv/${streamData.user_login}`)
+          .setDescription(`Maintenant en Live sur Twitch !\n@here -> Vient on lui donne de la force.`)
+          .setThumbnail(gameThumbnailUrl)
+          .addFields(
+              { name: gameName, value: `\u200B`, inline: true },
+              { name: `\u200B`, value: `\u200B`, inline: true },
+              { name: `:eyes:丨${viewersCount}`, value: `\u200B`, inline: true },
+          )
+          .setImage(streamThumbnailUrl)
+          .setTimestamp()
+          .setFooter({ text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
+  
+      // Mise à jour du message existant
+      if (data.lastMessageId) {
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit({ embeds: [liveEmbed] });
+      }
     }
     async function startTwitchCheck(bot) {
       await initializeTwitchHeaders();
