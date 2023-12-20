@@ -111,6 +111,6 @@ module.exports = {
         })
       })
       const sentMessage = await interaction.editReply({ embeds: [Embed] });
-      setTimeout(() => sentMessage.delete(), 10000); // 
+      setTimeout(() => sentMessage.delete(), 30000);
   },
 };

@@ -69,33 +69,60 @@ module.exports = {
     // Envoie d'un message lorsqu'un streamer est en ligne
     const axios = require('axios');
     const { clientId, clientSecret } = config.twitch;
-
     const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
     const TWITCH_BASE_API = 'https://api.twitch.tv/helix';
+    const CHECK_INTERVAL = 1 * 60 * 1000; // 1 minutes
+    const roleId = '813793302162702426';
 
     let twitchHeaders;
     let streamers = {};
 
-    async function retrieveAndDisplayThumbnailsForAllStreamers() {
+    async function getTwitchAccessToken() {
       try {
-        const streamers = await ApexStreamer.find({});
-        
-        for (const streamer of streamers) {
-          const username = streamer.twitchUsername;
-          try {
-            const thumbnailUrl = await getLiveStreamThumbnailByUsername(username);
-          } catch (error) {
-            console.error(`Erreur pour ${username}:`, error);
-          }
-        }
+        const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
+        return response.data.access_token;
       } catch (error) {
-        console.error('Erreur lors de la récupération des noms d’utilisateur Twitch de la base de données:', error);
+        console.error('[TWITCH] Erreur lors de la récupération du token Twitch :', error);
+        return null;
       }
     }
-    
-    retrieveAndDisplayThumbnailsForAllStreamers();
-    setInterval(retrieveAndDisplayThumbnailsForAllStreamers, 1 * 60 * 1000); // 30 minutes en millisecondes
-
+    async function initializeTwitchHeaders() {
+      const accessToken = await getTwitchAccessToken();
+      if (accessToken) {
+        twitchHeaders = {
+          headers: {
+            'Client-ID': clientId,
+            'Authorization': `Bearer ${accessToken}`
+          }
+        };
+      } else {
+        console.error("[TWITCH] Token d'accès non obtenu. Vérifiez vos identifiants.");
+      }
+    }
+    async function fetchFromTwitch(endpoint, params = {}) {
+      try {
+        const url = new URL(`${TWITCH_BASE_API}/${endpoint}`);
+        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+        return await axios.get(url.toString(), twitchHeaders);
+      } catch (error) {
+        console.error(`[TWITCH] Erreur lors de la récupération de ${endpoint} : ${error}`);
+        return null;
+      }
+    }
+    async function initializeStreamers() {
+      const streamersFromDB = await ApexStreamer.find();
+      streamersFromDB.forEach(streamer => {
+        streamers[streamer.twitchUsername] = {
+          isLive: streamer.isLive,
+          lastMessageId: streamer.lastMessageId,
+          startedAt: null
+        };
+      });
+    }
+    async function getUserProfilePic(streamer) {
+      const response = await fetchFromTwitch('users', { login: streamer });
+      return response?.data.data[0].profile_image_url;
+    }
     async function getLiveStreamThumbnailByUsername(username) {
       await initializeTwitchHeaders();
 
@@ -123,7 +150,6 @@ module.exports = {
         throw error;
       }
     }
-
     async function getUserID(username) {
       await initializeTwitchHeaders();
       const endpoint = 'users';
@@ -136,60 +162,6 @@ module.exports = {
         return null;
       }
     }
-
-    async function initializeStreamers() {
-      const streamersFromDB = await ApexStreamer.find();
-      streamersFromDB.forEach(streamer => {
-        streamers[streamer.twitchUsername] = {
-          isLive: streamer.isLive,
-          lastMessageId: streamer.lastMessageId,
-          startedAt: null
-        };
-      });
-    }
-
-    const roleId = '813793302162702426';
-
-    async function getTwitchAccessToken() {
-      try {
-        const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
-        return response.data.access_token;
-      } catch (error) {
-        console.error('[TWITCH] Erreur lors de la récupération du token Twitch :', error);
-        return null;
-      }
-    }
-
-    async function fetchFromTwitch(endpoint, params = {}) {
-      try {
-        const url = new URL(`${TWITCH_BASE_API}/${endpoint}`);
-        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        return await axios.get(url.toString(), twitchHeaders);
-      } catch (error) {
-        console.error(`[TWITCH] Erreur lors de la récupération de ${endpoint} : ${error}`);
-        return null;
-      }
-    }
-
-    async function initializeTwitchHeaders() {
-      const accessToken = await getTwitchAccessToken();
-      if (accessToken) {
-        twitchHeaders = {
-          headers: {
-            'Client-ID': clientId,
-            'Authorization': `Bearer ${accessToken}`
-          }
-        };
-      } else {
-        console.error("[TWITCH] Token d'accès non obtenu. Vérifiez vos identifiants.");
-      }
-    }
-
-    async function getUserProfilePic(streamer) {
-      const response = await fetchFromTwitch('users', { login: streamer });
-      return response?.data.data[0].profile_image_url;
-    }
-
     async function getGameName(gameId) {
       try {
         const response = await fetchFromTwitch('games', { id: gameId });
@@ -204,7 +176,6 @@ module.exports = {
         return "Nom de jeu inconnu";
       }
     }
-
     async function getGameThumbnailUrl(gameId) {
       try {
         const response = await fetchFromTwitch('games', { id: gameId });
@@ -219,9 +190,34 @@ module.exports = {
         return null;
       }
     }
-
     let bootUpCheck = true;
-
+    function formatPlural(number, text) {
+      return `${text}${number > 1 ? 's' : ''}`;
+    }
+    function getStreamDuration(startTime) {
+      if (!startTime) {
+          console.error("La valeur de startTime n'est pas définie.");
+          return "Données de durée non disponibles";
+      }
+    
+      const now = new Date();
+      const start = new Date(startTime);
+    
+      if (isNaN(start.getTime())) {
+          console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
+          return "Données de durée non disponibles";
+      }
+    
+      const duration = Math.abs(now - start) / 1000; // Converti en secondes
+    
+      const hours = Math.floor(duration / 3600);
+      const minutes = Math.floor((duration % 3600) / 60);
+    
+      const hoursText = hours > 0 ? `${hours} ${formatPlural(hours, 'heure')}` : '';
+      const minutesText = minutes > 0 ? `${minutes} ${formatPlural(minutes, 'minute')}` : '';
+    
+      return `${hoursText}${hours > 0 && minutes > 0 ? ' et ' : ''}${minutesText}`;
+    }
     async function checkMultipleStreamers(bot) {
       await initializeStreamers();
       const channel = bot.channels.cache.get('812530008823955506');
@@ -235,85 +231,15 @@ module.exports = {
               const streamerEntry = await ApexStreamer.findOne({ twitchUsername: twitchUsername });
               if(!streamerEntry) continue;
               
-              const discordUsername = streamerEntry.discordUsername;
-              if (!discordUsername) continue;
-              const member = guild.members.cache.find(m => m.user.tag === discordUsername);
+              const member = guild.members.cache.find(m => m.user.tag === streamerEntry.discordUsername);
               if (!member) continue;
   
               if (streamData) {
                   if (!data.isLive || bootUpCheck) {
-                      const streamTitle = streamData.title;
-                      const gameName = await getGameName(streamData.game_id, twitchHeaders);
-                      const profilePic = await getUserProfilePic(twitchUsername);
-                      const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(twitchUsername, twitchHeaders);
-                      const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
-                      const viewersCount = streamData.viewer_count;
-                      
-                      member.roles.add(roleId).catch(error => {
-                          console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
-                      });
-                      
-                      const liveEmbed = new EmbedBuilder()
-                          .setColor('#9146FF')
-                          .setAuthor({ name: `${twitchUsername}`, iconURL: `${profilePic}`, url: `https://www.twitch.tv/${twitchUsername}` })
-                          .setTitle(`${streamTitle}`)
-                          .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                          .setDescription(`Maintenant en 𝐋ive sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n丨@here -> 𝐕ient on lui donne de la force.`)
-                          .setThumbnail(gameThumbnailUrl)
-                          .addFields(
-                            { name: `${gameName}`, value: `\u200B`, inline: true },
-                            { name: `\u200B`, value: `\u200B`, inline: true },
-                            { name: `:eyes: ${viewersCount} spectateurs`, value: `\u200B`, inline: true },
-                          )
-                          .setImage(streamThumbnailUrl)
-                          .setTimestamp()
-                          .setFooter({text: `Twitch`, iconURL: `https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png`})
-  
-                      if (data.lastMessageId) {
-                          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-                          messageToUpdate.edit({ embeds: [liveEmbed] });
-                      } else {
-                          const newMessage = await channel.send({ embeds: [liveEmbed] });
-                          data.lastMessageId = newMessage.id;
-                          data.startedAt = new Date(streamData.started_at)
-                          streamerEntry.lastMessageId = newMessage.id;
-                          streamerEntry.startedAt = new Date();
-                      }
-                      data.isLive = true;
-                      streamerEntry.isLive = true;
-                      await streamerEntry.save();
+                      handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders);
                   }
               } else if (data.isLive) {
-                  member.roles.remove(roleId).catch(error => {
-                      console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
-                  });
-  
-                  const streamDuration = getStreamDuration(data.startedAt);
-                  const profilePic = await getUserProfilePic(twitchUsername);
-                  
-                  const offlineEmbed = new EmbedBuilder()
-                      .setColor('#9146FF')
-                      .setAuthor({ name: `${twitchUsername}`, iconURL: `${profilePic}`, url: `https://www.twitch.tv/${twitchUsername}` })
-                      .setTitle(`𝐇ors 𝐋igne.. :x:`)
-                      .setDescription(`𝐈l était en live pendant ${streamDuration}.\n\n𝐌ais il revient _prochainement_ pour de nouvelles aventures !`)
-                      .setURL(`https://www.twitch.tv/${twitchUsername}`)
-                      .setImage(`https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLTd4qUFQs27yYwgrhP-KT1o1HWDi2IcrrGA&usqp=CAU`)
-                      .setTimestamp()
-                      .setFooter({text: `Twitch`, iconURL: `https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png`})
-  
-                  if (data.lastMessageId) {
-                      const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-                      messageToUpdate.edit({ embeds: [offlineEmbed] });
-                  } else {
-                      const newMessage = await channel.send({ embeds: [offlineEmbed] });
-                      data.lastMessageId = newMessage.id;
-                  }
-                  data.isLive = false;
-                  data.startedAt = null;
-                  streamerEntry.isLive = false;
-                  streamerEntry.startedAt = null;
-                  streamerEntry.lastMessageId = data.lastMessageId;
-                  await streamerEntry.save();
+                  handleStreamerOffline(streamerEntry, member, channel, data);
               }
   
           } catch (error) {
@@ -323,47 +249,88 @@ module.exports = {
   
       bootUpCheck = false;
     }
-
-    function formatPlural(number, text) {
-      return `${text}${number > 1 ? 's' : ''}`;
-    }
-    
-    function getStreamDuration(startTime) {
-      if (!startTime) {
-          console.error("La valeur de startTime n'est pas définie.");
-          return "Données de durée non disponibles";
+    async function handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders) {
+      const streamTitle = streamData.title;
+      const gameName = await getGameName(streamData.game_id, twitchHeaders);
+      const profilePic = await getUserProfilePic(streamData.user_login);
+      const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
+      const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
+      const viewersCount = streamData.viewer_count;
+  
+      member.roles.add(roleId).catch(error => {
+          console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
+      });
+  
+      const liveEmbed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
+          .setTitle(streamTitle)
+          .setURL(`https://www.twitch.tv/${streamData.user_login}`)
+          .setDescription(`Maintenant en Live sur Twitch !\n@here -> Vient on lui donne de la force.`)
+          .setThumbnail(gameThumbnailUrl)
+          .addFields(
+              { name: gameName, value: `\u200B`, inline: true },
+              { name: `\u200B`, value: `\u200B`, inline: true },
+              { name: `:eyes:丨${viewersCount}`, value: `\u200B`, inline: true },
+          )
+          .setImage(streamThumbnailUrl)
+          .setTimestamp()
+          .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
+  
+      let messageToSend = { embeds: [liveEmbed] };
+      if (data.lastMessageId) {
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit(messageToSend);
+      } else {
+          const newMessage = await channel.send(messageToSend);
+          streamerEntry.lastMessageId = newMessage.id;
       }
-    
-      const now = new Date();
-      const start = new Date(startTime);
-    
-      if (isNaN(start.getTime())) {
-          console.log(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
-          return "Données de durée non disponibles";
-      }
-  
-      const duration = Math.abs(now - start) / 1000;
-  
-      const hours = Math.floor(duration / 3600);
-      const minutes = Math.floor((duration % 3600) / 60);
-  
-      const hoursText = hours > 0 ? `${hours} ${formatPlural(hours, 'heure')}` : '';
-      const minutesText = minutes > 0 ? `${minutes} ${formatPlural(minutes, 'minute')}` : '';
-  
-      return `${hoursText}${hours > 0 && minutes > 0 ? ' et ' : ''}${minutesText}`;
+      data.isLive = true;
+      data.startedAt = new Date();
+      streamerEntry.isLive = true;
+      streamerEntry.startedAt = data.startedAt;
+      await streamerEntry.save();
     }
-
-    const CHECK_INTERVAL = 1 * 60 * 1000;
-
+    async function handleStreamerOffline(streamerEntry, member, channel, data) {
+      member.roles.remove(roleId).catch(error => {
+          console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
+      });
+  
+      const streamDuration = getStreamDuration(data.startedAt);
+      const profilePic = await getUserProfilePic(streamerEntry.twitchUsername);
+  
+      const offlineEmbed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
+          .setTitle('Hors Ligne.. :x:')
+          .setDescription(`Il était en live pendant ${streamDuration}.\n\nMais il revient prochainement pour de nouvelles aventures !`)
+          .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
+          .setThumbnail('https://ibb.co/NsFpk9Y')
+          .setTimestamp()
+          .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
+  
+      if (data.lastMessageId) {
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit({ embeds: [offlineEmbed] });
+      } else {
+          const newMessage = await channel.send({ embeds: [offlineEmbed] });
+          streamerEntry.lastMessageId = newMessage.id;
+      }
+      data.isLive = false;
+      data.startedAt = null;
+      streamerEntry.isLive = false;
+      streamerEntry.startedAt = null;
+      streamerEntry.lastMessageId = data.lastMessageId;
+      await streamerEntry.save();
+    }
     async function startTwitchCheck(bot) {
-        await initializeTwitchHeaders();
-        await initializeStreamers();
-        checkMultipleStreamers(bot);
-        setInterval(() => { 
-           checkMultipleStreamers(bot);
-          },  CHECK_INTERVAL);
+      await initializeTwitchHeaders();
+      await initializeStreamers();
+      checkMultipleStreamers(bot);
+      setInterval(() => { 
+         checkMultipleStreamers(bot);
+        },  CHECK_INTERVAL);
     }
-
     startTwitchCheck(bot);
 
     //Gestion qui supprime le vocal de jeu crée lorsqu'il tombe à 0 utilisateurs
