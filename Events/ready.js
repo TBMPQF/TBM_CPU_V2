@@ -71,7 +71,7 @@ module.exports = {
     const { clientId, clientSecret } = config.twitch;
     const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
     const TWITCH_BASE_API = 'https://api.twitch.tv/helix';
-    const CHECK_INTERVAL = 1 * 60 * 1000; // 10 minutes
+    const CHECK_INTERVAL = 1 * 60 * 1000; // 1 minutes
     const roleId = '813793302162702426';
 
     let twitchHeaders;
@@ -306,7 +306,7 @@ module.exports = {
           .setTitle('Hors Ligne.. :x:')
           .setDescription(`Il était en live pendant ${streamDuration}.\n\nMais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
-          .setThumbnail('https://ibb.co/NsFpk9Y')
+          .setThumbnail('https://i.postimg.cc/FFd68C5v/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
           .setTimestamp()
           .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
