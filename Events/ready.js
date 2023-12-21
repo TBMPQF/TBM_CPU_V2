@@ -112,13 +112,13 @@ module.exports = {
     async function initializeStreamers() {
       const streamersFromDB = await ApexStreamer.find();
       streamersFromDB.forEach(streamer => {
-        streamers[streamer.twitchUsername] = {
-          isLive: streamer.isLive,
-          lastMessageId: streamer.lastMessageId,
-          startedAt: null
-        };
+          streamers[streamer.twitchUsername] = {
+              isLive: streamer.isLive,
+              lastMessageId: streamer.lastMessageId,
+              startedAt: streamer.startedAt || null
+          };
       });
-    }
+  }
     async function getUserProfilePic(streamer) {
       const response = await fetchFromTwitch('users', { login: streamer });
       return response?.data.data[0].profile_image_url;
@@ -195,10 +195,10 @@ module.exports = {
       return `${text}${number > 1 ? 's' : ''}`;
     }
     function getStreamDuration(startTime) {
-      if (!startTime) {
-          console.error("La valeur de startTime n'est pas définie.");
-          return "Données de durée non disponibles";
-      }
+      if (!startTime || isNaN(new Date(startTime).getTime())) {
+        console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
+        return "Durée non disponible";
+    }
     
       const now = new Date();
       const start = new Date(startTime);
@@ -288,11 +288,13 @@ module.exports = {
       }
       data.isLive = true;
       data.startedAt = new Date();
+      console.log(`[LIVE] Streamer est en live. StartedAt: ${data.startedAt}`);
       streamerEntry.isLive = true;
       streamerEntry.startedAt = data.startedAt;
       await streamerEntry.save();
     }
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
+      console.log(`[OFFLINE] Streamer est hors ligne. StartedAt: ${data.startedAt}`);
       member.roles.remove(roleId).catch(error => {
           console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
       });
@@ -325,15 +327,17 @@ module.exports = {
       await streamerEntry.save();
     }
     async function updateLiveStreamInfo(streamData, streamerEntry, channel, data, twitchHeaders) {
-      // Récupération des informations actuelles du stream
+      console.log(`[UPDATE INFO] Mise à jour des informations du stream. StartedAt: ${data.startedAt}`);
+      if (!data.startedAt) {
+        data.startedAt = streamerEntry.startedAt; // Récupérer depuis la base de données si disponible
+        console.log(`[CORRECTION] StartedAt corrigé à partir de streamerEntry: ${data.startedAt}`);
+    }
       const streamTitle = streamData.title;
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
       const profilePic = await getUserProfilePic(streamData.user_login);
       const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
       const viewersCount = streamData.viewer_count;
-  
-      // Construction de l'embed avec les nouvelles informations
       const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
@@ -350,7 +354,6 @@ module.exports = {
           .setTimestamp()
           .setFooter({ text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
   
-      // Mise à jour du message existant
       if (data.lastMessageId) {
           const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
           messageToUpdate.edit({ embeds: [liveEmbed] });
