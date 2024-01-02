@@ -294,7 +294,6 @@ module.exports = {
       await streamerEntry.save();
     }
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
-      console.log(`[OFFLINE] Streamer est hors ligne. StartedAt: ${data.startedAt}`);
       member.roles.remove(roleId).catch(error => {
           console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
       });
@@ -306,9 +305,9 @@ module.exports = {
           .setColor('#9146FF')
           .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
           .setTitle('Hors Ligne.. :x:')
-          .setDescription(`Il était en live pendant ${streamDuration}.\n\nMais il revient prochainement pour de nouvelles aventures !`)
+          .setDescription(`Il était en live pendant \`${streamDuration}\`.\n\nMais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
-          .setThumbnail('https://i.postimg.cc/FFd68C5v/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
+          .setThumbnail('https://i.postimg.cc/rFhsTf7F/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
           .setTimestamp()
           .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
@@ -327,10 +326,8 @@ module.exports = {
       await streamerEntry.save();
     }
     async function updateLiveStreamInfo(streamData, streamerEntry, channel, data, twitchHeaders) {
-      console.log(`[UPDATE INFO] Mise à jour des informations du stream. StartedAt: ${data.startedAt}`);
       if (!data.startedAt) {
         data.startedAt = streamerEntry.startedAt; // Récupérer depuis la base de données si disponible
-        console.log(`[CORRECTION] StartedAt corrigé à partir de streamerEntry: ${data.startedAt}`);
     }
       const streamTitle = streamData.title;
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
