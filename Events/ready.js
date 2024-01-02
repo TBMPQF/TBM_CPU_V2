@@ -71,7 +71,7 @@ module.exports = {
     const { clientId, clientSecret } = config.twitch;
     const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
     const TWITCH_BASE_API = 'https://api.twitch.tv/helix';
-    const CHECK_INTERVAL = 1 * 60 * 1000; // 1 minutes
+    const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
     const roleId = '813793302162702426';
 
     let twitchHeaders;
@@ -288,7 +288,6 @@ module.exports = {
       }
       data.isLive = true;
       data.startedAt = new Date();
-      console.log(`[LIVE] Streamer est en live. StartedAt: ${data.startedAt}`);
       streamerEntry.isLive = true;
       streamerEntry.startedAt = data.startedAt;
       await streamerEntry.save();
