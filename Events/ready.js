@@ -648,7 +648,7 @@ module.exports = {
     }, 43201000);
 
     const channelId = "818640158693392405";
-    const messageIdToKeep = "1087445497742114896";
+    const messageIdToKeep = "1192160775985442847";
     setInterval(async () => {
       const channel = await bot.channels.fetch(channelId);
       const messages = await channel.messages.fetch({ limit: 1 });

@@ -120,7 +120,7 @@ module.exports = {
                       const reactions = ['🇱', '🇴', '🇸', '🇪', '🇷'];
                       reactions.forEach(reaction => message.react(reaction));
                   })
-                  .catch(console.error); // Gestion des erreurs
+                  .catch(console.error);
           }
       }
 
@@ -208,7 +208,7 @@ module.exports = {
           )
           .setTimestamp()
           .setFooter({
-            text: `丨Série en cours : ${user.consecutiveDaily}`
+            text: `𝐒érie en cours : ${user.consecutiveDaily}`
           });
 
         if (serverInfo && serverInfo.logChannelID) {
