@@ -11,6 +11,7 @@ const yts = require("yt-search");
 const { queue } = require("../models/queue");
 const Music = require("../models/music");
 const { filterMessage } = require('../automod');
+const SpotifyWebApi = require('spotify-web-api-node');
 
 const {
   logRequestMessageIds,
@@ -25,6 +26,12 @@ const {
   ticketRequestMessageIds,
   RoleAdminRequestMessageIds,
 } = require("../models/shared");
+
+const spotifyApi = new SpotifyWebApi({
+  clientId: '28ff471679e14265a51801f149992b0a',
+  clientSecret: '5f78af1d75054d7c8ba64b274cd8bdae'
+  // Vous devrez également gérer l'authentification pour obtenir un token d'accès
+});
 
 module.exports = {
   name: "messageCreate",
