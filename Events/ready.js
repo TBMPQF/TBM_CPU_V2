@@ -454,11 +454,11 @@ module.exports = {
           
           const newEmbed = new EmbedBuilder()
             .setColor("Purple")
-            .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
+            .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
             .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
             .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist.")
             .setFooter({
-              text: `Cordialement, l'équipe ${bot.guilds.cache.get(serverId).name}`,
+              text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
               iconURL: bot.guilds.cache.get(serverId).iconURL(),
             });
           message.edit({ embeds: [newEmbed] });

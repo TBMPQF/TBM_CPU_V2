@@ -115,7 +115,7 @@ module.exports = {
       if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
           const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
           if (specialChannel) {
-              specialChannel.send(`𝐅élicitations à ${interaction.user.username} pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`)
+              specialChannel.send(`𝐅élicitations à **${interaction.user.username}** pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`)
                   .then(message => {
                       const reactions = ['🇱', '🇴', '🇸', '🇪', '🇷'];
                       reactions.forEach(reaction => message.react(reaction));
@@ -375,7 +375,9 @@ module.exports = {
 
     // Gestion de la musique
     let connections = {};
-
+    let playerIdleHandlerAttached = false;
+    const player = createAudioPlayer();
+    let updateInterval;
     async function handleVoiceChannel(interaction, notInChannelMessage) {
       const voiceChannel = interaction.member.voice.channel;
       if (!voiceChannel) {
@@ -384,7 +386,6 @@ module.exports = {
       }
       return voiceChannel;
     }
-
     if (interaction.customId === "PLAY_MUSIC") {
       const voiceChannel = await handleVoiceChannel(
         interaction,
@@ -418,38 +419,55 @@ module.exports = {
         5000
       );
     }
-
     async function playNextSong(interaction, serverId, player, queue) {
-      try {
-        console.log('Lecture de la prochaine chanson', { identifiantServeur: serverId, longueurFileDAttente: queue[serverId]?.length || 0 })
-        if (!queue[serverId] || queue[serverId].length === 0) {
-          console.log('La file d\'attente est vide. Déconnexion...');
-          connections[serverId]?.disconnect();
+      if (!queue[serverId] || queue[serverId].length === 0) {
+          if (connections[serverId]) {
+              connections[serverId].destroy();
+              delete connections[serverId];
+          }
           return;
-        }
-
-        const song = queue[serverId].shift();
-        console.log('Lecture de la chanson', { serverId, songTitle: song.title });
-        const stream = ytdl(song.url, { filter: "audioonly", quality: "highestaudio" });
-
-        stream.on("error", (error) => console.error(`Erreur lors de la lecture de la musique : ${error.message}`));
-
-        const resource = createAudioResource(stream);
-        player.play(resource);
-        connections[serverId]?.subscribe(player);
-
-        player.on("error", (error) => console.error(`Erreur : ${error.message} avec la chanson : ${song}`));
-
-        player.on("idle", async () => {
-          console.log('Le lecteur est inactif, passage à la chanson suivante');
-          await playNextSong(interaction, serverId, player, queue);
-          await updateMusicEmbed(interaction, serverId, queue);
-        });
-      } catch(error){
-        console.error('Erreur dans la fonction playNextSong :', error);
       }
+      const song = queue[serverId][0];
+      queue[serverId].startTime = Date.now();
+      try {
+          const stream = ytdl(song.url, { filter: 'audioonly', quality: 'highestaudio' });
+          stream.on('error', error => {
+              console.error(`Erreur lors de la lecture de la musique : ${error.message}`);
+              queue[serverId].shift();
+              playNextSong(interaction, serverId, player, queue);
+          });
+  
+          const resource = createAudioResource(stream);
+          player.play(resource);
+          connections[serverId].subscribe(player);
+  
+      } catch (error) {
+          console.error(`Erreur lors de la création du flux de musique : ${error.message}`);
+          queue[serverId].shift();
+          playNextSong(interaction, serverId, player, queue);
+      }
+      if (!playerIdleHandlerAttached) {
+        player.on('idle', async () => { 
+          clearInterval(updateInterval);
+            if (queue[serverId] && queue[serverId].length > 0) {
+                queue[serverId].shift(); 
+                await updateMusicEmbed(interaction, serverId, queue);
+                playNextSong(interaction, serverId, player, queue);
+            } else {
+                if (connections[serverId]) {
+                    connections[serverId].destroy();
+                    delete connections[serverId];
+                }
+            }
+        });
+        playerIdleHandlerAttached = true;
+    
+      }
+      if (updateInterval) clearInterval(updateInterval);
+      updateInterval = setInterval(async () => {
+          await updateMusicEmbed(interaction, serverId, queue);
+      }, 10000);
     }
-
     async function updateMusicEmbed(interaction, serverId, queue) {
       try {
         const musicEntry = await Music.findOne({ serverId });
@@ -457,98 +475,112 @@ module.exports = {
           console.error('Music entry not found in the database');
           return;
         }
-        console.log('ID du message récupéré', musicEntry.messageId);
-    
         const messageId = musicEntry.messageId;
         await updateEmbedMessage(interaction, serverId, queue, messageId);
       } catch (error) {
         console.error('Error in updateMusicEmbed:', error);
       }
     }
-
     async function updateEmbedMessage(interaction, serverId, queue, messageId) {
       try {
-        console.log('Mise à jour de l\'embed', { serverId, queueLength: queue[serverId]?.length });
-        if (!queue[serverId] || queue[serverId].length === 0) {
-          console.error("La playlist est vide pour le serveur:", serverId);
+        const musicEntry = await Music.findOne({ serverId });
+        if (!musicEntry || !musicEntry.channelId) {
+          console.error('Entrée musicale ou channelId non trouvée dans la base de données pour le serveur:', serverId);
           return;
         }
-
-        let playlistText = queue[serverId]
-          .map((song, i) => `${i + 1}. ${i === 0 ? `**${song.title}**` : song.title}`)
-          .join("\n");
-
-        if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
-        if (playlistText.length === 0) playlistText = "La playlist est vide.";
-
-        const newEmbed = new EmbedBuilder()
-          .setColor("#800080")
-          .setTitle("――――――――∈ `MUSIQUE` ∋――――――――")
-          .setThumbnail("https://montessorimaispasque.com/wp-content/uploads/2018/02/colorful-musical-notes-png-4611381609.png")
-          .setDescription(playlistText)
-          .setFooter({ text: `Cordialement, l'équipe ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() });
-
-        const messageEntry = await interaction.channel.messages.fetch(messageId);
-        if (messageEntry) {
-          console.log('Message trouvé. Mise à jour de l\'embed.', { messageId: musicEntry.messageId });
-          await messageEntry.edit({ embeds: [newEmbed] });
-        } else {
-          console.error("Le message à modifier n'a pas été trouvé:", musicEntry.messageId);
+    
+        const channel = await interaction.guild.channels.fetch(musicEntry.channelId);
+        const message = await channel.messages.fetch(messageId).catch(console.error);
+    
+        if (!message) {
+          console.error("Le message à mettre à jour n'a pas été trouvé ou une erreur s'est produite lors de la récupération:", messageId);
+          return;
         }
+    
+        let playlistText = "";
+        for (let i = 0; i < queue[serverId].length; i++) {
+          let title = queue[serverId][i].title;
+          title = title.replace(/ *\([^)]*\) */g, "");
+          title = title.replace(/ *\[[^\]]*] */g, "");
+          const song = queue[serverId][i];
+          if (i === 0) {
+            playlistText += `\`${i + 1}\`丨**${song.title}**\n`;
+          } else {
+            playlistText += `\`${i + 1}\`丨${song.title}\n`;
+          }
+        }
+        if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - queue[serverId].startTime;
+        const song = queue[serverId][0];
+        const progress = Math.min(elapsedTime / song.duration, 1);
+        const progressBar = generateProgressBar(progress, 10);
+        const newFooterText = `Progression : [${progressBar}] - ${bot.guilds.cache.get(serverId).name}`;
+    
+        const newEmbed = new EmbedBuilder()
+          .setColor("Purple")
+          .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
+          .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
+          .setDescription(playlistText.length === 0 ? "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist." : playlistText)
+          .setFooter({
+            text: newFooterText,
+            iconURL: bot.guilds.cache.get(serverId).iconURL(),
+          });
+
+        await message.edit({ embeds: [newEmbed] });
       } catch (error) {
-        console.error('Erreur dans la fonction updateEmbedMessage :', error);
+        console.error('Erreur dans la fonction updateEmbedMessage:', error);
       }
     }
-
+    function generateProgressBar(progress, length) {
+      const position = Math.round(length * progress);
+      let bar = '';
+      for (let i = 0; i < length; i++) {
+          bar += i === position ? '🔘' : '━';
+      }
+      return bar;
+    }
     async function sendAndDeleteMessage(interaction, description, delay) {
       try {
-        console.log('Envoi et suppression programmée d’un message', { description, delai: delay });
         const msg = await interaction.reply({
           embeds: [{ description, color: 0x800080 }],
           fetchReply: true,
         });
         setTimeout(() => msg.delete().catch(console.error), delay);
-        console.log('Message envoyé et programmé pour la suppression');
       } catch (error) {
         console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
       }
     }
-
     //Arrêter la musique
     if (interaction.customId === "STOP_MUSIC") {
-      const voiceChannel = await handleVoiceChannel(
-        interaction,
-        ":microphone2:丨𝐓u dois être dans un salon vocal pour arrêter la playlist !"
-      );
-      if (!voiceChannel) return;
-
       const serverId = interaction.guild.id;
-
+  
+      // Arrêter le lecteur audio si la file d'attente existe
       if (queue[serverId] && queue[serverId].length > 0) {
-        connections[serverId].disconnect();
-        delete connections[serverId];
-        const stopMsg = await interaction.reply({
-          embeds: [
-            {
-              description: ":no_entry_sign:丨𝐋a musique a été arrêtée !",
-              color: 0x800080,
-            },
-          ],
-        });
-        setTimeout(() => stopMsg.delete(), 5000);
-      } else {
-        const stopMsg = await interaction.reply({
-          embeds: [
-            {
-              description: "丨𝐀ucune musique est en cours de lecture.",
-              color: 0x800080,
-            },
-          ],
-        });
-        setTimeout(() => stopMsg.delete(), 5000);
+          player.stop();
       }
+  
+      // Vider la file d'attente
+      queue[serverId] = [];
+  
+      // Détruire la connexion si elle existe
+      if (connections[serverId]) {
+          connections[serverId].destroy();
+          delete connections[serverId];
+      }
+  
+      // Mettre à jour l'embed pour refléter que la playlist est vide
+      await updateMusicEmbed(interaction, serverId, queue);
+  
+      // Envoyer une réponse pour confirmer l'arrêt de la musique
+      const stopMsg = await interaction.reply({
+          embeds: [{
+              description: ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.",
+              color: 0x800080,
+          }],
+      });
+      setTimeout(() => stopMsg.delete(), 5000);
     }
-
     // Passe à la musique suivante de la playlist
     if (interaction.customId === "NEXT_MUSIC") {
       const voiceChannel = await handleVoiceChannel(
