@@ -58,10 +58,11 @@ module.exports = {
       if (!queue[serverId2]) {
         queue[serverId2] = [];
       }
+      const formattedTitle = videos[0].title.replace(/ *\([^)]*\) */g, "").replace(/ *\[[^\]]*] */g, "");
       queue[serverId2].push({
-        url: songUrl,
-        title: videos[0].title,
-        duration: duration
+          url: songUrl,
+          title: formattedTitle,  // Utilisez le titre formaté ici
+          duration: duration
       });
 
       const musicEntry = await Music.findOne({ serverId: serverId2 });

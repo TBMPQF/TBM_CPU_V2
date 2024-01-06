@@ -539,8 +539,7 @@ module.exports = {
         console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
       }
     }
-    
-    //Arrêter la musique
+    // Arrête la musique en cours et supprime la playlist
     if (interaction.customId === "STOP_MUSIC") {
       const serverId = interaction.guild.id;
   
@@ -552,8 +551,9 @@ module.exports = {
       // Vider la file d'attente
       queue[serverId] = [];
   
-      // Détruire la connexion si elle existe
+      // Déconnecter le bot du salon vocal et détruire la connexion
       if (connections[serverId]) {
+          connections[serverId].disconnect(); // S'assurer de déconnecter avant de détruire
           connections[serverId].destroy();
           delete connections[serverId];
       }
@@ -569,8 +569,8 @@ module.exports = {
           }],
       });
       setTimeout(() => stopMsg.delete(), 5000);
-    }
-    // Passe à la musique suivante de la playlist
+  }
+    // Passe à la musique suivante
     if (interaction.customId === "NEXT_MUSIC") {
       const voiceChannel = await handleVoiceChannel(
         interaction,
@@ -606,6 +606,111 @@ module.exports = {
         ":next_track:丨𝐉'ai passé à la prochaine musique !",
         5000
       );
+    }
+    async function getLyrics(artist, title) {
+      try {
+          const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
+          return response.data.lyrics;
+      } catch (error) {
+        console.error("Erreur lors de la récupération des paroles: ", error.message);
+        if (error.response) {
+            console.log(error.response.data);
+            console.log(error.response.status);
+            console.log(error.response.headers);
+        } else if (error.request) {
+            console.log(error.request);
+        } else {
+            console.log('Error', error.message);
+        }
+        return "Les paroles ne sont pas disponibles.";
+      }
+    }
+    // Affiche les paroles de la musique en cours
+    async function sendLyricsEmbed(interaction, lyrics, maxCharsPerPage = 2048) {
+      function paginateLyrics(lyrics) {
+          let pages = [];
+          let currentPage = '';
+          lyrics.split('\n').forEach(line => {
+              if (currentPage.length + line.length + 1 > maxCharsPerPage) {
+                  pages.push(currentPage);
+                  currentPage = '';
+              }
+              currentPage += line + '\n';
+          });
+          if (currentPage.length > 0) {
+              pages.push(currentPage);
+          }
+          return pages;
+      }
+  
+      const pages = paginateLyrics(lyrics);
+      let currentPageIndex = 0;
+  
+      const embed = new EmbedBuilder()
+          .setColor("Purple")
+          .setTitle("__𝐏aroles de la 𝐂hanson__")
+          .setDescription(pages[currentPageIndex])
+          .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
+  
+      const row = new ActionRowBuilder()
+          .addComponents(
+              new ButtonBuilder()
+                  .setCustomId('previous')
+                  .setLabel('Précédent')
+                  .setStyle(ButtonStyle.Primary)
+                  .setDisabled(currentPageIndex === 0),
+              new ButtonBuilder()
+                  .setCustomId('next')
+                  .setLabel('Suivant')
+                  .setStyle(ButtonStyle.Primary)
+                  .setDisabled(currentPageIndex === pages.length - 1)
+          );
+  
+      const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+  
+      const filter = (buttonInteraction) => ['previous', 'next'].includes(buttonInteraction.customId) && buttonInteraction.user.id === interaction.user.id;
+  
+      const collector = message.createMessageComponentCollector({ filter, componentType: 'BUTTON', time: 60000 });
+  
+      collector.on('collect', async (buttonInteraction) => {
+          if (buttonInteraction.customId === 'next' && currentPageIndex < pages.length - 1) {
+              currentPageIndex++;
+          } else if (buttonInteraction.customId === 'previous' && currentPageIndex > 0) {
+              currentPageIndex--;
+          }
+  
+          embed.setDescription(pages[currentPageIndex])
+              .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
+  
+          row.components[0].setDisabled(currentPageIndex === 0);
+          row.components[1].setDisabled(currentPageIndex === pages.length - 1);
+  
+          await buttonInteraction.update({ embeds: [embed], components: [row] });
+      });
+  
+      collector.on('end', () => {
+          if (!message.deleted) {
+              message.edit({ components: [] }).catch(console.error);
+          }
+      });
+    }
+    if (interaction.customId === "LYRICS_MUSIC") {
+      const serverId = interaction.guild.id;
+
+      if (queue[serverId] && queue[serverId].length > 0) {
+          const currentSong = queue[serverId][0];
+          const [artist, title] = currentSong.title.split(" - ");
+
+          const lyrics = await getLyrics(artist, title);
+          if (lyrics !== "Les paroles ne sont pas disponibles.") {
+              const cleanedLyrics = lyrics.split('\n').slice(1).join('\n'); 
+              await sendLyricsEmbed(interaction, cleanedLyrics);
+          } else {
+              await interaction.reply({ content: "Les paroles de cette chanson ne sont pas disponibles.", ephemeral: true });
+          }
+      } else {
+          await interaction.reply({ content: "Aucune musique en cours de lecture.", ephemeral: true });
+      }
     }
 
     async function handleRole(interaction, member, roleID, roleName) {
