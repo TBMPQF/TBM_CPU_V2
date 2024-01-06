@@ -496,34 +496,30 @@ module.exports = {
           console.error("Le message à mettre à jour n'a pas été trouvé ou une erreur s'est produite lors de la récupération:", messageId);
           return;
         }
+
     
         let playlistText = "";
         for (let i = 0; i < queue[serverId].length; i++) {
           let title = queue[serverId][i].title;
+          let duration = queue[serverId][i].duration
           title = title.replace(/ *\([^)]*\) */g, "");
           title = title.replace(/ *\[[^\]]*] */g, "");
           const song = queue[serverId][i];
           if (i === 0) {
-            playlistText += `\`${i + 1}\`丨**${song.title}**\n`;
+            playlistText += `\`${i + 1}\`丨**${song.title}** - \`${duration}\`\n`;
           } else {
             playlistText += `\`${i + 1}\`丨${song.title}\n`;
           }
         }
         if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
-        const currentTime = Date.now();
-        const elapsedTime = currentTime - queue[serverId].startTime;
-        const song = queue[serverId][0];
-        const progress = Math.min(elapsedTime / song.duration, 1);
-        const progressBar = generateProgressBar(progress, 10);
-        const newFooterText = `Progression : [${progressBar}] - ${bot.guilds.cache.get(serverId).name}`;
-    
+        
         const newEmbed = new EmbedBuilder()
           .setColor("Purple")
           .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
           .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
           .setDescription(playlistText.length === 0 ? "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist." : playlistText)
           .setFooter({
-            text: newFooterText,
+            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           });
 
@@ -531,14 +527,6 @@ module.exports = {
       } catch (error) {
         console.error('Erreur dans la fonction updateEmbedMessage:', error);
       }
-    }
-    function generateProgressBar(progress, length) {
-      const position = Math.round(length * progress);
-      let bar = '';
-      for (let i = 0; i < length; i++) {
-          bar += i === position ? '🔘' : '━';
-      }
-      return bar;
     }
     async function sendAndDeleteMessage(interaction, description, delay) {
       try {
@@ -551,6 +539,7 @@ module.exports = {
         console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
       }
     }
+    
     //Arrêter la musique
     if (interaction.customId === "STOP_MUSIC") {
       const serverId = interaction.guild.id;

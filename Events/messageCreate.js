@@ -11,7 +11,7 @@ const yts = require("yt-search");
 const { queue } = require("../models/queue");
 const Music = require("../models/music");
 const { filterMessage } = require('../automod');
-const SpotifyWebApi = require('spotify-web-api-node');
+const ytdl = require('ytdl-core');
 
 const {
   logRequestMessageIds,
@@ -27,12 +27,6 @@ const {
   RoleAdminRequestMessageIds,
 } = require("../models/shared");
 
-const spotifyApi = new SpotifyWebApi({
-  clientId: '28ff471679e14265a51801f149992b0a',
-  clientSecret: '5f78af1d75054d7c8ba64b274cd8bdae'
-  // Vous devrez également gérer l'authentification pour obtenir un token d'accès
-});
-
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
@@ -40,6 +34,12 @@ module.exports = {
     filterMessage(message);
 
     //Gestion des messages pour la musique dans le salon musique
+    function formatDuration(seconds) {
+      const date = new Date(0);
+      date.setSeconds(seconds);
+      const timeString = date.toISOString().substr(11, 8);
+      return timeString.startsWith("00:") ? timeString.substr(3) : timeString;
+    }
     if (message.channel.id === "1136327173343559810") {
       const { videos } = await yts.search(message.content);
       if (videos.length == 0) {
@@ -52,7 +52,8 @@ module.exports = {
       }
 
       const songUrl = videos[0].url;
-
+      const videoInfo = await ytdl.getInfo(songUrl);
+      const duration = formatDuration(videoInfo.videoDetails.lengthSeconds);
       const serverId2 = message.guild.id;
       if (!queue[serverId2]) {
         queue[serverId2] = [];
@@ -60,6 +61,7 @@ module.exports = {
       queue[serverId2].push({
         url: songUrl,
         title: videos[0].title,
+        duration: duration
       });
 
       const musicEntry = await Music.findOne({ serverId: serverId2 });
@@ -83,12 +85,14 @@ module.exports = {
 
         let playlistText = "";
         for (let i = 0; i < queue[serverId2].length; i++) {
+          const song = queue[serverId2][i];
           let title = queue[serverId2][i].title;
+          const duration = song.duration;
           title = title.replace(/ *\([^)]*\) */g, "");
           title = title.replace(/ *\[[^\]]*] */g, "");
 
           if (i === 0) {
-            playlistText += `\`${i + 1}\`丨**${title}**\n`;
+            playlistText += `\`${i + 1}\`丨**${title}** - \`${duration}\`\n`;
           } else {
             playlistText += `\`${i + 1}\`丨${title}\n`;
           }
@@ -96,13 +100,13 @@ module.exports = {
 
         const newEmbed = new EmbedBuilder()
           .setColor("Purple")
-          .setTitle(`――――――――∈ \`MUSIQUE\` ∋――――――――`)
+          .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
           .setThumbnail(
             "https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj"
           )
           .setDescription(playlistText)
           .setFooter({
-            text: `Cordialement, l'équipe ${message.guild.name}`,
+            text: `Cordialement, l'équipe${message.guild.name}`,
             iconURL: message.guild.iconURL(),
           });
 
