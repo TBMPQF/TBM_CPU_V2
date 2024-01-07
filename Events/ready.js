@@ -196,26 +196,26 @@ module.exports = {
     }
     function getStreamDuration(startTime) {
       if (!startTime || isNaN(new Date(startTime).getTime())) {
-        console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
-        return "Durée non disponible";
-    }
-    
+          console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
+          return "Durée non disponible";
+      }
+  
       const now = new Date();
       const start = new Date(startTime);
-    
+  
       if (isNaN(start.getTime())) {
           console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
           return "Données de durée non disponibles";
       }
-    
-      const duration = Math.abs(now - start) / 1000; // Converti en secondes
-    
+  
+      const duration = Math.abs(now - start) / 1000;
+  
       const hours = Math.floor(duration / 3600);
       const minutes = Math.floor((duration % 3600) / 60);
-    
-      const hoursText = hours > 0 ? `${hours} ${formatPlural(hours, 'heure')}` : '';
-      const minutesText = minutes > 0 ? `${minutes} ${formatPlural(minutes, 'minute')}` : '';
-    
+  
+      const hoursText = hours > 0 ? `${hours.toString().padStart(2, '0')} ${formatPlural(hours, 'heure')}` : '';
+      const minutesText = minutes > 0 ? `${minutes.toString().padStart(2, '0')} ${formatPlural(minutes, 'minute')}` : '';
+  
       return `${hoursText}${hours > 0 && minutes > 0 ? ' et ' : ''}${minutesText}`;
     }
     async function checkMultipleStreamers(bot) {
@@ -648,7 +648,7 @@ module.exports = {
     }, 43201000);
 
     const channelId = "818640158693392405";
-    const messageIdToKeep = "1192160775985442847";
+    const messageIdToKeep = "1193673840782483496";
     setInterval(async () => {
       const channel = await bot.channels.fetch(channelId);
       const messages = await channel.messages.fetch({ limit: 1 });

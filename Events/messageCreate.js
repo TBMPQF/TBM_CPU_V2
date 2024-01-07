@@ -462,82 +462,82 @@ module.exports = {
     }
 
     // Expérience pour chaque message
-const now = new Date();
+    const now = new Date();
 
-const userData = {
-  userID: message.author.id,
-  username: message.author.username,
-  serverID: message.guild.id,
-  serverName: message.guild.name,
-  lastMessageDate: now,
-};
+    const userData = {
+      userID: message.author.id,
+      username: message.author.username,
+      serverID: message.guild.id,
+      serverName: message.guild.name,
+      lastMessageDate: now,
+    };
 
-const member = message.guild.members.cache.get(message.author.id);
-const rolesToCheck = {
-  "✨丨𝐄lite 𝐒ecrète": 1.05,
-  "🧪丨Twitch Sub T1": 1.1,
-  "🧪丨Twitch Sub T2": 1.2,
-  "🧪丨Twitch Sub T3": 1.3,
-};
+    const member = message.guild.members.cache.get(message.author.id);
+    const rolesToCheck = {
+      "✨丨𝐄lite 𝐒ecrète": 1.05,
+      "🧪丨Twitch Sub T1": 1.1,
+      "🧪丨Twitch Sub T2": 1.2,
+      "🧪丨Twitch Sub T3": 1.3,
+    };
 
-let rolePercentage = 1;
-let weekendPercentage = 1;
+    let rolePercentage = 1;
+    let weekendPercentage = 1;
 
-for (const role of Array.from(member.roles.cache.values())) {
-  if (rolesToCheck[role.name]) {
-    rolePercentage *= rolesToCheck[role.name];
-  }
-}
+    for (const role of Array.from(member.roles.cache.values())) {
+      if (rolesToCheck[role.name]) {
+        rolePercentage *= rolesToCheck[role.name];
+      }
+    }
 
-const dayOfWeek = now.getDay();
-const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-if (isWeekend) {
-  weekendPercentage = 1.1;
-}
+    const dayOfWeek = now.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    if (isWeekend) {
+      weekendPercentage = 1.1;
+    }
 
-let user = await User.findOne({
-  userID: message.author.id,
-  serverID: message.guild.id,
-});
+    let user = await User.findOne({
+      userID: message.author.id,
+      serverID: message.guild.id,
+    });
 
-if (!user) {
-  user = new User(userData);
-  
-  let initialXP = Math.floor(Math.random() * 50) + 1;
-  initialXP *= rolePercentage;
-  initialXP *= weekendPercentage;
-  initialXP = Math.round(initialXP);
-  user.xp = initialXP;
-  
-  await levelUp(message, user, user.xp);
-} else {
-  if (message.guild.name !== user.serverName) {
-    user.serverName = message.guild.name;
-  }
-}
+    if (!user) {
+      user = new User(userData);
+      
+      let initialXP = Math.floor(Math.random() * 50) + 1;
+      initialXP *= rolePercentage;
+      initialXP *= weekendPercentage;
+      initialXP = Math.round(initialXP);
+      user.xp = initialXP;
+      
+      await levelUp(message, user, user.xp);
+    } else {
+      if (message.guild.name !== user.serverName) {
+        user.serverName = message.guild.name;
+      }
+    }
 
-const lastMessageDate = user.lastMessageDate || now;
-const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
+    const lastMessageDate = user.lastMessageDate || now;
+    const timeDifference = (now.getTime() - lastMessageDate.getTime()) / 1000;
 
-user.messageCount = (user.messageCount || 0) + 1;
+    user.messageCount = (user.messageCount || 0) + 1;
 
-if (timeDifference >= 10) {
-  let randomXP = Math.floor(Math.random() * 50) + 1;
-  randomXP *= rolePercentage;
-  randomXP *= weekendPercentage;
+    if (timeDifference >= 10) {
+      let randomXP = Math.floor(Math.random() * 50) + 1;
+      randomXP *= rolePercentage;
+      randomXP *= weekendPercentage;
 
-  randomXP = Math.round(randomXP);
-  user.xp = (user.xp || 0) + randomXP;
+      randomXP = Math.round(randomXP);
+      user.xp = (user.xp || 0) + randomXP;
 
-  await levelUp(message, user, user.xp);
-} else {
-  user.lastMessageDate = now;
-  await user.save();
-}
+      await levelUp(message, user, user.xp);
+    } else {
+      user.lastMessageDate = now;
+      await user.save();
+    }
 
-user.lastMessageDate = now;
+    user.lastMessageDate = now;
 
-await user.save();
+    await user.save();
 
     //Gestion des suggestions
     const serverConfig = await ServerConfig.findOne({

@@ -229,11 +229,12 @@ module.exports = {
       const costXP = calculateCostXP(user.lostConsecutiveDaily);
       const malus = calculateMalus(user.lostConsecutiveDaily);
       const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
+      const lostLevels = calculateLostLevels(user.lostConsecutiveDaily);
 
       if (user.xp >= costXP) {
         const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? Tu avais une série de \`${
-          user.lostConsecutiveDaily
-        }.\`\n Ça te coutera \`${costXP.toLocaleString()}\` 𝐗p et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
+            user.lostConsecutiveDaily
+        }\`.\n Ça te coûtera \`${costXP.toLocaleString()}\` 𝐗p, tu perdras \`${lostLevels}\` niveau(x), et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
 
         const yesButton = new ButtonBuilder()
           .setCustomId("CONFIRM_RECUPDAILY_BUTTON")
@@ -257,6 +258,24 @@ module.exports = {
           ephemeral: true,
         });
       }
+    }
+    function calculateLostLevels(currentXP, currentLevel) {
+      // Vérifier la validité des valeurs d'entrée
+      if (isNaN(currentXP) || currentXP < 0 || isNaN(currentLevel) || currentLevel < 1) {
+        console.error("Valeurs invalides pour calculateLostLevels:", { currentXP, currentLevel });
+        return 0; // Retourne 0 si les valeurs ne sont pas valides
+      }
+    
+      // Calculer l'XP requise pour atteindre le niveau actuel
+      const requiredXPForCurrentLevel = Math.pow(currentLevel / 0.1, 2);
+    
+      // Calculer l'XP perdue
+      const lostXP = requiredXPForCurrentLevel - currentXP;
+    
+      // Calculer les niveaux perdus
+      const lostLevels = Math.floor(0.1 * Math.sqrt(lostXP));
+    
+      return Math.max(0, lostLevels);
     }
 
     function calculateCostXP(consecutiveDaily) {
@@ -569,7 +588,7 @@ module.exports = {
           }],
       });
       setTimeout(() => stopMsg.delete(), 5000);
-  }
+    }
     // Passe à la musique suivante
     if (interaction.customId === "NEXT_MUSIC") {
       const voiceChannel = await handleVoiceChannel(
