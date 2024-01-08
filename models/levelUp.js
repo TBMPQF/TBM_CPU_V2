@@ -1,5 +1,5 @@
 const Discord = require("discord.js");
-const MAX_LEVEL = 50;
+const MAX_LEVEL = 51;
 const ServerConfig = require("../models/serverConfig");
 const ServerRole = require("../models/serverRole");
 const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
@@ -34,20 +34,22 @@ async function levelUp(obj, user, newXP) {
 
   let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
   const author = obj instanceof Discord.Message ? obj.author : obj.user;
-
   const roleRewards = await getRoleRewards(obj.guild.id);
+  const oldPrestige = user.prestige || 0;
 
-  if (newLevel > MAX_LEVEL) {
-    newLevel = MAX_LEVEL;
-    const oldPrestige = user.prestige || 0;
+  // Gestion du prestige
+  if (newLevel >= MAX_LEVEL) {
     user.prestige = oldPrestige + 1;
+    newLevel = 0; // Réinitialisation du niveau à 1
+    user.xp = 0;   // Réinitialisation de l'XP à 0
 
     if (levelUpChannel) {
       levelUpChannel.send(
-        `**${author}丨** 𝐈𝐍𝐂𝐑𝐎𝐘𝐀𝐁𝐋𝐄 ! 𝐓u viens de passer au 𝐏restige **\`${user.prestige}\`** ! - :star: !`
+        `**${author}丨** INCROYABLE ! Tu viens de passer au Prestige **\`${user.prestige}\`** ! - :star: !`
       );
     }
 
+    // Gestion des rôles pour le prestige
     const previousPrestigeRoleRewards = roleRewards[oldPrestige];
     for (let reward of previousPrestigeRoleRewards) {
       const previousRole = obj.guild.roles.cache.find(
@@ -59,39 +61,34 @@ async function levelUp(obj, user, newXP) {
     }
 
     handleRole(obj, 1, levelUpChannel, "up", user.prestige);
-  }
-
-  if (user.level < newLevel) {
-    user.level = newLevel;
-
-    if (levelUpChannel) {
-      levelUpChannel.send(
-        `**${author}丨** 𝐓u viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
-      );
-    }
-
-    if (newLevel !== 1) {
-      handleRole(obj, newLevel, levelUpChannel, "up", user.prestige);
-    }
-  } else if (user.level > newLevel) {
-    user.level = newLevel;
-
-    if (levelDownChannel) {
-      levelDownChannel.send(
-        `**${author}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**... La prochaine fois tu feras attention !`
-      );
-    }
-
-    handleRole(obj, newLevel, levelDownChannel, "down", user.prestige);
-  }
-
-  if (newLevel >= MAX_LEVEL) {
-    user.xp = 0;
-    user.level = 0;
   } else {
-    user.xp = newXP;
+    // Gestion des montées et descentes de niveau
+    if (user.level < newLevel) {
+      user.level = newLevel;
+      user.xp = newXP; // Mettre à jour l'XP
+
+      if (levelUpChannel) {
+        levelUpChannel.send(
+          `**${author}丨** Tu viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
+        );
+      }
+
+      handleRole(obj, newLevel, levelUpChannel, "up", user.prestige);
+    } else if (user.level > newLevel) {
+      user.level = newLevel;
+      user.xp = newXP; // Mettre à jour l'XP
+
+      if (levelDownChannel) {
+        levelDownChannel.send(
+          `**${author}丨** Tu viens de descendre au niveau **\`${newLevel}\`**... La prochaine fois tu feras attention !`
+        );
+      }
+
+      handleRole(obj, newLevel, levelDownChannel, "down", user.prestige);
+    }
   }
 
+  user.level = newLevel;
   await user.save();
 }
 
