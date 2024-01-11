@@ -195,28 +195,29 @@ module.exports = {
       return `${text}${number > 1 ? 's' : ''}`;
     }
     function getStreamDuration(startTime) {
-      if (!startTime || isNaN(new Date(startTime).getTime())) {
-          console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
-          return "Durée non disponible";
-      }
-  
-      const now = new Date();
-      const start = new Date(startTime);
-  
-      if (isNaN(start.getTime())) {
-          console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
-          return "Données de durée non disponibles";
-      }
-  
-      const duration = Math.abs(now - start) / 1000;
-  
-      const hours = Math.floor(duration / 3600);
-      const minutes = Math.floor((duration % 3600) / 60);
-  
-      const hoursText = hours > 0 ? `${hours.toString().padStart(2, '0')} ${formatPlural(hours, 'heure')}` : '';
-      const minutesText = minutes > 0 ? `${minutes.toString().padStart(2, '0')} ${formatPlural(minutes, 'minute')}` : '';
-  
-      return `${hoursText}${hours > 0 && minutes > 0 ? ' et ' : ''}${minutesText}`;
+        if (!startTime || isNaN(new Date(startTime).getTime())) {
+            console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
+            return "Durée non disponible";
+        }
+    
+        const now = new Date();
+        const start = new Date(startTime);
+    
+        if (isNaN(start.getTime())) {
+            console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
+            return "Données de durée non disponibles";
+        }
+    
+        const duration = Math.abs(now - start) / 1000;
+    
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+    
+        // Formatage pour inclure le zéro devant les chiffres si nécessaire
+        const hoursText = hours > 0 ? `${hours.toString().padStart(2, '0')} ${formatPlural(hours, 'heure')}` : '00 heure';
+        const minutesText = minutes > 0 ? `${minutes.toString().padStart(2, '0')} ${formatPlural(minutes, 'minute')}` : '00 minute';
+    
+        return `${hoursText} et ${minutesText}`;
     }
     async function checkMultipleStreamers(bot) {
       await initializeStreamers();
@@ -303,7 +304,7 @@ module.exports = {
       const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
-          .setTitle('Hors Ligne.. :x:')
+          .setTitle('Hors Ligne... :x:')
           .setDescription(`Il était en live pendant \`${streamDuration}\`.\n\nMais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
           .setThumbnail('https://i.postimg.cc/rFhsTf7F/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
@@ -326,7 +327,7 @@ module.exports = {
     }
     async function updateLiveStreamInfo(streamData, streamerEntry, channel, data, twitchHeaders) {
       if (!data.startedAt) {
-        data.startedAt = streamerEntry.startedAt; // Récupérer depuis la base de données si disponible
+        data.startedAt = streamerEntry.startedAt;
     }
       const streamTitle = streamData.title;
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
@@ -648,7 +649,7 @@ module.exports = {
     }, 43201000);
 
     const channelId = "818640158693392405";
-    const messageIdToKeep = "1193673840782483496";
+    const messageIdToKeep = "1193673840782483496"; // Message a pas supprimé
     setInterval(async () => {
       const channel = await bot.channels.fetch(channelId);
       const messages = await channel.messages.fetch({ limit: 1 });

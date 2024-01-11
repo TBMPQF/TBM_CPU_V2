@@ -53,7 +53,7 @@ module.exports = {
       new ButtonBuilder()
         .setCustomId("LADDER_BUTTON")
         .setEmoji("🏋🏼‍♂️")
-        .setLabel("Classement Général")
+        .setLabel("Classement")
         .setStyle(ButtonStyle.Primary)
     )
     .addComponents(
@@ -62,6 +62,12 @@ module.exports = {
         .setEmoji("🎤")
         .setLabel("Vocal Time")
         .setStyle(ButtonStyle.Primary)
+    )
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId("FALCONIX_BUTTON")
+        .setEmoji("1186719745106513971")
+        .setStyle(ButtonStyle.Secondary)
     );
     const embed = new EmbedBuilder()
       .setAuthor({

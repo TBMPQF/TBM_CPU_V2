@@ -61,9 +61,6 @@ if (user && user.joinedAt) {
       .setDescription(`Il a résisté pendant \`${timeOnServer}\` !`)
       .setColor("Red")
       .setTimestamp()
-      .setFooter({
-        text: `丨`
-      });
 
     const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
     if (logChannel) {

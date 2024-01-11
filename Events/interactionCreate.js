@@ -277,17 +277,14 @@ module.exports = {
     
       return Math.max(0, lostLevels);
     }
-
     function calculateCostXP(consecutiveDaily) {
       // Chaque jour de la série coûte 600 xp
       return consecutiveDaily * 600;
     }
-
     function calculateMalus(consecutiveDaily) {
       // Malus est de 50 si la série est inférieure à 7 jours, sinon c'est 75
       return consecutiveDaily < 7 ? 50 : 75;
     }
-
     function calculateMalusDuration(consecutiveDaily) {
       // Chaque semaine de la série rajoute 1 jour de malus
       return Math.max(1, Math.floor(consecutiveDaily / 7));
@@ -1637,7 +1634,6 @@ module.exports = {
         message.delete();
       }, 15000);
     }
-
     function padNumber(number) {
       return number < 10 ? `0${number}` : number;
     }
@@ -1673,6 +1669,33 @@ module.exports = {
 
         interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
       });
+    }
+
+    // Bouton Falconix
+    if (interaction.customId === "FALCONIX_BUTTON") {
+      const user = await User.findOne({
+        userID: interaction.user.id,
+        serverID: interaction.guild.id
+      });
+    
+      if (!user) {
+        return interaction.reply({ content: "Erreur : Utilisateur non trouvé dans la base de données.", ephemeral: true });
+      }
+    
+      const FalconixEmbed = new EmbedBuilder()
+        .setAuthor({
+          name: "𝐏𝐎𝐑𝐓𝐄 𝐌𝐎𝐍𝐍𝐀𝐈𝐄",
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+        })
+        .setThumbnail("https://i.postimg.cc/wjbvW906/Monnaie-Falconix.png")
+        .addFields(
+          { name: `\u200B`, value: `\u200B`, inline: true },
+          { name: `**Tu as** \`${user.falconix}\` **Falconix.**`, value: `\u200B`, inline: true},
+        )
+        const message = await interaction.reply({ embeds: [FalconixEmbed], fetchReply: true });
+        setTimeout(() => {
+          message.delete().catch(console.error);
+        }, 15000);
     }
 
     //Bouton lancer une recherche Apex Legends
