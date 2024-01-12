@@ -21,6 +21,84 @@ const moment = require('moment-timezone');
 module.exports = {
   name: "ready",
   async execute(bot, member) {
+
+    //Bingo qui apparaît aléatoirement
+    setInterval(async () => {
+      const bingoNumber = Math.floor(Math.random() * 1000) + 1;
+      let bingoWinner = null;
+      let isBingoActive = true;
+    
+      //console.log(`[BINGO] Le nombre mystère est ${bingoNumber}`);
+    
+      const messagesGagnant = [
+        `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`,
+        `🥳**丨**𝐁ravo, tu as le don de deviner, le nombre mystère était \`${bingoNumber}\`! 𝐓u récupères X Falconix!`,
+        `🎊**丨**𝐓u es un véritable devin! 𝐋e nombre mystère était \`${bingoNumber}\`. 𝐓u empoches X Falconix!`,
+        `🎉**丨**𝐅élicitations mais t'es sur que ta copine est au salon en train de regarder la 𝐒tar 𝐀cademy ? :star:' 𝐋e nombre était \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`
+      ];
+      const messagesPerdant = [
+        `**丨**𝐓emps écoulé, mieux vaudra la prochaine fois! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
+        `**丨**𝐃ommage, personne n'a trouvé le nombre qui était \`${bingoNumber}\`!`,
+        `**丨**𝐋a chance n'était pas de notre côté aujourd'hui! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
+        `**丨**𝐃écidement.. personne ne viendra récuperer sa machine 𝐓assimo.. 𝐋e nombre mystère était \`${bingoNumber}\`.`
+      ];
+    
+      const bingoEmbed = new EmbedBuilder()
+        .setColor('#0099ff')
+        .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
+        .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!')
+        .setTimestamp()
+        .setFooter({
+          text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
+          iconURL: bot.guilds.cache.get(serverId).iconURL(),
+        });
+      const bingoChannel = bot.channels.cache.get('813843765600845824');
+      await bingoChannel.setRateLimitPerUser(10);
+      await bingoChannel.send({ embeds: [bingoEmbed] });
+      const bingoCollector = bingoChannel.createMessageCollector({
+        time: 300000, // 5 minutes
+      });
+
+      async function addFalconixToUser(userId, serverId) {
+        try {
+          const user = await User.findOne({ userID: userId, serverID: serverId });
+          if (!user) {
+            return;
+          }
+          const randomFalconix = Math.random() * (0.00100 - 0.00025) + 0.0001;
+          const roundedFalconix = parseFloat(randomFalconix.toFixed(5));
+          user.falconix += roundedFalconix;
+          await user.save();
+          return roundedFalconix;
+        } catch (error) {
+          console.error("Erreur lors de l'ajout des Falconix :", error);
+          return null;
+        }
+      }
+    
+      bingoCollector.on('collect', async message => {
+        if (!isBingoActive) return;
+        const guess = parseInt(message.content);
+        if (guess === bingoNumber) {
+          bingoWinner = message.author;
+          const falconixGained = await addFalconixToUser(bingoWinner.id, message.guild.id);
+          const messageGagnant = messagesGagnant[Math.floor(Math.random() * messagesGagnant.length)].replace('X Falconix!', `\`${falconixGained}\` **Falconix**!`);
+          message.reply(`${messageGagnant}`);
+          isBingoActive = false;
+          bingoCollector.stop();
+          await addFalconixToUser(bingoWinner.id, message.guild.id);
+        }
+      });
+    
+      bingoCollector.on('end', async collected => {
+        if (!bingoWinner) {
+          const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
+          bingoChannel.send(`${messagePerdant}`);
+        }
+        await bingoChannel.setRateLimitPerUser(0)
+      });
+    
+    }, 172800000); // 2 jours d'interavalle
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
     bot.guilds.cache.forEach(async guild => {
@@ -195,30 +273,38 @@ module.exports = {
       return `${text}${number > 1 ? 's' : ''}`;
     }
     function getStreamDuration(startTime) {
-        if (!startTime || isNaN(new Date(startTime).getTime())) {
-            console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
-            return "Durée non disponible";
-        }
-    
-        const now = new Date();
-        const start = new Date(startTime);
-    
-        if (isNaN(start.getTime())) {
-            console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
-            return "Données de durée non disponibles";
-        }
-    
-        const duration = Math.abs(now - start) / 1000;
-    
-        const hours = Math.floor(duration / 3600);
-        const minutes = Math.floor((duration % 3600) / 60);
-    
-        // Formatage pour inclure le zéro devant les chiffres si nécessaire
-        const hoursText = hours > 0 ? `${hours.toString().padStart(2, '0')} ${formatPlural(hours, 'heure')}` : '00 heure';
-        const minutesText = minutes > 0 ? `${minutes.toString().padStart(2, '0')} ${formatPlural(minutes, 'minute')}` : '00 minute';
-    
-        return `${hoursText} et ${minutesText}`;
-    }
+      if (!startTime || isNaN(new Date(startTime).getTime())) {
+          console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
+          return "Durée non disponible";
+      }
+  
+      const now = new Date();
+      const start = new Date(startTime);
+  
+      if (isNaN(start.getTime())) {
+          console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
+          return "Données de durée non disponibles";
+      }
+  
+      const duration = Math.abs(now - start) / 1000;
+  
+      const hours = Math.floor(duration / 3600);
+      const minutes = Math.floor((duration % 3600) / 60);
+  
+      let timeText = '';
+  
+      if (hours > 0) {
+          const hoursText = `${hours.toString().padStart(2, '0')} ${formatPlural(hours, 'heure')}`;
+          timeText += hoursText;
+      }
+  
+      if (minutes > 0 || hours === 0) {
+          const minutesText = `${minutes.toString().padStart(2, '0')} ${formatPlural(minutes, 'minute')}`;
+          timeText += (hours > 0 ? ' et ' : '') + minutesText;
+      }
+  
+      return timeText;
+  }
     async function checkMultipleStreamers(bot) {
       await initializeStreamers();
       const channel = bot.channels.cache.get('812530008823955506');

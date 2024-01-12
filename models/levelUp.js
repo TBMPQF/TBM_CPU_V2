@@ -37,11 +37,11 @@ async function levelUp(obj, user, newXP) {
   const roleRewards = await getRoleRewards(obj.guild.id);
   const oldPrestige = user.prestige || 0;
 
-  // Gestion du prestige
   if (newLevel >= MAX_LEVEL) {
     user.prestige = oldPrestige + 1;
-    newLevel = 0; // Réinitialisation du niveau à 1
-    user.xp = 0;   // Réinitialisation de l'XP à 0
+    newLevel = 0;
+    user.xp = 0;
+    user.falconix = (user.falconix || 0) + 1;
 
     if (levelUpChannel) {
       levelUpChannel.send(
@@ -49,7 +49,6 @@ async function levelUp(obj, user, newXP) {
       );
     }
 
-    // Gestion des rôles pour le prestige
     const previousPrestigeRoleRewards = roleRewards[oldPrestige];
     for (let reward of previousPrestigeRoleRewards) {
       const previousRole = obj.guild.roles.cache.find(
@@ -62,10 +61,9 @@ async function levelUp(obj, user, newXP) {
 
     handleRole(obj, 1, levelUpChannel, "up", user.prestige);
   } else {
-    // Gestion des montées et descentes de niveau
     if (user.level < newLevel) {
       user.level = newLevel;
-      user.xp = newXP; // Mettre à jour l'XP
+      user.xp = newXP;
 
       if (levelUpChannel) {
         levelUpChannel.send(
@@ -76,7 +74,7 @@ async function levelUp(obj, user, newXP) {
       handleRole(obj, newLevel, levelUpChannel, "up", user.prestige);
     } else if (user.level > newLevel) {
       user.level = newLevel;
-      user.xp = newXP; // Mettre à jour l'XP
+      user.xp = newXP;
 
       if (levelDownChannel) {
         levelDownChannel.send(
@@ -99,7 +97,6 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
 
   if (roleIndex !== -1) {
     if (direction === "up") {
-      // Ajoute le rôle du nouveau niveau
       const newRoleReward = currentPrestigeRoleRewards[roleIndex];
       if (newRoleReward) {
         const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
@@ -110,7 +107,6 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
           );
         }
       }
-      // Retire le rôle du niveau précédent
       if (roleIndex > 0) {
         const oldRoleReward = currentPrestigeRoleRewards[roleIndex - 1];
         if (oldRoleReward) {
@@ -121,7 +117,6 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
         }
       }
     } else if (direction === "down") {
-      // Retire le rôle du niveau précédent
       const oldRoleReward = currentPrestigeRoleRewards[roleIndex + 1];
       if (oldRoleReward) {
         const oldRole = obj.guild.roles.cache.get(oldRoleReward.roleId);
@@ -129,7 +124,6 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
           await obj.member.roles.remove(oldRole);
         }
       }
-      // Ajoute le rôle du nouveau niveau
       const newRoleReward = currentPrestigeRoleRewards[roleIndex];
       if (newRoleReward) {
         const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
