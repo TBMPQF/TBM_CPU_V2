@@ -136,6 +136,9 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
       }
     }
   }
+  if (newLevel === 1) {
+    return;
+  }
 }
 
 module.exports = levelUp;

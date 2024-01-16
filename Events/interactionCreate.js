@@ -1038,7 +1038,7 @@ module.exports = {
         message.delete();
       }, 60000);
     }
-    if (interaction.customId === "ROLES_LISTE") {
+    if (interaction.customId === "ROLE_LISTE") {
       const serverRoles = await ServerRole.findOne({
         serverID: interaction.guild.id,
       });
@@ -1080,10 +1080,10 @@ module.exports = {
         .join("\n");
 
       const roleEmbed = new EmbedBuilder()
-        .setTitle("Liste des Rôles")
+        .setTitle("__Liste des Rôles__")
         .setColor("#b3c7ff")
         .setDescription(
-          `__**Rôles Prestige 0 :**__\n ${prestige0Roles}\n\n__**Rôles Prestige 1 :**__\n ${prestige1Roles}`
+          `__**Rôles Prestige 0 :**__\n\n ${prestige0Roles}\n\n\n__**Rôles Prestige 1 :**__\n\n ${prestige1Roles}`
         );
 
       interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });

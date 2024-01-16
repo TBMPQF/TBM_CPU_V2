@@ -98,7 +98,7 @@ module.exports = {
         await bingoChannel.setRateLimitPerUser(0)
       });
     
-    }, 172800000); // 2 jours d'interavalle
+    }, 33000000); // 2 jours d'interavalle
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
     bot.guilds.cache.forEach(async guild => {
