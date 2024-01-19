@@ -7,7 +7,6 @@ const ServerConfig = require("../models/serverConfig");
 const ServerRole = require("../models/serverRole");
 const User = require("../models/experience");
 const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
-const CHANNEL_NAME = "👥丨𝐉𝐎𝐔𝐄𝐔𝐑𝐒";
 const Music = require("../models/music")
 const queue = require('../models/queue')
 const SearchMateMessage = require('../models/apexSearchMate');
@@ -17,12 +16,28 @@ const ApexStreamer = require('../models/apexStreamer');
 const InVocal = require("../models/inVocal")
 const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
 const moment = require('moment-timezone');
+const BingoTimer = require('../models/bingo');
 
 module.exports = {
   name: "ready",
   async execute(bot, member) {
+    const serverId = '716810235985133568';
+    let dernierLancement = Date.now();
 
-    //Bingo qui apparaît aléatoirement
+    //Bingo qui apparaît entre 2 et 7 jours avec gains de Falconix
+    function randomInterval(minDays, maxDays) {
+      const minMilliseconds = minDays * 24 * 60 * 60 * 1000;
+      const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
+      return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
+    }
+    let delayToNextBingo = randomInterval(2, 5) // Entre 2 et 5 jours
+    const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
+
+    if (bingoTimer) {
+      const timeSinceLastBingo = new Date() - bingoTimer.lastBingoTime;
+      delayToNextBingo = Math.max(delayToNextBingo - timeSinceLastBingo, 0);
+      console.log(`Prochain bingo dans ${delayToNextBingo / 1000}s`);
+    }
     setInterval(async () => {
       const bingoNumber = Math.floor(Math.random() * 1000) + 1;
       let bingoWinner = null;
@@ -46,17 +61,26 @@ module.exports = {
       const bingoEmbed = new EmbedBuilder()
         .setColor('#0099ff')
         .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
-        .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!')
+        .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!\n@here')
         .setTimestamp()
         .setFooter({
           text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
           iconURL: bot.guilds.cache.get(serverId).iconURL(),
         });
-      const bingoChannel = bot.channels.cache.get('813843765600845824');
+      const bingoChannel = bot.channels.cache.get('811631297218347091');
       await bingoChannel.setRateLimitPerUser(10);
       await bingoChannel.send({ embeds: [bingoEmbed] });
+      try {
+        await BingoTimer.findOneAndUpdate(
+          { serverID: serverId },
+          { isActive: true },
+          { upsert: true }
+        );
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour de BingoTimer :", error);
+      }
       const bingoCollector = bingoChannel.createMessageCollector({
-        time: 300000, // 5 minutes
+        time: 5000, // 5 minutes pour trouvé le bon nombre
       });
 
       async function addFalconixToUser(userId, serverId) {
@@ -86,19 +110,22 @@ module.exports = {
           message.reply(`${messageGagnant}`);
           isBingoActive = false;
           bingoCollector.stop();
-          await addFalconixToUser(bingoWinner.id, message.guild.id);
         }
       });
-    
       bingoCollector.on('end', async collected => {
         if (!bingoWinner) {
           const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
           bingoChannel.send(`${messagePerdant}`);
         }
         await bingoChannel.setRateLimitPerUser(0)
+        await BingoTimer.findOneAndUpdate(
+          { serverID: serverId },
+          { lastBingoTime: new Date(), isActive: false },
+          { upsert: true }
+        );
       });
-    
-    }, 33000000); // 2 jours d'interavalle
+      delayToNextBingo = randomInterval(2, 5);
+    }, delayToNextBingo);
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
     bot.guilds.cache.forEach(async guild => {
@@ -527,7 +554,6 @@ module.exports = {
     })();
 
     // Réinitialise le message de playlist pour la musique
-    const serverId = '716810235985133568';
     const channelMusicId = '1136327173343559810';
     Music.findOne({ serverId: serverId })
     .then((musicEntry) => {
