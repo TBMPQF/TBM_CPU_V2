@@ -5,6 +5,7 @@ const ServerConfig = require("../models/serverConfig");
 module.exports = {
   name: "guildMemberAdd",
   async execute(member, bot) {
+    const TBMServerId = "716810235985133568";
     const serverConfig = await ServerConfig.findOne({
       serverID: member.guild.id,
     });
@@ -85,5 +86,39 @@ module.exports = {
     if (welcomeChannel) {
       welcomeChannel.send({ embeds: [WelcomeEmbed] });
     }
+    setTimeout(async () => {
+      if (member.guild.id !== TBMServerId) {
+        return;
+      }
+      try {
+        const memberUpdated = await member.guild.members.fetch(member.id);
+        const hasRole = memberUpdated.roles.cache.some(role => role.name === "――――丨🐦ゲーム🐦丨――――");
+        const user = await User.findOne({ userID: member.id });
+        if (!user.reminderSent && !hasRole) {
+          await member.send("丨𝐒alutation camarade\n𝐉e ne veux pas te déranger très longtemps mais.. pour continuer l'aventure tu dois venir __accepter le règlement__ puis __prendres tes rôles__ pour avoir accès aux salons de discussions dédiés.\n 𝐌erci.");
+    
+          user.reminderSent = true;
+          await user.save();
+        }
+      } catch (error) {
+        console.error("[MP] Erreur lors de l'envoi du message privé :", error);
+      }
+    }, 3600000); 
+    setTimeout(async () => {
+      if (member.guild.id !== TBMServerId) {
+        return;
+      }
+      try {
+        const memberUpdated = await member.guild.members.fetch(member.id);
+        const hasReglementRole = memberUpdated.roles.cache.some(role => role.name === "――――丨🐦ゲーム🐦丨――――");
+        const gameRoles = ["Apex Legends", "Rocket League", "Sons Of the Forest", "Minecraft", "Call of Duty", "New World", "Discord JS"];
+        const hasGameRole = gameRoles.some(gameRole => memberUpdated.roles.cache.some(role => role.name === gameRole));
+        if (!hasReglementRole || !hasGameRole) {
+          await memberUpdated.kick("丨𝐍'a pas pris le rôle de règlement et au moins un rôle de jeu après trois jours.");
+        }
+      } catch (error) {
+        console.error("[MP] Erreur lors de la vérification des rôles :", error);
+      }
+    }, 3 * 24 * 60 * 60 * 1000);
   },
 };

@@ -22,9 +22,8 @@ module.exports = {
   name: "ready",
   async execute(bot, member) {
     const serverId = '716810235985133568';
-    let dernierLancement = Date.now();
 
-    //Bingo qui apparaît entre 2 et 7 jours avec gains de Falconix
+    //Bingo qui apparaît entre 2 et 5 jours avec gains de Falconix
     function randomInterval(minDays, maxDays) {
       const minMilliseconds = minDays * 24 * 60 * 60 * 1000;
       const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
