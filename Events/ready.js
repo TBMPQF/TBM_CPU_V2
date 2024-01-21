@@ -29,102 +29,102 @@ module.exports = {
       const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
       return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
-    let delayToNextBingo = randomInterval(2, 5) // Entre 2 et 5 jours
-    const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
+    async function startBingoGame() {
+      let delayToNextBingo = randomInterval(2, 5) // Entre 2 et 5 jours
+      const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
 
-    if (bingoTimer) {
-      const timeSinceLastBingo = new Date() - bingoTimer.lastBingoTime;
-      delayToNextBingo = Math.max(delayToNextBingo - timeSinceLastBingo, 0);
-      console.log(`Prochain bingo dans ${delayToNextBingo / 1000}s`);
-    }
-    setInterval(async () => {
-      const bingoNumber = Math.floor(Math.random() * 1000) + 1;
-      let bingoWinner = null;
-      let isBingoActive = true;
-    
-      //console.log(`[BINGO] Le nombre mystère est ${bingoNumber}`);
-    
-      const messagesGagnant = [
-        `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`,
-        `🥳**丨**𝐁ravo, tu as le don de deviner, le nombre mystère était \`${bingoNumber}\`! 𝐓u récupères X Falconix!`,
-        `🎊**丨**𝐓u es un véritable devin! 𝐋e nombre mystère était \`${bingoNumber}\`. 𝐓u empoches X Falconix!`,
-        `🎉**丨**𝐅élicitations mais t'es sur que ta copine est au salon en train de regarder la 𝐒tar 𝐀cademy ? :star:' 𝐋e nombre était \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`
-      ];
-      const messagesPerdant = [
-        `**丨**𝐓emps écoulé, mieux vaudra la prochaine fois! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
-        `**丨**𝐃ommage, personne n'a trouvé le nombre qui était \`${bingoNumber}\`!`,
-        `**丨**𝐋a chance n'était pas de notre côté aujourd'hui! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
-        `**丨**𝐃écidement.. personne ne viendra récuperer sa machine 𝐓assimo.. 𝐋e nombre mystère était \`${bingoNumber}\`.`
-      ];
-    
-      const bingoEmbed = new EmbedBuilder()
-        .setColor('#0099ff')
-        .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
-        .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!\n@here')
-        .setTimestamp()
-        .setFooter({
-          text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
-          iconURL: bot.guilds.cache.get(serverId).iconURL(),
-        });
-      const bingoChannel = bot.channels.cache.get('811631297218347091');
-      await bingoChannel.setRateLimitPerUser(10);
-      await bingoChannel.send({ embeds: [bingoEmbed] });
-      try {
-        await BingoTimer.findOneAndUpdate(
-          { serverID: serverId },
-          { isActive: true },
-          { upsert: true }
-        );
-      } catch (error) {
-        console.error("Erreur lors de la mise à jour de BingoTimer :", error);
+      if (bingoTimer) {
+        const timeSinceLastBingo = new Date() - bingoTimer.lastBingoTime;
+        delayToNextBingo = Math.max(delayToNextBingo - timeSinceLastBingo, 0);
+        console.log(`Prochain bingo dans ${delayToNextBingo / 1000}s`);
       }
-      const bingoCollector = bingoChannel.createMessageCollector({
-        time: 5000, // 5 minutes pour trouvé le bon nombre
-      });
-
-      async function addFalconixToUser(userId, serverId) {
+      setInterval(async () => {
+        const bingoNumber = Math.floor(Math.random() * 1000) + 1;
+        let bingoWinner = null;
+        let isBingoActive = true;
+        //console.log(`[BINGO] Le nombre mystère est ${bingoNumber}`);
+      
+        const messagesGagnant = [
+          `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`,
+          `🥳**丨**𝐁ravo, tu as le don de deviner, le nombre mystère était \`${bingoNumber}\`! 𝐓u récupères X Falconix!`,
+          `🎊**丨**𝐓u es un véritable devin! 𝐋e nombre mystère était \`${bingoNumber}\`. 𝐓u empoches X Falconix!`,
+          `🎉**丨**𝐅élicitations mais t'es sur que ta copine est au salon en train de regarder la 𝐒tar 𝐀cademy ? :star:' 𝐋e nombre était \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`
+        ];
+        const messagesPerdant = [
+          `**丨**𝐓emps écoulé, mieux vaudra la prochaine fois! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
+          `**丨**𝐃ommage, personne n'a trouvé le nombre qui était \`${bingoNumber}\`!`,
+          `**丨**𝐋a chance n'était pas de notre côté aujourd'hui! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
+          `**丨**𝐃écidement.. personne ne viendra récuperer sa machine 𝐓assimo.. 𝐋e nombre mystère était \`${bingoNumber}\`.`
+        ];
+      
+        const bingoEmbed = new EmbedBuilder()
+          .setColor('#0099ff')
+          .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
+          .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!\n@here')
+          .setTimestamp()
+          .setFooter({
+            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
+            iconURL: bot.guilds.cache.get(serverId).iconURL(),
+          });
+        const bingoChannel = bot.channels.cache.get('811631297218347091');
+        await bingoChannel.setRateLimitPerUser(10);
+        await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
-          const user = await User.findOne({ userID: userId, serverID: serverId });
-          if (!user) {
-            return;
-          }
-          const randomFalconix = Math.random() * (0.00100 - 0.00025) + 0.0001;
-          const roundedFalconix = parseFloat(randomFalconix.toFixed(5));
-          user.falconix += roundedFalconix;
-          await user.save();
-          return roundedFalconix;
+          await BingoTimer.findOneAndUpdate(
+            { serverID: serverId },
+            { isActive: true },
+            { upsert: true }
+          );
         } catch (error) {
-          console.error("Erreur lors de l'ajout des Falconix :", error);
-          return null;
+          console.error("Erreur lors de la mise à jour de BingoTimer :", error);
         }
-      }
-    
-      bingoCollector.on('collect', async message => {
-        if (!isBingoActive) return;
-        const guess = parseInt(message.content);
-        if (guess === bingoNumber) {
-          bingoWinner = message.author;
-          const falconixGained = await addFalconixToUser(bingoWinner.id, message.guild.id);
-          const messageGagnant = messagesGagnant[Math.floor(Math.random() * messagesGagnant.length)].replace('X Falconix!', `\`${falconixGained}\` **Falconix**!`);
-          message.reply(`${messageGagnant}`);
-          isBingoActive = false;
-          bingoCollector.stop();
+        const bingoCollector = bingoChannel.createMessageCollector({
+          time: 5000, // 5 minutes pour trouvé le bon nombre
+        });
+        async function addFalconixToUser(userId, serverId) {
+          try {
+            const user = await User.findOne({ userID: userId, serverID: serverId });
+            if (!user) {
+              return;
+            }
+            const randomFalconix = Math.random() * (0.00100 - 0.00025) + 0.0001;
+            const roundedFalconix = parseFloat(randomFalconix.toFixed(5));
+            user.falconix += roundedFalconix;
+            await user.save();
+            return roundedFalconix;
+          } catch (error) {
+            console.error("Erreur lors de l'ajout des Falconix :", error);
+            return null;
+          }
         }
-      });
-      bingoCollector.on('end', async collected => {
-        if (!bingoWinner) {
-          const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
-          bingoChannel.send(`${messagePerdant}`);
-        }
-        await bingoChannel.setRateLimitPerUser(0)
-        await BingoTimer.findOneAndUpdate(
-          { serverID: serverId },
-          { lastBingoTime: new Date(), isActive: false },
-          { upsert: true }
-        );
-      });
-      delayToNextBingo = randomInterval(2, 5);
-    }, delayToNextBingo);
+        bingoCollector.on('collect', async message => {
+          if (!isBingoActive) return;
+          const guess = parseInt(message.content);
+          if (guess === bingoNumber) {
+            bingoWinner = message.author;
+            const falconixGained = await addFalconixToUser(bingoWinner.id, message.guild.id);
+            const messageGagnant = messagesGagnant[Math.floor(Math.random() * messagesGagnant.length)].replace('X Falconix!', `\`${falconixGained}\` **Falconix**!`);
+            message.reply(`${messageGagnant}`);
+            isBingoActive = false;
+            bingoCollector.stop();
+          }
+        });
+        bingoCollector.on('end', async collected => {
+          if (!bingoWinner) {
+            const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
+            bingoChannel.send(`${messagePerdant}`);
+          }
+          await bingoChannel.setRateLimitPerUser(0)
+          await BingoTimer.findOneAndUpdate(
+            { serverID: serverId },
+            { lastBingoTime: new Date(), isActive: false },
+            { upsert: true }
+          );
+        });
+        startBingoGame();
+      }, delayToNextBingo);
+    }
+    startBingoGame();
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
     bot.guilds.cache.forEach(async guild => {
