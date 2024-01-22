@@ -38,7 +38,7 @@ module.exports = {
         delayToNextBingo = Math.max(delayToNextBingo - timeSinceLastBingo, 0);
         console.log(`Prochain bingo dans ${delayToNextBingo / 1000}s`);
       }
-      setInterval(async () => {
+      setTimeout(async () => {
         const bingoNumber = Math.floor(Math.random() * 1000) + 1;
         let bingoWinner = null;
         let isBingoActive = true;
