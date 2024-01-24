@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
 const bingoSchema = new mongoose.Schema({
-  serverID: { type: String, required: true }, // Assurez-vous d'ajouter le champ serverID
-  lastBingoTime: { type: Date, default: null }, // Renommez startTime en lastBingoTime
+  serverID: { type: String, required: true },
+  lastBingoTime: { type: Date, default: null },
+  nextBingoTime: { type: Date, default: null },
   isActive: Boolean
 }, { versionKey: false});
 

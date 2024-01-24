@@ -30,14 +30,26 @@ module.exports = {
       return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
     async function startBingoGame() {
-      let delayToNextBingo = randomInterval(2, 5) // Entre 2 et 5 jours
       const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
-
-      if (bingoTimer) {
-        const timeSinceLastBingo = new Date() - bingoTimer.lastBingoTime;
-        delayToNextBingo = Math.max(delayToNextBingo - timeSinceLastBingo, 0);
-        console.log(`Prochain bingo dans ${delayToNextBingo / 1000}s`);
+    
+      let nextBingoTime;
+      if (bingoTimer && new Date(bingoTimer.nextBingoTime) > new Date()) {
+        // Utiliser le moment enregistré pour le prochain bingo
+        nextBingoTime = new Date(bingoTimer.nextBingoTime);
+      } else {
+        // Calculer un nouveau moment pour le prochain bingo
+        let delayToNextBingo = randomInterval(2, 5); // Entre 2 et 5 jours
+        nextBingoTime = new Date(new Date().getTime() + delayToNextBingo);
+    
+        // Enregistrer le nouveau moment dans la base de données
+        await BingoTimer.findOneAndUpdate(
+          { serverID: serverId },
+          { nextBingoTime: nextBingoTime },
+          { upsert: true }
+        );
       }
+    
+      let delayInMillis = nextBingoTime.getTime() - new Date().getTime();
       setTimeout(async () => {
         const bingoNumber = Math.floor(Math.random() * 1000) + 1;
         let bingoWinner = null;
@@ -122,7 +134,7 @@ module.exports = {
           );
         });
         startBingoGame();
-      }, delayToNextBingo);
+      }, delayInMillis);
     }
     startBingoGame();
     
