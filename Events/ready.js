@@ -25,23 +25,31 @@ module.exports = {
 
     //Bingo qui apparaît entre 2 et 5 jours avec gains de Falconix
     function randomInterval(minDays, maxDays) {
-      const minMilliseconds = minDays * 24 * 60 * 60 * 1000;
-      const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
+      const minMilliseconds = minDays * 24 * 60 * 60 * 1000; //minDays * 24 * 60 * 60 * 1000
+      const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000; //maxDays * 24 * 60 * 60 * 1000
       return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
+    }
+    async function addXPToUser(userId, serverId, xpToAdd) {
+      try {
+        const user = await User.findOne({ userID: userId, serverID: serverId });
+        if (!user) {
+          return;
+        }
+        user.xp += xpToAdd;
+        await user.save();
+      } catch (error) {
+        console.error("[XP BINGO] Erreur lors de l'ajout des XP :", error);
+      }
     }
     async function startBingoGame() {
       const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
     
       let nextBingoTime;
       if (bingoTimer && new Date(bingoTimer.nextBingoTime) > new Date()) {
-        // Utiliser le moment enregistré pour le prochain bingo
         nextBingoTime = new Date(bingoTimer.nextBingoTime);
       } else {
-        // Calculer un nouveau moment pour le prochain bingo
         let delayToNextBingo = randomInterval(2, 5); // Entre 2 et 5 jours
         nextBingoTime = new Date(new Date().getTime() + delayToNextBingo);
-    
-        // Enregistrer le nouveau moment dans la base de données
         await BingoTimer.findOneAndUpdate(
           { serverID: serverId },
           { nextBingoTime: nextBingoTime },
@@ -78,7 +86,7 @@ module.exports = {
             text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           });
-        const bingoChannel = bot.channels.cache.get('811631297218347091');
+        const bingoChannel = bot.channels.cache.get('813843765600845824');
         await bingoChannel.setRateLimitPerUser(10);
         await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
@@ -90,8 +98,9 @@ module.exports = {
         } catch (error) {
           console.error("Erreur lors de la mise à jour de BingoTimer :", error);
         }
+        let participants = new Set();
         const bingoCollector = bingoChannel.createMessageCollector({
-          time: 5000, // 5 minutes pour trouvé le bon nombre
+          time: 300000, // 5 minutes (300000ms) pour trouvé le bon nombre
         });
         async function addFalconixToUser(userId, serverId) {
           try {
@@ -111,6 +120,7 @@ module.exports = {
         }
         bingoCollector.on('collect', async message => {
           if (!isBingoActive) return;
+          participants.add(message.author.id);
           const guess = parseInt(message.content);
           if (guess === bingoNumber) {
             bingoWinner = message.author;
@@ -126,12 +136,22 @@ module.exports = {
             const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
             bingoChannel.send(`${messagePerdant}`);
           }
-          await bingoChannel.setRateLimitPerUser(0)
+          await bingoChannel.setRateLimitPerUser(0);
           await BingoTimer.findOneAndUpdate(
             { serverID: serverId },
             { lastBingoTime: new Date(), isActive: false },
             { upsert: true }
           );
+          participants.forEach(async (participantId) => {
+            try {
+              await addXPToUser(participantId, serverId, 250);
+            } catch (error) {
+              console.error("Erreur lors de l'ajout des XP :", error);
+            }
+          });
+        
+          bingoChannel.send({ content: '𝐆race à ta participation, tu viens de __remporter__ \`250\` 𝐗𝐏 !!', ephemeral: true });
+          participants.clear();
         });
         startBingoGame();
       }, delayInMillis);
@@ -392,7 +412,7 @@ module.exports = {
           .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
           .setTitle(streamTitle)
           .setURL(`https://www.twitch.tv/${streamData.user_login}`)
-          .setDescription(`Maintenant en Live sur Twitch !\n@here -> Vient on lui donne de la force.`)
+          .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n@here ➠ 𝐕ient on lui donne de la force.`)
           .setThumbnail(gameThumbnailUrl)
           .addFields(
               { name: gameName, value: `\u200B`, inline: true },
@@ -401,7 +421,7 @@ module.exports = {
           )
           .setImage(streamThumbnailUrl)
           .setTimestamp()
-          .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
+          .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
       let messageToSend = { embeds: [liveEmbed] };
       if (data.lastMessageId) {
@@ -428,12 +448,12 @@ module.exports = {
       const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
-          .setTitle('Hors Ligne... :x:')
-          .setDescription(`Il était en live pendant \`${streamDuration}\`.\n\nMais il revient prochainement pour de nouvelles aventures !`)
+          .setTitle('𝐇ors Ligne... :x:')
+          .setDescription(`𝐈l était en live pendant \`${streamDuration}\`.\n\n𝐌ais il revient prochainement pour de nouvelles aventures !`)
           .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
           .setThumbnail('https://i.postimg.cc/rFhsTf7F/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
           .setTimestamp()
-          .setFooter({text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
+          .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
       if (data.lastMessageId) {
           const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
@@ -464,7 +484,7 @@ module.exports = {
           .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
           .setTitle(streamTitle)
           .setURL(`https://www.twitch.tv/${streamData.user_login}`)
-          .setDescription(`Maintenant en Live sur Twitch !\n@here -> Vient on lui donne de la force.`)
+          .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n@here ➠ 𝐕ient on lui donne de la force.`)
           .setThumbnail(gameThumbnailUrl)
           .addFields(
               { name: gameName, value: `\u200B`, inline: true },
@@ -473,7 +493,7 @@ module.exports = {
           )
           .setImage(streamThumbnailUrl)
           .setTimestamp()
-          .setFooter({ text: `Twitch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
+          .setFooter({ text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
   
       if (data.lastMessageId) {
           const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
