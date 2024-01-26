@@ -86,7 +86,7 @@ module.exports = {
             text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           });
-        const bingoChannel = bot.channels.cache.get('811631297218347091');
+        const bingoChannel = bot.channels.cache.get('813843765600845824');
         await bingoChannel.setRateLimitPerUser(10);
         await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
