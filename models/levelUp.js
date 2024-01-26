@@ -38,7 +38,7 @@ async function levelUp(obj, user, newXP) {
     user.falconix = (user.falconix || 0) + 1;
     if (levelUpChannel) {
       levelUpChannel.send(
-        `**${author}丨** 𝐈𝐍-𝐂𝐑𝐎𝐘-𝐀𝐁𝐋𝐄 ! 𝐓u viens de passer au 𝐏restige **\`${user.prestige}\`** ! - :star: !`
+        `**${author}丨**𝐈𝐍-𝐂𝐑𝐎-𝐘𝐀-𝐁𝐋𝐄丨𝐓u viens de passer au 𝐏restige **\`${user.prestige}\`** ! - :star: !`
       );
     }
     const previousPrestigeRoleRewards = roleRewards[oldPrestige];

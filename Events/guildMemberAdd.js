@@ -25,18 +25,25 @@ module.exports = {
       footerText = `${member.user.username} nouvelle recrue au rang de ${welcomeRoleNoName}`;
     }
 
-    const newUser = new User({
+    const existingUser = await User.findOne({
       userID: member.user.id,
-      username: member.user.username,
       serverID: member.guild.id,
-      serverName: member.guild.name,
-      joinedAt: Date.now(),
     });
 
-    try {
-      await newUser.save();
-    } catch (error) {
-      console.error(error);
+    if (!existingUser) {
+      const newUser = new User({
+        userID: member.user.id,
+        username: member.user.username,
+        serverID: member.guild.id,
+        serverName: member.guild.name,
+        joinedAt: Date.now(),
+      });
+
+      try {
+        await newUser.save();
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     const reglementChannel = member.guild.channels.cache.get(

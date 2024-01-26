@@ -50,6 +50,7 @@ const usersVoted = new Map();
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
+    
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
       const user = await User.findOne({
@@ -148,13 +149,13 @@ module.exports = {
       let dailyMessage = "";
 
       if (lastClaim == null) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
       } else if (resetConsecutiveDaily) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\`. :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\` - :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
       } else if (user.consecutiveDaily === 1) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
       } else {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` :tada: !\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\`. :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
+        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\` - :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
       }
 
       user.lastDaily = now;
@@ -166,9 +167,6 @@ module.exports = {
           name: interaction.user.username,
           iconURL: interaction.user.displayAvatarURL({ dynamic: true })
         })
-        .setFooter({
-          text: `丨`
-        })
         .setTimestamp();
 
       let components = [];
@@ -178,7 +176,7 @@ module.exports = {
           new ButtonBuilder()
             .setCustomId("RECUPDAILY_BUTTON")
             .setEmoji("💨")
-            .setLabel("丨Rattraper mon 𝐃aily")
+            .setLabel("丨𝐑attraper mon 𝐃aily")
             .setStyle(ButtonStyle.Primary)
         );
 
@@ -226,13 +224,17 @@ module.exports = {
         userID: interaction.user.id,
       });
 
-      const costXP = calculateCostXP(user.lostConsecutiveDaily);
-      const malus = calculateMalus(user.lostConsecutiveDaily);
-      const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
-      const lostLevels = calculateLostLevels(user.lostConsecutiveDaily);
+      const currentXP = Number(user.xp) || 0;
+      const storedConsecutiveDaily = Number(user.lostConsecutiveDaily) || 0;
+
+      const costXP = calculateCostXP(storedConsecutiveDaily);
+      const malus = calculateMalus(storedConsecutiveDaily);
+      const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
+      const xpLoss = costXP; // Supposons que la perte d'XP est égale au coût
+      const lostLevels = calculateLostLevels(currentXP, xpLoss);
 
       if (user.xp >= costXP) {
-        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? Tu avais une série de \`${
+        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? 𝐓u avais une série de \`${
             user.lostConsecutiveDaily
         }\`.\n Ça te coûtera \`${costXP.toLocaleString()}\` 𝐗p, tu perdras \`${lostLevels}\` niveau(x), et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
 
@@ -254,26 +256,23 @@ module.exports = {
         });
       } else {
         return interaction.reply({
-          content: `丨𝐓u n'as pas assez d'𝐗p pour rattraper ton __bonus quotidien__. Tu as besoin de \`${costXP.toLocaleString()}\` 𝐗p minimum et tu as uniquement \`${user.xp.toLocaleString()}\` 𝐗p disponible.`,
+          content: `丨𝐓u n'as pas assez d'𝐗p pour rattraper ton __bonus quotidien__. 𝐓u as besoin de \`${costXP.toLocaleString()}\` 𝐗p minimum et tu as uniquement \`${user.xp.toLocaleString()}\` 𝐗p disponible.`,
           ephemeral: true,
         });
       }
     }
-    function calculateLostLevels(currentXP, currentLevel) {
-      // Vérifier la validité des valeurs d'entrée
-      if (isNaN(currentXP) || currentXP < 0 || isNaN(currentLevel) || currentLevel < 1) {
-        console.error("Valeurs invalides pour calculateLostLevels:", { currentXP, currentLevel });
-        return 0; // Retourne 0 si les valeurs ne sont pas valides
-      }
+    function calculateLostLevels(currentXP, xpLoss) {
+      // Calculer le niveau actuel à partir de l'XP actuel
+      let currentLevel = Math.floor(0.1 * Math.sqrt(currentXP));
     
-      // Calculer l'XP requise pour atteindre le niveau actuel
-      const requiredXPForCurrentLevel = Math.pow(currentLevel / 0.1, 2);
+      // Calculer le nouvel XP après la perte
+      let newXP = Math.max(0, currentXP - xpLoss);
     
-      // Calculer l'XP perdue
-      const lostXP = requiredXPForCurrentLevel - currentXP;
+      // Calculer le nouveau niveau à partir du nouvel XP
+      let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
     
       // Calculer les niveaux perdus
-      const lostLevels = Math.floor(0.1 * Math.sqrt(lostXP));
+      let lostLevels = currentLevel - newLevel;
     
       return Math.max(0, lostLevels);
     }
@@ -289,18 +288,20 @@ module.exports = {
       // Chaque semaine de la série rajoute 1 jour de malus
       return Math.max(1, Math.floor(consecutiveDaily / 7));
     }
-
     // Bouton confirmation récupération de daily
     if (interaction.customId === "CONFIRM_RECUPDAILY_BUTTON") {
       const user = await User.findOne({
         serverID: interaction.guild.id,
         userID: interaction.user.id,
       });
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      const implicationsChannelID = serverConfig ? serverConfig.implicationsChannelID : null;
 
       const storedConsecutiveDaily = user.lostConsecutiveDaily || 0;
       const costXP = calculateCostXP(storedConsecutiveDaily);
       const malus = calculateMalus(storedConsecutiveDaily);
       const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
+      const levelBeforeLoss = user.level;
 
       if (user.xp >= costXP) {
         user.xp -= costXP;
@@ -309,10 +310,29 @@ module.exports = {
         user.malusDaily = malus;
         user.malusDuration = malusDuration;
         user.lastDaily = new Date(Date.now());
+        const newLevel = Math.floor(0.1 * Math.sqrt(user.xp));
+        user.level = newLevel;
         await user.save();
 
+        const levelDownMessages = [
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme trouver un parking en plein **Paris**, rare et un peu décevant. 𝐀llez, un petit daily et on oublie tout ça !`,
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐓u es comme le WiFi gratuit : tout le monde s'excite, mais personne ne s'attend à de la rapidité. 𝐀llez, ton daily t'attend ! -`,
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐁ravo ! 𝐓u progresses à la vitesse d'un escargot en pause café. 𝐍'oublie pas ton daily, ça pourrait peut-être accélérer les choses ! -`,
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐓u évolues comme un dinosaure en 2024. Extinction imminente, fais vite ton daily ! -`,
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme perdre à un concours de pierre-papier-ciseaux contre un poisson rouge. 𝐍'oublie pas ton daily, champion ! -`,
+          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme fêter un anniversaire de plus à l'âge de 90 ans : surprenant, un peu triste, mais on applaudit quand même. 𝐂ourage pour ton daily, ça ne peut que s'améliorer... en théorie ! -`,
+        ];
+        const randomMessage = levelDownMessages[Math.floor(Math.random() * levelDownMessages.length)];
+
+        if (newLevel < levelBeforeLoss && implicationsChannelID) {
+          const levelDownChannel = interaction.guild.channels.cache.get(implicationsChannelID);
+          if (levelDownChannel) {
+            levelDownChannel.send(randomMessage);
+          }
+        }
+
         await interaction.reply({
-          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. Tes copains ne diront plus que tu es un rat ! Par contre.. __Un malus__ de \`${malus}\` a été appliqué pour \`${malusDuration} jour(s)\`.`,
+          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. 𝐓es copains ne diront plus que tu es un rat ! 𝐏ar contre.. __𝐔n malus__ de \`${malus}\` a été appliqué pour \`${malusDuration} jour(s)\`.`,
           ephemeral: true,
         });
 
@@ -344,12 +364,11 @@ module.exports = {
         });
       }
     }
-
     // Bouton cancel récupération de daily
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
       return interaction.reply({
         content:
-          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. Quelle audace ! N'oublie pas -> **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
+          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 𝐍'oublie pas ➠ **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
         ephemeral: true,
       });
     }

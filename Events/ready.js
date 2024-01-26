@@ -86,7 +86,7 @@ module.exports = {
             text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           });
-        const bingoChannel = bot.channels.cache.get('813843765600845824');
+        const bingoChannel = bot.channels.cache.get('811631297218347091');
         await bingoChannel.setRateLimitPerUser(10);
         await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
@@ -98,7 +98,7 @@ module.exports = {
         } catch (error) {
           console.error("Erreur lors de la mise à jour de BingoTimer :", error);
         }
-        let participants = new Set();
+        let participants = new Map();
         const bingoCollector = bingoChannel.createMessageCollector({
           time: 300000, // 5 minutes (300000ms) pour trouvé le bon nombre
         });
@@ -118,10 +118,14 @@ module.exports = {
             return null;
           }
         }
+        let closestGuess = null;
+        let closestGuessUser = null;
+        let closestGuessDifference = Infinity;
         bingoCollector.on('collect', async message => {
           if (!isBingoActive) return;
-          participants.add(message.author.id);
+          participants.set(message.author.id, { userId: message.author.id, interaction: message });
           const guess = parseInt(message.content);
+          const guessDifference = Math.abs(guess - bingoNumber);
           if (guess === bingoNumber) {
             bingoWinner = message.author;
             const falconixGained = await addFalconixToUser(bingoWinner.id, message.guild.id);
@@ -129,12 +133,19 @@ module.exports = {
             message.reply(`${messageGagnant}`);
             isBingoActive = false;
             bingoCollector.stop();
+          } else if (guessDifference < closestGuessDifference) {
+            closestGuess = guess;
+            closestGuessUser = message.author;
+            closestGuessDifference = guessDifference;
           }
         });
         bingoCollector.on('end', async collected => {
           if (!bingoWinner) {
-            const messagePerdant = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
-            bingoChannel.send(`${messagePerdant}`);
+            let finalMessage = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
+            if (closestGuessUser) {
+              finalMessage += `\n丨𝐋e joueur le plus proche était **${closestGuessUser}** avec le nombre \`${closestGuess}\`.`;
+            }
+            bingoChannel.send(finalMessage);
           }
           await bingoChannel.setRateLimitPerUser(0);
           await BingoTimer.findOneAndUpdate(
@@ -142,15 +153,13 @@ module.exports = {
             { lastBingoTime: new Date(), isActive: false },
             { upsert: true }
           );
-          participants.forEach(async (participantId) => {
+          participants.forEach(async (participant) => {
             try {
-              await addXPToUser(participantId, serverId, 250);
+              await addXPToUser(participant.userId, serverId, 250);
             } catch (error) {
               console.error("Erreur lors de l'ajout des XP :", error);
             }
           });
-        
-          bingoChannel.send({ content: '𝐆race à ta participation, tu viens de __remporter__ \`250\` 𝐗𝐏 !!', ephemeral: true });
           participants.clear();
         });
         startBingoGame();
