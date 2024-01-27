@@ -294,6 +294,12 @@ module.exports = {
         serverID: interaction.guild.id,
         userID: interaction.user.id,
       });
+      if (user.lostConsecutiveDaily === 0) {
+        return interaction.reply({
+          content: "丨𝐀h, voilà que le vent de l'indécision souffle plus fort qu'une mouette après un festin de frites ! 𝐃ésolé mais.. c'est trop tard !",
+          ephemeral: true,
+        });
+      }
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       const implicationsChannelID = serverConfig ? serverConfig.implicationsChannelID : null;
 
@@ -366,10 +372,26 @@ module.exports = {
     }
     // Bouton cancel récupération de daily
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
-      return interaction.reply({
-        content:
-          "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 𝐍'oublie pas ➠ **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
-        ephemeral: true,
+      const userId = interaction.user.id;
+      const serverId = interaction.guild.id;
+    
+      User.findOneAndUpdate(
+        { userID: userId, serverID: serverId },
+        { $set: { lostConsecutiveDaily: 0 } },
+        { new: true }
+      )
+      .then(updatedUser => {
+        if (!updatedUser) {
+          console.error(`Utilisateur non trouvé (userID: ${userId}, serverID: ${serverId})`);
+        } else {
+          interaction.reply({
+            content: "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 𝐍'oublie pas ➠ **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
+            ephemeral: true,
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Erreur lors de la mise à jour de lostConsecutiveDaily", error);
       });
     }
 
@@ -1254,7 +1276,7 @@ module.exports = {
     if (interaction.customId === "WELCOME_ROLE") {
       const message = await interaction.reply({
         content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lors de l'arrivé **et** lorsque votre utilisateur validera le `𝐑èglement`.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;

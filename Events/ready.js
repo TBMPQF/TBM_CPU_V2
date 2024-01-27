@@ -1,4 +1,4 @@
-const { ActivityType, EmbedBuilder, ChannelType } = require("discord.js");
+const { ActivityType, EmbedBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
 const Discord = require("discord.js");
 const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
@@ -59,7 +59,7 @@ module.exports = {
     
       let delayInMillis = nextBingoTime.getTime() - new Date().getTime();
       setTimeout(async () => {
-        const bingoNumber = Math.floor(Math.random() * 1000) + 1;
+        const bingoNumber = Math.floor(Math.random() * 500) + 1;
         let bingoWinner = null;
         let isBingoActive = true;
         //console.log(`[BINGO] Le nombre mystère est ${bingoNumber}`);
@@ -71,16 +71,16 @@ module.exports = {
           `🎉**丨**𝐅élicitations mais t'es sur que ta copine est au salon en train de regarder la 𝐒tar 𝐀cademy ? :star:' 𝐋e nombre était \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`
         ];
         const messagesPerdant = [
-          `**丨**𝐓emps écoulé, mieux vaudra la prochaine fois! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
-          `**丨**𝐃ommage, personne n'a trouvé le nombre qui était \`${bingoNumber}\`!`,
-          `**丨**𝐋a chance n'était pas de notre côté aujourd'hui! 𝐋e nombre mystère était \`${bingoNumber}\`.`,
-          `**丨**𝐃écidement.. personne ne viendra récuperer sa machine 𝐓assimo.. 𝐋e nombre mystère était \`${bingoNumber}\`.`
+          `**丨**𝐓emps écoulé, et comme un rendez-vous Tinder oublié, le nombre mystère \`${bingoNumber}\` s'est éclipsé! 𝐋a prochaine fois, swipez à droite plus vite sur vos claviers, les virtuoses du bingo. :8ball:`,
+          `**丨**𝐃ommage, le nombre mystère \`${bingoNumber}\` s'est volatilisé comme l'envie de travailler un vendredi après-midi. 𝐋a prochaine fois, soyez plus vifs, sinon je commence à croire que vous avez laissé vos neurones en mode avion ! :airplane:`,
+          `**丨**𝐀ujourd'hui, la chance a pris ses congés sans préavis ! 𝐋e nombre mystère était \`${bingoNumber}\`, plus insaisissable qu'une savonnette sous la douche. 𝐑estez glissants pour la prochaine fois ! :soap:`,
+          `**丨**𝐃écidement.. 𝐋e nombre \`${bingoNumber}\` s'est éclipsé comme vos résolutions de Nouvel An. 𝐄ssayez encore ! :first_quarter_moon:`
         ];
       
         const bingoEmbed = new EmbedBuilder()
           .setColor('#0099ff')
           .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
-          .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **1000** dans les prochaines \`5 minutes\` pour gagner!\n@here')
+          .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **500** dans les prochaines \`5 minutes\` pour gagner!\n@here')
           .setTimestamp()
           .setFooter({
             text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
@@ -143,7 +143,7 @@ module.exports = {
           if (!bingoWinner) {
             let finalMessage = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
             if (closestGuessUser) {
-              finalMessage += `\n丨𝐋e joueur le plus proche était **${closestGuessUser}** avec le nombre \`${closestGuess}\`.`;
+              finalMessage += `\n丨𝐋e joueur le __plus proche__ était **${closestGuessUser}** avec le nombre \`${closestGuess}\`.`;
             }
             bingoChannel.send(finalMessage);
           }
@@ -706,26 +706,38 @@ module.exports = {
         });
         await serverConfig.save();
 
-        const embed = new EmbedBuilder()
-          .setTitle(`\`Hey! Un grand MERCI\` 🙏`)
+        const NewServerembed = new EmbedBuilder()
+          .setTitle(`\`𝐇ey! 𝐔n grand 𝐌𝐄𝐑𝐂𝐈\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `Pour commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es administrateur du serveur (au minimum).\n\`N'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n\n\n__Avec moi, ta communauté à accès__ :\n\n◟ Système d'expérience complet. (message + vocal)\n◟Système d'avertissement en cas de mot désobligeant.\n◟Système de ticket.\n◟Un système de suggestion.\n◟Et bien plus !!`
+            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟ 𝐒ystème d'avertissement en cas de mot désobligeant.\n◟  𝐒ystème de ticket.\n◟   𝐒ystème de suggestion.\n◟    𝐁ingo avec des récompenses exclusive\n◟𝐄t bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()
           .setFooter({
-            text: `丨`,
-            iconURL: `${member.user.displayAvatarURL({
-              dynamic: true,
-              size: 512,
-            })}`,
+            text: `Cordialement, l'équipe de 𝐓𝐁𝐌_𝐂𝐏𝐔_𝐕𝟐`,
+            iconURL: "https://i.postimg.cc/L8B87btv/faucon-fond.png",
           });
-
-        owner.send({ embeds: [embed] });
+        owner.send({ embeds: [NewServerembed] });
+        // Envoi sur mon discord pour m'informer d'un nouveau serveur
+        const TBMPQFGuild = bot.guilds.cache.get('716810235985133568')
+        const TBMPQFChannelLog = TBMPQFGuild.channels.cache.get('838440585341566996');
+        const NewServerInfo = new EmbedBuilder()
+          .setAuthor({
+            name: `${guild.name}`,
+            iconURL: guild.iconURL({ dynamic: true, size: 512 }),
+          })
+          .setTitle(`\`-丨𝐍ouveau 𝐒erveur丨-\` 🙏`)
+          .setColor("#ffc394")
+          .setDescription(
+            `𝐇eureux de t'annoncer que ton bot vient de rejoindre un nouveau serveur. `
+          )
+          .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
+          .setTimestamp()
+        TBMPQFChannelLog.send({ embeds: [NewServerInfo] });
       } catch (error) {
         console.error(
-          "Erreur lors de l'envoi du message au propriétaire du serveur :",
+          "[DM OWNER] Erreur lors de l'envoi du message au propriétaire du serveur :",
           error
         );
       }
@@ -876,12 +888,13 @@ async function updateVoiceChannelServer(server) {
     );
 
     if (!channel) {
-      channel = await server.channels.create("丨𝐎n𝐋ine", {
-        type: "GUILD_VOICE",
+      channel = await server.channels.create({
+        name: "丨𝐎n𝐋ine",
+        type: ChannelType.GuildVoice,
         permissionOverwrites: [
           {
             id: server.id,
-            deny: ["VIEW_CHANNEL"],
+            deny: [PermissionFlagsBits.ViewChannel],
           },
         ],
       });
