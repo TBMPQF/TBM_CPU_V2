@@ -432,14 +432,10 @@ module.exports = {
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
-      let messageToSend = { embeds: [liveEmbed] };
-      if (data.lastMessageId) {
-          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-          messageToUpdate.edit(messageToSend);
-      } else {
-          const newMessage = await channel.send(messageToSend);
-          streamerEntry.lastMessageId = newMessage.id;
-      }
+      const newMessage = await channel.send({ embeds: [liveEmbed] });
+      data.lastMessageId = newMessage.id;
+      streamerEntry.lastMessageId = newMessage.id;
+
       data.isLive = true;
       data.startedAt = new Date();
       streamerEntry.isLive = true;
