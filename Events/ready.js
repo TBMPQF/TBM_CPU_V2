@@ -432,6 +432,15 @@ module.exports = {
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
+      if (data.lastMessageId) {
+        try {
+            const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+            await messageToUpdate.delete();
+            data.lastMessageId = null;
+        } catch (error) {
+            console.error(`Erreur lors de la suppression du message précédent :`, error);
+        }
+      }
       const newMessage = await channel.send({ embeds: [liveEmbed] });
       data.lastMessageId = newMessage.id;
       streamerEntry.lastMessageId = newMessage.id;
