@@ -710,7 +710,7 @@ module.exports = {
           .setTitle(`\`𝐇ey! 𝐔n grand 𝐌𝐄𝐑𝐂𝐈\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟ 𝐒ystème d'avertissement en cas de mot désobligeant.\n◟  𝐒ystème de ticket.\n◟   𝐒ystème de suggestion.\n◟    𝐁ingo avec des récompenses exclusive\n◟𝐄t bien plus !!`
+            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\` 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\`\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement en cas de mot désobligeant.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive\n◟𝐄t bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()
@@ -826,26 +826,30 @@ module.exports = {
 
     // Activité du bot
     const activities = [
-      { name: "Apex Legends", type: ActivityType.Playing },
-      { name: ``, type: ActivityType.Listening },
+      { name: "𝐀pex 𝐋egends", type: ActivityType.Playing },
+      { name: ``, type: ActivityType.Listening }, // Ceci sera mis à jour dynamiquement avec le nombre de serveurs
+      { name: "le 𝐏aris 𝐒aint-𝐆ermain", type: ActivityType.Watching },
+      { name: ``, type: ActivityType.Listening }, // Ceci sera mis à jour dynamiquement avec le nombre total de membres
     ];
 
-      let i = 0;
-      setInterval(() => {
-        let activity = activities[i];
-
-        if (activity.type === ActivityType.Listening) {
-          activity.name = `丨${bot.guilds.cache.size}丨 𝐒erveurs`;
-        }
-
-        bot.user.setPresence({
-          activities: [activity],
-          status: "dnd",
-        });
-
-        if (i === activities.length - 1) i = 0;
-        else i++;
-      }, 2 * 60 * 1000);
+    let i = 0;
+    setInterval(() => {
+      let activity = activities[i];
+    
+      if (activity.type === ActivityType.Listening && i === 1) {
+        activity.name = `丨${bot.guilds.cache.size}丨𝐒erveurs`;
+      } else if (activity.type === ActivityType.Listening && i === 3) {
+        const totalMembers = bot.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+        activity.name = `${totalMembers}丨𝐌embres`;
+      }
+    
+      bot.user.setPresence({
+        activities: [activity],
+        status: "dnd",
+      });
+    
+      i = (i + 1) % activities.length;
+    }, 30 * 1000);
   },
 };
 
