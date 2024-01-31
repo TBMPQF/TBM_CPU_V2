@@ -436,20 +436,14 @@ module.exports = {
         try {
             const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
             await messageToUpdate.delete();
-            data.lastMessageId = null;
         } catch (error) {
-            console.error(`Erreur lors de la suppression du message précédent :`, error);
+            console.error(`Erreur lors de la suppression du message précédent de ${streamData.user_name} :`, error);
         }
-      }
-      const newMessage = await channel.send({ embeds: [liveEmbed] });
-      data.lastMessageId = newMessage.id;
-      streamerEntry.lastMessageId = newMessage.id;
-
-      data.isLive = true;
-      data.startedAt = new Date();
-      streamerEntry.isLive = true;
-      streamerEntry.startedAt = data.startedAt;
-      await streamerEntry.save();
+    }
+    const newMessage = await channel.send({ embeds: [liveEmbed] });
+    data.lastMessageId = newMessage.id;
+    streamerEntry.lastMessageId = newMessage.id;
+    await streamerEntry.save();
     }
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
       member.roles.remove(roleId).catch(error => {
@@ -801,33 +795,34 @@ module.exports = {
     });
 
     // Interval de messages pour le Daily.
-    const channelDaily = bot.channels.cache.get("818640158693392405");
+    const channelId = "818640158693392405";
+    const messageIdToKeep = "1193673840782483496"; // Message à ne pas supprimer
     setInterval(() => {
+      const channelDaily = bot.channels.cache.get(channelId);
+      if (!channelDaily) return;
+
       const DailyInterval = new EmbedBuilder()
-        .setDescription(`@here. N'oubliez pas de récupérer votre \`Daily\` ! `)
+        .setDescription(`@here. 𝐍'oubliez pas de récupérer votre \`𝐃aily\` ! `)
         .setColor("Red")
         .setFooter({
-          text: `丨`,
-          iconURL: `${member.user.displayAvatarURL({
-            dynamic: true,
-            size: 512,
-          })}`,
-        })
+            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
+            iconURL: bot.guilds.cache.get(serverId).iconURL(),
+          })
         .setTimestamp();
-      channelDaily.send({ embeds: [DailyInterval] });
-    }, 43201000);
 
-    const channelId = "818640158693392405";
-    const messageIdToKeep = "1193673840782483496"; // Message a pas supprimé
+      channelDaily.send({ embeds: [DailyInterval] });
+    }, 43200000); // Toutes les 12 heures
     setInterval(async () => {
       const channel = await bot.channels.fetch(channelId);
-      const messages = await channel.messages.fetch({ limit: 1 });
+      if (!channel) return;
+
+      const messages = await channel.messages.fetch({ limit: 1 }); 
       messages.forEach(async (msg) => {
         if (msg.id !== messageIdToKeep) {
-          await msg.delete();
+          await msg.delete().catch(console.error);
         }
       });
-    }, 43200000);
+    }, 43200000); // Toutes les 12 heures
 
     // Activité du bot
     const activities = [
