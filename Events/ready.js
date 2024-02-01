@@ -218,10 +218,8 @@ module.exports = {
     const TWITCH_BASE_API = 'https://api.twitch.tv/helix';
     const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
     const roleId = '813793302162702426';
-
     let twitchHeaders;
     let streamers = {};
-
     async function getTwitchAccessToken() {
       try {
         const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
@@ -270,18 +268,14 @@ module.exports = {
     }
     async function getLiveStreamThumbnailByUsername(username) {
       await initializeTwitchHeaders();
-
       const userId = await getUserID(username);
-
       if (!userId) {
         console.error(`Impossible de récupérer l'ID pour l'utilisateur ${username}`);
         return null;
       }
-
       try {
         const response = await axios.get(`https://api.twitch.tv/helix/streams?user_id=${userId}`, twitchHeaders);
         const streams = response.data.data;
-
         if (streams.length > 0) {
           const streamInfo = streams[0];
           const thumbnailUrl = streamInfo.thumbnail_url
@@ -342,7 +336,7 @@ module.exports = {
     function getStreamDuration(startTime) {
       if (!startTime || isNaN(new Date(startTime).getTime())) {
           console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
-          return "Durée indéterminée - l'horloge a pris des vacances !";
+          return "Durée non disponible";
       }
   
       const now = new Date();
@@ -350,7 +344,7 @@ module.exports = {
   
       if (isNaN(start.getTime())) {
           console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
-          return "Durée indéterminée - l'horloge a pris des vacances !";
+          return "Données de durée non disponibles";
       }
   
       const duration = Math.abs(now - start) / 1000;
@@ -405,9 +399,6 @@ module.exports = {
       bootUpCheck = false;
     }
     async function handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders) {
-      const specificStreamerUsername = 'tbmpqf';
-      const specificChannelId = '717117472355909693';
-
       const streamTitle = streamData.title;
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
       const profilePic = await getUserProfilePic(streamData.user_login);
@@ -418,15 +409,6 @@ module.exports = {
       member.roles.add(roleId).catch(error => {
           console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
       });
-
-      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
-        const specificChannel = bot.channels.cache.get(specificChannelId);
-        if (!specificChannel) {
-          console.error(`Salon spécifique non trouvé pour l'ID: ${specificChannelId}`);
-          return;
-        }
-        channel = specificChannel;
-      }
   
       const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
@@ -443,19 +425,24 @@ module.exports = {
           .setImage(streamThumbnailUrl)
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
-  
+
+      let messageToSend = { embeds: [liveEmbed] };
       if (data.lastMessageId) {
-        try {
-            const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-            await messageToUpdate.delete();
-        } catch (error) {
-            console.error(`Erreur lors de la suppression du message précédent de ${streamData.user_name} :`, error);
-        }
-    }
-    const newMessage = await channel.send({ embeds: [liveEmbed] });
-    data.lastMessageId = newMessage.id;
-    streamerEntry.lastMessageId = newMessage.id;
-    await streamerEntry.save();
+          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+          messageToUpdate.edit(messageToSend);
+      } else {
+          const newMessage = await channel.send(messageToSend);
+          streamerEntry.lastMessageId = newMessage.id;
+      }
+      const newMessage = await channel.send({ embeds: [liveEmbed] });
+      data.lastMessageId = newMessage.id;
+      streamerEntry.lastMessageId = newMessage.id;
+
+      data.isLive = true;
+      data.startedAt = new Date();
+      streamerEntry.isLive = true;
+      streamerEntry.startedAt = data.startedAt;
+      await streamerEntry.save();
     }
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
       member.roles.remove(roleId).catch(error => {
