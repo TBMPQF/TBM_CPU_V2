@@ -342,7 +342,7 @@ module.exports = {
     function getStreamDuration(startTime) {
       if (!startTime || isNaN(new Date(startTime).getTime())) {
           console.error(`[STREAM DURATION] La valeur de startTime (${startTime}) n'est pas définie ou n'est pas valide.`);
-          return "Durée non disponible";
+          return "Durée indéterminée - l'horloge a pris des vacances !";
       }
   
       const now = new Date();
@@ -350,7 +350,7 @@ module.exports = {
   
       if (isNaN(start.getTime())) {
           console.error(`La valeur de startTime (${startTime}) n'est pas une date valide.`);
-          return "Données de durée non disponibles";
+          return "Durée indéterminée - l'horloge a pris des vacances !";
       }
   
       const duration = Math.abs(now - start) / 1000;
@@ -405,6 +405,9 @@ module.exports = {
       bootUpCheck = false;
     }
     async function handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders) {
+      const specificStreamerUsername = 'tbmpqf';
+      const specificChannelId = '717117472355909693';
+
       const streamTitle = streamData.title;
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
       const profilePic = await getUserProfilePic(streamData.user_login);
@@ -415,6 +418,15 @@ module.exports = {
       member.roles.add(roleId).catch(error => {
           console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
       });
+
+      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
+        const specificChannel = bot.channels.cache.get(specificChannelId);
+        if (!specificChannel) {
+          console.error(`Salon spécifique non trouvé pour l'ID: ${specificChannelId}`);
+          return;
+        }
+        channel = specificChannel;
+      }
   
       const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
