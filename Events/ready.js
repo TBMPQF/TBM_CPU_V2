@@ -398,24 +398,33 @@ module.exports = {
   
       bootUpCheck = false;
     }
-    async function handleStreamerLive(streamData, streamerEntry, member, channel, data, twitchHeaders) {
-      const streamTitle = streamData.title;
+    async function handleStreamerLive(streamData, streamerEntry, member, data, twitchHeaders) {
+      const specificStreamerUsername = 'tbmpqf'; 
+      const specificChannelId = '717117472355909693';
+  
+      let channel;
+      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
+          channel = bot.channels.cache.get(specificChannelId);
+          if (!channel) {
+              console.error(`Salon spécifique non trouvé pour l'ID: ${specificChannelId}`);
+              return;
+          }
+      } else {
+          channel = bot.channels.cache.get('812530008823955506');
+      }
+  
       const gameName = await getGameName(streamData.game_id, twitchHeaders);
       const profilePic = await getUserProfilePic(streamData.user_login);
       const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
       const viewersCount = streamData.viewer_count;
   
-      member.roles.add(roleId).catch(error => {
-          console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
-      });
-  
       const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
-          .setTitle(streamTitle)
+          .setTitle(streamData.title)
           .setURL(`https://www.twitch.tv/${streamData.user_login}`)
-          .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n@here ➠ 𝐕ient on lui donne de la force.`)
+          .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇!\n@here ➠ 𝐕enez lui donner de la force.`)
           .setThumbnail(gameThumbnailUrl)
           .addFields(
               { name: gameName, value: `\u200B`, inline: true },
@@ -424,22 +433,30 @@ module.exports = {
           )
           .setImage(streamThumbnailUrl)
           .setTimestamp()
-          .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
-
-      let messageToSend = { embeds: [liveEmbed] };
+          .setFooter({ text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
+  
+      // Vérifier si un message précédent doit être mis à jour ou si un nouveau message doit être envoyé
       if (data.lastMessageId) {
-          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-          messageToUpdate.edit(messageToSend);
+          try {
+              const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+              await messageToUpdate.edit({ embeds: [liveEmbed] });
+              console.log(`Message mis à jour pour ${streamData.user_name}: ${data.lastMessageId}`);
+          } catch (error) {
+              console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
+              const newMessage = await channel.send({ embeds: [liveEmbed] });
+              data.lastMessageId = newMessage.id;
+              console.log(`Nouveau message envoyé après échec de la mise à jour pour ${streamData.user_name}: ${newMessage.id}`);
+          }
       } else {
-          const newMessage = await channel.send(messageToSend);
-          streamerEntry.lastMessageId = newMessage.id;
+          const newMessage = await channel.send({ embeds: [liveEmbed] });
+          data.lastMessageId = newMessage.id;
+          console.log(`Nouveau message envoyé pour ${streamData.user_name}: ${newMessage.id}`);
       }
-      const newMessage = await channel.send({ embeds: [liveEmbed] });
-      data.lastMessageId = newMessage.id;
-      streamerEntry.lastMessageId = newMessage.id;
-
+  
+      // Mise à jour de l'état du streamer
       data.isLive = true;
       data.startedAt = new Date();
+      streamerEntry.lastMessageId = data.lastMessageId;
       streamerEntry.isLive = true;
       streamerEntry.startedAt = data.startedAt;
       await streamerEntry.save();
