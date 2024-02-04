@@ -433,27 +433,26 @@ module.exports = {
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
-          if (data.lastMessageId) {
+          if (data.isLive && data.lastMessageId) {
             try {
                 const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
                 await messageToUpdate.edit({ embeds: [liveEmbed] });
+                return;
             } catch (error) {
-                // Si le message précédent n'existe pas, créez un nouveau message
                 if (error.httpStatus === 404 || error.code === '10008') {
                     console.log(`Le message précédent pour ${streamData.user_name} n'existe pas, création d'un nouveau message.`);
                     const newMessage = await channel.send({ embeds: [liveEmbed] });
-                    data.lastMessageId = newMessage.id; // Mise à jour du lastMessageId avec l'ID du nouveau message
+                    data.lastMessageId = newMessage.id;
                 } else {
                     console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
                 }
             }
         } else {
-            // S'il n'y a pas de lastMessageId, créez un nouveau message
             const newMessage = await channel.send({ embeds: [liveEmbed] });
-            data.lastMessageId = newMessage.id; // Mise à jour du lastMessageId avec l'ID du nouveau message
+            data.lastMessageId = newMessage.id;
+            data.isLive = true;
         }
     
-        // Mise à jour de l'état du streamer dans la base de données
         streamerEntry.lastMessageId = data.lastMessageId;
         streamerEntry.isLive = true;
         streamerEntry.startedAt = new Date();
