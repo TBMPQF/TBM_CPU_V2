@@ -1629,7 +1629,7 @@ module.exports = {
       });
     }
 
-    //Bouton Classement Général
+    // Bouton Classement Général
     if (interaction.customId === "LADDER_BUTTON") {
       const guild = interaction.guild;
       const topUsers = await User.find({ serverID: guild.id })
@@ -1638,7 +1638,7 @@ module.exports = {
 
       const leaderboardEmbed = new EmbedBuilder()
         .setColor("Gold")
-        .setTitle(`Classement du serveur ${guild.name}`)
+        .setTitle(`𝐂lassement du serveur ${guild.name}`)
         .setDescription(
           topUsers
             .map((user, index) => {
@@ -1661,9 +1661,7 @@ module.exports = {
               return `\n**${index + 1}${positionSuffix} ${medalEmoji}** __**${
                 bot.users.cache.get(user.userID)?.username ||
                 "Utilisateur inconnu"
-              }**__ 丨 Prestige: **\`${
-                user.prestige
-              }\`** - XP: **\`${user.xp.toLocaleString()}\`**`;
+              }**__丨𝐍iveau: **\`${user.level}\`** - 𝐗P: **\`${user.xp.toLocaleString()}\`**`;
             })
             .join("\n")
         )
