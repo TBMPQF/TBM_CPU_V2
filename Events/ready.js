@@ -500,6 +500,14 @@ module.exports = {
       const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
       const viewersCount = streamData.viewer_count;
+      const specificStreamerUsername = 'tbmpqf';
+      const specificChannelId = '717117472355909693';
+
+      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
+          channel = bot.channels.cache.get(specificChannelId);
+      } else {
+          channel = bot.channels.cache.get('812530008823955506');
+      }
       const liveEmbed = new EmbedBuilder()
           .setColor('#9146FF')
           .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
@@ -516,10 +524,14 @@ module.exports = {
           .setTimestamp()
           .setFooter({ text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
   
-      if (data.lastMessageId) {
-          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-          messageToUpdate.edit({ embeds: [liveEmbed] });
-      }
+          if (data.lastMessageId) {
+            try {
+                const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+                await messageToUpdate.edit({ embeds: [liveEmbed] });
+            } catch (error) {
+                console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
+            }
+        }
     }
     async function startTwitchCheck(bot) {
       await initializeTwitchHeaders();
