@@ -459,12 +459,20 @@ module.exports = {
         await streamerEntry.save();
     }
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
+      const specificStreamerUsername = 'tbmpqf';
+      const specificChannelId = '717117472355909693';
       member.roles.remove(roleId).catch(error => {
           console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
       });
   
       const streamDuration = getStreamDuration(data.startedAt);
       const profilePic = await getUserProfilePic(streamerEntry.twitchUsername);
+
+      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
+        channel = bot.channels.cache.get(specificChannelId);
+      } else {
+          channel = bot.channels.cache.get('812530008823955506');
+      }
   
       const offlineEmbed = new EmbedBuilder()
           .setColor('#9146FF')
@@ -476,13 +484,14 @@ module.exports = {
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
-      if (data.lastMessageId) {
-          const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-          messageToUpdate.edit({ embeds: [offlineEmbed] });
-      } else {
-          const newMessage = await channel.send({ embeds: [offlineEmbed] });
-          streamerEntry.lastMessageId = newMessage.id;
-      }
+          if (data.lastMessageId) {
+            try {
+                const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+                await messageToUpdate.edit({ embeds: [liveEmbed] });
+            } catch (error) {
+                console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
+            }
+        }
       data.isLive = false;
       data.startedAt = null;
       streamerEntry.isLive = false;
