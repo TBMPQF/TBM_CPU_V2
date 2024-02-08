@@ -31,7 +31,7 @@ module.exports = {
             value: "REGLEMENT",
           },
           {
-            label: "丨𝐑ôle Channel",
+            label: "丨𝐑ôles 𝐌enu",
             emoji: "🎭",
             value: "ROLECHANNEL",
           },

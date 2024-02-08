@@ -80,6 +80,7 @@ module.exports = {
     roleChannelRequestMessageIds : {},
     ticketRequestMessageIds : {},
     RoleAdminRequestMessageIds : {},
+    RoleMenuRequestMessageIds : {},
     voiceUsers,
     initializeXpDistributionInterval,
     updateUserVoiceTime,

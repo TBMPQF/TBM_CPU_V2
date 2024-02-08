@@ -25,6 +25,7 @@ const {
   roleChannelRequestMessageIds,
   ticketRequestMessageIds,
   RoleAdminRequestMessageIds,
+  RoleMenuRequestMessageIds,
 } = require("../models/shared");
 
 module.exports = {

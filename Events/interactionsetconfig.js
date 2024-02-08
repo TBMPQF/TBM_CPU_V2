@@ -32,14 +32,14 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("LOG_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("LOG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({ embeds: [logEmbed], components: [rowLog] });
@@ -50,7 +50,7 @@ module.exports = {
             const roleChannelEmbed = new EmbedBuilder()
               .setTitle("`丨𝐂onfiguration du salon 𝐑ôles丨`")
               .setDescription(
-                `Salon ou tu permets à tes utilisateurs de prendre leurs rôles de jeu, une fois enregistrer, il s'affichera surtout dans le message 𝐖elcome.\nModifie ou carrément désactive le salon des 𝐑ôles de ton serveur.\n\nSalon actuel : \`${serverConfig.roleChannelName}\``
+                `Salon ou tu permets à tes utilisateurs de prendre leurs rôles de jeu. Rajoute les rôles que tu veux directement en te rendant dans __Afficher Rôles__ puis __Ajouter Rôles__. Oublie pas de renseigner le salon adéquat et d'**envoyer** une fois terminer.\nModifie ou carrément désactive le salon des 𝐑ôles de ton serveur.\n\nSalon actuel : \`${serverConfig.roleChannelName}\``
               )
               .setThumbnail(
                 "https://www.numerama.com/wp-content/uploads/2020/03/role-playing-game-2536016_1920.jpg"
@@ -59,16 +59,30 @@ module.exports = {
             const rowroleChannel = new ActionRowBuilder()
               .addComponents(
                 new ButtonBuilder()
+                  .setCustomId("ROLECHANNEL_PUSH")
+                  .setEmoji("✔️")
+                  .setLabel("Envoyer")
+                  .setStyle(ButtonStyle.Success)
+              )
+              .addComponents(
+                new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_BUTTON")
                   .setEmoji("📝")
-                  .setLabel("Modifié Salon")
+                  .setLabel("Modifier Salons")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("ROLECHANNEL_LISTE")
+                  .setEmoji("🕵")
+                  .setLabel("Afficher Rôles")
                   .setStyle(ButtonStyle.Primary)
               )
               .addComponents(
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_DESAC")
                   .setEmoji("❌")
-                  .setLabel("Désactivé")
+                  .setLabel("Désactiver")
                   .setStyle(ButtonStyle.Danger)
               );
             await interaction.reply({ embeds: [roleChannelEmbed], components: [rowroleChannel] });
@@ -90,28 +104,28 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("REGL_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyé")
+                .setLabel("Envoyer")
                 .setStyle(ButtonStyle.Success)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_ROLE")
                 .setEmoji("🕵")
-                .setLabel("Modifié Rôle")
+                .setLabel("Modifier Rôles")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -136,20 +150,20 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("WELCOME_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("WELCOME_ROLE")
                 .setEmoji("🕵")
-                .setLabel("Modifié Rôle")
+                .setLabel("Modifier Rôles")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("WELCOME_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -173,14 +187,14 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -204,14 +218,14 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("SUGG_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("SUGG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -235,21 +249,21 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("DAILY_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyé")
+                .setLabel("Envoyer")
                 .setStyle(ButtonStyle.Success)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("DAILY_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("DAILY_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -279,7 +293,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("ROLES_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -302,26 +316,26 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("TICKET_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyé")
+                .setLabel("Envoyer")
                 .setStyle(ButtonStyle.Secondary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifié Salon")
+                .setLabel("Modifier Salons")
                 .setStyle(ButtonStyle.Primary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_ROLE")
                 .setEmoji("👮‍♂️")
-                .setLabel("Administrateur Rôles")
+                .setLabel("Administrateur Rôle")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactivé")
+                .setLabel("Désactiver")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({

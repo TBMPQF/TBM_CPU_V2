@@ -467,9 +467,10 @@ module.exports = {
   
       const streamDuration = getStreamDuration(data.startedAt);
       const profilePic = await getUserProfilePic(streamerEntry.twitchUsername);
-
-      if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
-        channel = bot.channels.cache.get(specificChannelId);
+  
+      // Modification : Utiliser le nom d'utilisateur spécifique pour déterminer le canal
+      if (streamerEntry.twitchUsername.toLowerCase() === specificStreamerUsername.toLowerCase()) {
+          channel = bot.channels.cache.get(specificChannelId);
       } else {
           channel = bot.channels.cache.get('812530008823955506');
       }
@@ -484,14 +485,14 @@ module.exports = {
           .setTimestamp()
           .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
   
-          if (data.lastMessageId) {
-            try {
-                const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-                await messageToUpdate.edit({ embeds: [liveEmbed] });
-            } catch (error) {
-                console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
-            }
-        }
+      if (data.lastMessageId) {
+          try {
+              const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
+              await messageToUpdate.edit({ embeds: [offlineEmbed] });
+          } catch (error) {
+              console.error(`Erreur lors de la mise à jour du message pour ${streamerEntry.twitchUsername}: ${error}`);
+          }
+      }
       data.isLive = false;
       data.startedAt = null;
       streamerEntry.isLive = false;
@@ -744,7 +745,7 @@ module.exports = {
           .setTitle(`\`𝐇ey! 𝐔n grand 𝐌𝐄𝐑𝐂𝐈\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\` 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\`\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement en cas de mot désobligeant.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive\n◟𝐄t bien plus !!`
+            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\` mon créateur.\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement en cas de mot désobligeant.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive.\n◟𝐒ystème de menu déroulant pour les rôles.\n◟𝐄t bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()
@@ -752,7 +753,21 @@ module.exports = {
             text: `Cordialement, l'équipe de 𝐓𝐁𝐌_𝐂𝐏𝐔_𝐕𝟐`,
             iconURL: "https://i.postimg.cc/L8B87btv/faucon-fond.png",
           });
-        owner.send({ embeds: [NewServerembed] });
+          try {
+            const owner = await guild.fetchOwner();
+            await owner.send({ embeds: [NewServerembed] });
+          } catch (error) {
+            if (error.code === 50007) {
+              const textChannels = guild.channels.cache.filter(channel => channel.type === ChannelType.GuildText);
+        
+              const firstTextChannel = textChannels.first();
+              if (firstTextChannel) {
+                await firstTextChannel.send({ embeds: [NewServerembed] });
+              }
+            } else {
+              console.error("Erreur lors de l'envoi du DM au propriétaire du serveur:", error);
+            }
+          }
         // Envoi sur mon discord pour m'informer d'un nouveau serveur
         const TBMPQFGuild = bot.guilds.cache.get('716810235985133568')
         const TBMPQFChannelLog = TBMPQFGuild.channels.cache.get('838440585341566996');
@@ -764,7 +779,7 @@ module.exports = {
           .setTitle(`\`-丨𝐍ouveau 𝐒erveur丨-\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `𝐇eureux de t'annoncer que ton bot vient de rejoindre un nouveau serveur. `
+            `𝐇eureux de t'annoncer que ton bot vient de rejoindre un nouveau serveur.\nCréateur : \`${owner.user.tag}\``
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()

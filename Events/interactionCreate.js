@@ -5,6 +5,7 @@ const {
   EmbedBuilder,
   ChannelType,
   ButtonStyle,
+  StringSelectMenuBuilder,
   Embed, Discord
 } = require("discord.js");
 const mongoose = require("mongoose");
@@ -26,6 +27,7 @@ const {
   roleChannelRequestMessageIds,
   ticketRequestMessageIds,
   RoleAdminRequestMessageIds,
+  RoleMenuRequestMessageIds,
 } = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 const ytdl = require("ytdl-core");
@@ -39,6 +41,7 @@ const SearchMateMessage = require('../models/apexSearchMate');
 const VocalChannel = require('../models/apexVocal');
 const ApexStats = require('../models/apexStats');
 const Music = require("../models/music")
+const ServerRoleMenu = require('../models/serverRoleMenu')
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -1088,7 +1091,7 @@ module.exports = {
         new ButtonBuilder()
           .setCustomId("ROLES_PERSOLISTE")
           .setEmoji("🖌️")
-          .setLabel("Modifié les rôles")
+          .setLabel("Modifier les rôles")
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -1425,6 +1428,170 @@ module.exports = {
         message.delete();
       }, 60000);
     }
+    if (interaction.customId === "ROLECHANNEL_PUSH") {
+      const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+  
+      if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
+          return interaction.reply({ content: "Aucun menu de rôles n'a été configuré.", ephemeral: true });
+      }
+  
+      // Récupérer l'ID du canal de rôles à partir de ServerConfig
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (!serverConfig || !serverConfig.roleChannelID) {
+          return interaction.reply({ content: "Le canal de rôles n'est pas configuré.", ephemeral: true });
+      }
+  
+      const roleChannel = interaction.guild.channels.cache.get(serverConfig.roleChannelID);
+      if (!roleChannel) {
+          return interaction.reply({ content: "Le canal de rôles configuré est introuvable.", ephemeral: true });
+      }
+  
+      const menuOptions = serverRoleMenus.menus.flatMap(menu =>
+          menu.roles.map(role => ({
+              label: menu.menuName,
+              value: role.roleId,
+          }))
+      ).slice(0, 25);
+  
+      const row = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+              .setCustomId('Role_Menu')
+              .setPlaceholder('𝐂hoisis tes rôles.')
+              .addOptions(menuOptions)
+      );
+  
+      const RoleEmbed = new EmbedBuilder()
+          .setColor("#b3c7ff")
+          .setTitle(`丨𝐂hoisis tes rôles 🎭`)
+          .setDescription(
+              `𝐓u peux à présent sélectionner tes rôles pour avoir accès aux salons dédiés et ainsi communiquer avec la communauté de ton jeu préféré !\n 𝐀 tout moment si ton envie de changer de jeu te vient, tu peux modifier tes rôles préalablement sélectionnés.`
+          )
+          .setFooter({
+              text: `Cordialement, l'équipe ${interaction.guild.name}`,
+              iconURL: interaction.guild.iconURL(),
+          });
+  
+      // Envoyer le message dans le canal de rôles
+      await roleChannel.send({ embeds: [RoleEmbed], components: [row] });
+      // Confirmer à l'utilisateur que le message a été envoyé
+      await interaction.reply({ content: "Le menu de rôles a été envoyé dans le canal de rôles configuré.", ephemeral: true });
+    }
+    if (interaction.customId === "ROLECHANNEL_LISTE") {
+      const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+      const NewRoleButton = new ButtonBuilder()
+        .setCustomId('ROLECHANNEL_ROLE')
+        .setLabel('Ajouter rôles')
+        .setEmoji("🖌️")
+        .setStyle(ButtonStyle.Primary);
+
+      const NewRoleMenu = new ActionRowBuilder().addComponents(NewRoleButton);
+      
+      if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
+          return interaction.reply({ content: "Aucune donnée pour le __rôle menu__ n'a été configuré pour ce serveur.", components: [NewRoleMenu], ephemeral: true });
+      }
+  
+      let replyContent = "__𝐋iste des rôles configurés__ :\n\n";
+      serverRoleMenus.menus.forEach(menu => {
+          replyContent += `**\`${menu.menuName}\`**\n`;
+          menu.roles.forEach(role => {
+              const roleObject = interaction.guild.roles.cache.get(role.roleId);
+              replyContent += `◟${roleObject ? roleObject.toString() : 'Rôle non trouvé'}\n`;
+          });
+          replyContent += '\n';
+      });
+      const ModifyButton = new ButtonBuilder()
+        .setCustomId('ROLECHANNEL_ROLE')
+        .setEmoji("🖌️")
+        .setLabel('Modifier rôles')
+        .setStyle(ButtonStyle.Primary);
+
+      const ModifyRole = new ActionRowBuilder().addComponents(ModifyButton);
+      await interaction.reply({ content: replyContent, components: [ModifyRole], ephemeral: true });
+    }
+    if (interaction.customId === "ROLECHANNEL_ROLE") {
+      const message = await interaction.reply({
+        content: "𝐌erci de **répondre** avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex @Apex, Madrid @lala). Maximum 10 éléments.",
+        fetchReply: true
+      });
+    
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        time: 60000,
+        max: 1 
+      });
+    
+      collector.on("collect", async (m) => {
+        const entries = m.content.split(',').map(entry => entry.trim()).filter(entry => entry);
+        if (entries.length === 0 || entries.length > 10) {
+            return interaction.followUp("Format invalide ou trop d'éléments. Assurez-vous de fournir entre 1 et 10 paires nom/tag de rôle.");
+        }
+    
+        for (const entry of entries) {
+            // Utilisez une expression régulière pour séparer le nom du menu du tag du rôle
+            const match = entry.match(/^(.*?)\s*<@\s*(\S+)$/);
+            if (!match) {
+                await interaction.followUp(`Format invalide pour "${entry}". Assurez-vous d'utiliser le format "NomDuMenu @TagDuRôle".`);
+                continue;
+            }
+    
+            const menuName = match[1].trim();
+            const roleTag = match[2].trim();
+            // Trouver le rôle par son ID ou son nom en ignorant le format mention
+            const role = m.mentions.roles.find(role => role.id === roleTag.replace(/[<@&>]/g, '') || role.name === roleTag);
+    
+            if (!role) {
+                await interaction.followUp(`Le rôle pour "${menuName}" n'a pas été trouvé ou mal tagué. Vérifiez et réessayez.`);
+                continue;
+            }
+    
+            await ServerRoleMenu.findOneAndUpdate(
+                { serverID: interaction.guild.id },
+                {
+                    serverName: interaction.guild.name,
+                    $push: { menus: { menuName: menuName, roles: [{ roleName: role.name, roleId: role.id }] } }
+                },
+                { upsert: true, new: true }
+            );
+        }
+    
+        interaction.followUp("Tous les menus et rôles ont été enregistrés avec succès.");
+      });
+    
+      collector.on("end", (collected, reason) => {
+        if (reason === "time") {
+          interaction.followUp("𝐓emps écoulé pour la réponse.");
+        }
+      });
+    }
+    //Ajouté rôle du menu déroulant ROLE
+    if (interaction.customId === "Role_Menu") {
+      const roleId = interaction.values[0];
+      const role = interaction.guild.roles.cache.get(roleId);
+
+      if (!role) {
+          return interaction.reply({ content: "Le rôle sélectionné est introuvable.", ephemeral: true });
+      }
+
+      const member = interaction.member;
+
+      if (member.roles.cache.has(roleId)) {
+          try {
+              await member.roles.remove(roleId);
+              await interaction.reply({ content: `Votre rôle \`${role.name}\` a été supprimé.`, ephemeral: true });
+          } catch (error) {
+              console.error("[ROLE MENU] Erreur lors du retrait du rôle :", error);
+              await interaction.reply({ content: "Une erreur est survenue lors de l'attribution du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
+          }
+      } else {
+          try {
+              await member.roles.add(roleId);
+              await interaction.reply({ content: `Vous avez récupéré votre rôle \`${role.name}\`.`, ephemeral: true });
+          } catch (error) {
+              console.error("[ROLE MENU] Erreur lors de l'ajout du rôle :", error);
+              await interaction.reply({ content: "Une erreur est survenue lors de l'attribution du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
+          }
+      }
+    }
 
     //Bouton suppresion de données dans la bdd pour la réinitialisé
     if (interaction.customId === "LOG_DESAC") {
@@ -1448,21 +1615,20 @@ module.exports = {
     }
     if (interaction.customId === "ROLECHANNEL_DESAC") {
       const serverID = interaction.guild.id;
-      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
-    
-      if (!serverConfig) {
-        console.error('ServerConfig not found for server ID:', serverID);
-        return;
-      }
-    
-      serverConfig.roleChannelID = null;
-      serverConfig.roleChannelName = null;
-    
+      
       try {
-        await serverConfig.save();
-        await interaction.reply('Le __salon__ des 𝐑ôles a été réinitialisé avec succès !');
+          const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+          if (serverConfig) {
+              serverConfig.roleChannelID = null;
+              serverConfig.roleChannelName = null;
+              await serverConfig.save();
+          }
+  
+          await ServerRoleMenu.deleteMany({ serverID: serverID });
+          await interaction.reply('Le salon des 𝐑ôles a été réinitialisé avec succès et toutes les données de menus de rôles ont été supprimées.');
       } catch (error) {
-        console.error('Error updating ServerConfig:', error);
+          console.error('Error handling ROLECHANNEL_DESAC:', error);
+          await interaction.followUp({ content: "Une erreur est survenue lors de la réinitialisation.", ephemeral: true });
       }
     }
     if (interaction.customId === "REGL_DESAC") {
