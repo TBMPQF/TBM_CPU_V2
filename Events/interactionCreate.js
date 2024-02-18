@@ -14,6 +14,7 @@ const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const interactionSetConfig = require("./interactionsetconfig");
 const ServerRole = require("../models/serverRole");
+const Bingo = require("../models/bingo")
 const axios = require('axios');
 const {
   logRequestMessageIds,
@@ -1593,7 +1594,17 @@ module.exports = {
       }
     }
     if (interaction.customId === "BINGO_PUSH") {
-      //Activer le bingo
+      const result = await Bingo.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          $set: {
+            etat: 'ACTIF'
+          }
+        },
+        { upsert: true, new: true }
+      );
+    
+      await interaction.reply({ content: "Le Bingo a été activé ! Restez à l'écoute pour le prochain événement.", ephemeral: true });
     }
     if (interaction.customId === "BINGO_BUTTON") {
       await interaction.reply({

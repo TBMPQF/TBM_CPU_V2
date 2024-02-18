@@ -4,8 +4,13 @@ const bingoSchema = new mongoose.Schema({
   serverID: { type: String, required: true },
   lastBingoTime: { type: Date, default: null },
   nextBingoTime: { type: Date, default: null },
-  isActive: Boolean
-}, { versionKey: false});
+  isActive: Boolean,
+  etat: {
+    type: String,
+    enum: ['ACTIF', 'INACTIF'],
+    default: 'INACTIF'
+  }
+}, { versionKey: false });
 
 const Bingo = mongoose.model('Bingo', bingoSchema);
 

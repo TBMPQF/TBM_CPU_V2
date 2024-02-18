@@ -6,12 +6,14 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const ServerConfig = require("../models/serverConfig");
+const Bingo = require("../models/bingo")
 
 module.exports = {
   name: "setConfigCustomID",
   async execute(interaction) {
     const serverID = interaction.guild.id;
     const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+    const bingoState = await Bingo.findOne({ serverID: interaction.guild.id });
 
     if (interaction.isStringSelectMenu()) {
       const selectedOption = interaction.values[0];
@@ -347,7 +349,7 @@ module.exports = {
           case "BINGO":
           const BINGOEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
-            .setDescription(`Gestion du bingo, tu peux modifier le salon ou le bingo apparaîtra aléatoirement dans une fourchette de \`2\` à \`5\` jours.\n**Appuie** sur __Valider__ pour l'activer et sur __Réinitialiser__ pour le désactiver et réinitialiser le salon choisis.\n\nSalon actuel : \`${serverConfig.bingoChannelName}\`\n**ACTIF** ou **INACTIF**`)
+            .setDescription(`Gestion du bingo, tu peux modifier le salon ou le bingo apparaîtra aléatoirement dans une fourchette de \`2\` à \`5\` jours.\n**Appuie** sur __Valider__ pour l'activer et sur __Réinitialiser__ pour le désactiver et réinitialiser le salon choisis.\n\nSalon actuel : \`${serverConfig.bingoChannelName}\`\n**${bingoState ? bingoState.etat : 'INACTIF'}**`)
             .setThumbnail(
               "https://png.pngtree.com/png-clipart/20210311/original/pngtree-colorful-bingo-words-hand-drawing-png-image_6006005.png"
             )

@@ -17,6 +17,7 @@ const InVocal = require("../models/inVocal")
 const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
 const moment = require('moment-timezone');
 const BingoTimer = require('../models/bingo');
+const Bingo = require("../models/bingo")
 
 module.exports = {
   name: "ready",
@@ -42,6 +43,20 @@ module.exports = {
       }
     }
     async function startBingoGame() {
+      const bingoState = await Bingo.findOne({ serverID: serverId });
+      if (!bingoState || bingoState.etat !== 'ACTIF') {
+        return;
+      }
+      const serverConfig = await ServerConfig.findOne({ serverID: serverId });
+      if (!serverConfig || !serverConfig.bingoChannelID) {
+        return;
+      }
+      const bingoChannelId = serverConfig.bingoChannelID;
+      const bingoChannel = bot.channels.cache.get(bingoChannelId);
+      if (!bingoChannel) {
+        return;
+      }
+
       const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
     
       let nextBingoTime;
@@ -86,7 +101,6 @@ module.exports = {
             text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           });
-        const bingoChannel = bot.channels.cache.get('813843765600845824');
         await bingoChannel.setRateLimitPerUser(10);
         await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
