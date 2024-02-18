@@ -25,6 +25,8 @@ const serverConfigSchema = new mongoose.Schema({
   ticketAdminRoleName : { type: String, default: null },
   roleReglementID : { type: String, default: null },
   roleReglementName : { type: String, default: null },
+  bingoChannelName : { type: String, default: null },
+  bingoChannelID : { type: String, default: null },
 }, { versionKey: false, strict: true });
 
 module.exports = mongoose.model('ServerConfig', serverConfigSchema, 'Serveur Channels');

@@ -39,7 +39,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("LOG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({ embeds: [logEmbed], components: [rowLog] });
@@ -82,7 +82,7 @@ module.exports = {
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_DESAC")
                   .setEmoji("❌")
-                  .setLabel("Désactiver")
+                  .setLabel("Réinitialiser")
                   .setStyle(ButtonStyle.Danger)
               );
             await interaction.reply({ embeds: [roleChannelEmbed], components: [rowroleChannel] });
@@ -125,7 +125,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("REGL_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -163,7 +163,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("WELCOME_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -194,7 +194,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -225,7 +225,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("SUGG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -263,7 +263,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("DAILY_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -274,7 +274,7 @@ module.exports = {
 
         case "ROLES":
           const ROLESEmbed = new EmbedBuilder()
-            .setTitle("`丨𝐂onfiguration 𝐑ôles des niveaux丨`")
+            .setTitle("`丨𝐂onfiguration des 𝐑ôles pour niveaux丨`")
             .setDescription("Gestion des rôles de niveau, tu peux modifié les rôles donné lorsque un utilisateur passe niveau 1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45 et 50. Tu peux faire cela sur le prestige 1 aussi.")
             .setThumbnail(
               "https://cdn-icons-png.flaticon.com/512/33/33056.png"
@@ -293,7 +293,7 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("ROLES_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -335,12 +335,47 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("TICKET_DESAC")
                 .setEmoji("❌")
-                .setLabel("Désactiver")
+                .setLabel("Réinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
             embeds: [TICKETEmbed],
             components: [rowTicket],
+          });
+          break;
+
+          case "BINGO":
+          const BINGOEmbed = new EmbedBuilder()
+            .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
+            .setDescription(`Gestion du bingo, tu peux modifier le salon ou le bingo apparaîtra aléatoirement dans une fourchette de \`2\` à \`5\` jours.\n**Appuie** sur __Valider__ pour l'activer et sur __Réinitialiser__ pour le désactiver et réinitialiser le salon choisis.\n\nSalon actuel : \`${serverConfig.bingoChannelName}\`\n**ACTIF** ou **INACTIF**`)
+            .setThumbnail(
+              "https://png.pngtree.com/png-clipart/20210311/original/pngtree-colorful-bingo-words-hand-drawing-png-image_6006005.png"
+            )
+            .setColor("#b3c7ff");
+            
+          const rowBingo = new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId("BINGO_PUSH")
+                .setEmoji("✔️")
+                .setLabel("Valider")
+                .setStyle(ButtonStyle.Secondary)
+            ).addComponents(
+              new ButtonBuilder()
+                .setCustomId("BINGO_BUTTON")
+                .setEmoji("📝")
+                .setLabel("Modifier Salons")
+                .setStyle(ButtonStyle.Primary)
+            ).addComponents(
+              new ButtonBuilder()
+                .setCustomId("BINGO_DESAC")
+                .setEmoji("❌")
+                .setLabel("Réinitialiser")
+                .setStyle(ButtonStyle.Danger)
+            );
+          await interaction.reply({
+            embeds: [BINGOEmbed],
+            components: [rowBingo],
           });
           break;
         default:

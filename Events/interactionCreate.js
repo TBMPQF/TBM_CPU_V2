@@ -411,9 +411,9 @@ module.exports = {
           } else if (choice == "NEWORLD") {
             const roleID = "907320710559576105";
             handleRole(interaction, member, roleID, "New World");
-          } else if (choice == "FOREST") {
+          } else if (choice == "PALWORLD") {
             const roleID = "1078754580113920020";
-            handleRole(interaction, member, roleID, "Sons of The Forest");
+            handleRole(interaction, member, roleID, "Palworld");
           } else if (choice == "CALLOF") {
             const roleID = "813800188317663254";
             handleRole(interaction, member, roleID, "Call of Duty");
@@ -1592,6 +1592,47 @@ module.exports = {
           }
       }
     }
+    if (interaction.customId === "BINGO_PUSH") {
+      //Activer le bingo
+    }
+    if (interaction.customId === "BINGO_BUTTON") {
+      await interaction.reply({
+        content: "Merci de répondre avec l'**ID** du salon pour le `𝐁ingo`.",
+        fetchReply: true
+      });
+    
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        time: 60000,
+        max: 1
+      });
+    
+      collector.on("collect", async (m) => {
+        const channelId = m.content.trim();
+        const channel = interaction.guild.channels.cache.get(channelId);
+        if (!channel) {
+          return interaction.followUp({ content: "Salon invalide. Veuillez fournir un ID de salon valide.", ephemeral: true });
+        }
+    
+        await ServerConfig.findOneAndUpdate(
+          { serverID: interaction.guild.id },
+          {
+            bingoChannelID: channelId,
+            bingoChannelName: channel.name
+          },
+          { upsert: true, new: true }
+        );
+    
+        await interaction.followUp({ content: `Le salon pour le Bingo a été mis à jour avec succès : ${channel.name}.`, ephemeral: true });
+      });
+    
+      collector.on("end", (collected, reason) => {
+        if (reason === "time") {
+          interaction.followUp({ content: "Temps écoulé pour la réponse.", ephemeral: true });
+        }
+      });
+    }
+    
 
     //Bouton suppresion de données dans la bdd pour la réinitialisé
     if (interaction.customId === "LOG_DESAC") {
@@ -1753,6 +1794,9 @@ module.exports = {
       } catch (error) {
         console.error('Error updating ServerConfig:', error);
       }
+    }
+    if (interaction.customId === "BINGO_DESAC") {
+
     }
 
     //Bouton supprimé suggestion

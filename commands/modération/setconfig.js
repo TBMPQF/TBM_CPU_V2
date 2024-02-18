@@ -64,6 +64,11 @@ module.exports = {
             label: "丨𝐓icket",
             emoji: "🎫",
             value: "TICKET",
+          },
+          {
+            label: "丨𝐁ingo",
+            emoji: "🎱",
+            value: "BINGO",
           }
         )
     );
