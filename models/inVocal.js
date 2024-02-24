@@ -8,4 +8,4 @@ const inVocalSchema = new mongoose.Schema({
   joinTimestamp: { type: Date, default: Date.now }
 }, { versionKey: false, strict: true });
 
-module.exports = mongoose.model('InVocal', inVocalSchema);
+module.exports = mongoose.model('InVocal', inVocalSchema, 'In Vocals');

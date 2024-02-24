@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const apexStreamerSchema = new mongoose.Schema({
+const StreamerSchema = new mongoose.Schema({
   discordId: {
     type: String,
     required: false,
@@ -34,4 +34,4 @@ const apexStreamerSchema = new mongoose.Schema({
   }
 }, { versionKey: false, strict: true });
 
-module.exports = mongoose.model('ApexStreamer', apexStreamerSchema, 'Apex Streamers');
+module.exports = mongoose.model('Streamers', StreamerSchema, 'Streamers');

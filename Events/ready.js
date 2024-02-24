@@ -9,30 +9,47 @@ const User = require("../models/experience");
 const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
 const Music = require("../models/music")
 const queue = require('../models/queue')
-const SearchMateMessage = require('../models/apexSearchMate');
+const SearchMateMessage = require('../models/searchMate');
 const userChannels = require('../models/userChannels');
-const VocalChannel = require('../models/apexVocal');
-const ApexStreamer = require('../models/apexStreamer');
+const VocalChannel = require('../models/vocalGames');
+const ApexStreamer = require('../models/Streamers');
 const InVocal = require("../models/inVocal")
 const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
 const moment = require('moment-timezone');
 const BingoTimer = require('../models/bingo');
-const Bingo = require("../models/bingo")
+const Bingo = require('../models/bingo');
 
 module.exports = {
   name: "ready",
   async execute(bot, member) {
-    const serverId = '716810235985133568';
-
+    
     //Bingo qui apparaît entre 2 et 5 jours avec gains de Falconix
+    let isCheckingBingoGames = false
+    function checkAndStartBingoGames() {
+      if (isCheckingBingoGames) return;
+      isCheckingBingoGames = true;
+  
+      Bingo.find({ etat: 'ACTIF' }).then(activeBingos => {
+          activeBingos.forEach(bingo => {
+              if (!bingo.nextBingoTime || new Date(bingo.nextBingoTime) <= new Date()) {
+                  startBingoGame(bingo.serverID);
+              }
+          });
+      }).catch(error => {
+          console.error("Erreur lors de la vérification des états des serveurs pour le Bingo :", error);
+      }).finally(() => {
+          isCheckingBingoGames = false;
+          setTimeout(checkAndStartBingoGames, 10000);
+      });
+  }
     function randomInterval(minDays, maxDays) {
-      const minMilliseconds = minDays * 24 * 60 * 60 * 1000; //minDays * 24 * 60 * 60 * 1000
-      const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000; //maxDays * 24 * 60 * 60 * 1000
+      const minMilliseconds = minDays * 60 * 1000; //minDays * 24 * 60 * 60 * 1000
+      const maxMilliseconds = maxDays * 60 * 1000; //maxDays * 24 * 60 * 60 * 1000
       return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
-    async function addXPToUser(userId, serverId, xpToAdd) {
+    async function addXPToUser(userId, guildId, xpToAdd) {
       try {
-        const user = await User.findOne({ userID: userId, serverID: serverId });
+        const user = await User.findOne({ userID: userId, serverID: guildId });
         if (!user) {
           return;
         }
@@ -42,22 +59,42 @@ module.exports = {
         console.error("[XP BINGO] Erreur lors de l'ajout des XP :", error);
       }
     }
-    async function startBingoGame() {
-      const bingoState = await Bingo.findOne({ serverID: serverId });
-      if (!bingoState || bingoState.etat !== 'ACTIF') {
+    async function scheduleNextGame(guildId) {
+      const bingoTimer = await BingoTimer.findOne({ serverID: guildId });
+    
+      if (bingoTimer && new Date(bingoTimer.nextBingoTime) > new Date()) {
         return;
       }
-      const serverConfig = await ServerConfig.findOne({ serverID: serverId });
+    
+      let delayToNextBingo = randomInterval(2, 5);
+      let nextBingoTime = new Date(new Date().getTime() + delayToNextBingo);
+    
+      await BingoTimer.findOneAndUpdate(
+        { serverID: guildId },
+        { nextBingoTime: nextBingoTime },
+        { upsert: true, setDefaultsOnInsert: true }
+      );
+    
+      setTimeout(() => startBingoGame(guildId), delayToNextBingo);
+    }
+    async function startBingoGame(guildId) {
+      const serverConfig = await ServerConfig.findOne({ serverID: guildId });
       if (!serverConfig || !serverConfig.bingoChannelID) {
         return;
       }
-      const bingoChannelId = serverConfig.bingoChannelID;
-      const bingoChannel = bot.channels.cache.get(bingoChannelId);
+
+      const bingoChannelID = serverConfig.bingoChannelID;
+      const bingoChannel = bot.channels.cache.get(bingoChannelID);
+
       if (!bingoChannel) {
+        console.error(`[BINGO] Salon de bingo avec l'ID ${bingoChannelID} non trouvé.`);
         return;
       }
 
-      const bingoTimer = await BingoTimer.findOne({ serverID: serverId });
+      const bingoTimer = await BingoTimer.findOne({ serverID: guildId });
+      //function scheduleNextGame() {
+        //setTimeout(() => startBingoGame(guildId));
+      //}
     
       let nextBingoTime;
       if (bingoTimer && new Date(bingoTimer.nextBingoTime) > new Date()) {
@@ -66,18 +103,19 @@ module.exports = {
         let delayToNextBingo = randomInterval(2, 5); // Entre 2 et 5 jours
         nextBingoTime = new Date(new Date().getTime() + delayToNextBingo);
         await BingoTimer.findOneAndUpdate(
-          { serverID: serverId },
+          { serverID: guildId },
           { nextBingoTime: nextBingoTime },
-          { upsert: true }
-        );
+          { upsert: true, new: true }
+        )
       }
     
       let delayInMillis = nextBingoTime.getTime() - new Date().getTime();
+      //console.log(`Prochain bingo dans ${delayInMillis} millisecondes.`);
       setTimeout(async () => {
         const bingoNumber = Math.floor(Math.random() * 500) + 1;
+        //console.log(`Le nombre mystère est ${bingoNumber}.`);
         let bingoWinner = null;
         let isBingoActive = true;
-        //console.log(`[BINGO] Le nombre mystère est ${bingoNumber}`);
       
         const messagesGagnant = [
           `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère \`${bingoNumber}\`. 𝐓u gagnes X Falconix!`,
@@ -98,15 +136,15 @@ module.exports = {
           .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **500** dans les prochaines \`5 minutes\` pour gagner!\n@here')
           .setTimestamp()
           .setFooter({
-            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
-            iconURL: bot.guilds.cache.get(serverId).iconURL(),
+            text: `Cordialement, l'équipe${bot.guilds.cache.get(guildId).name}`,
+            iconURL: bot.guilds.cache.get(guildId).iconURL(),
           });
         await bingoChannel.setRateLimitPerUser(10);
         await bingoChannel.send({ embeds: [bingoEmbed] });
         try {
           await BingoTimer.findOneAndUpdate(
-            { serverID: serverId },
-            { isActive: true },
+            { serverID: guildId },
+            { nextBingoTime : nextBingoTime },
             { upsert: true }
           );
         } catch (error) {
@@ -114,11 +152,11 @@ module.exports = {
         }
         let participants = new Map();
         const bingoCollector = bingoChannel.createMessageCollector({
-          time: 300000, // 5 minutes (300000ms) pour trouvé le bon nombre
+          time: 10000, // 5 minutes (300000ms) pour trouvé le bon nombre
         });
-        async function addFalconixToUser(userId, serverId) {
+        async function addFalconixToUser(userId, guildId) {
           try {
-            const user = await User.findOne({ userID: userId, serverID: serverId });
+            const user = await User.findOne({ userID: userId, serverID: guildId });
             if (!user) {
               return;
             }
@@ -153,7 +191,9 @@ module.exports = {
             closestGuessDifference = guessDifference;
           }
         });
+        
         bingoCollector.on('end', async collected => {
+          //console.log(`Fin du jeu Bingo. Nombre de messages collectés : ${collected.size}.`);
           if (!bingoWinner) {
             let finalMessage = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
             if (closestGuessUser) {
@@ -163,23 +203,25 @@ module.exports = {
           }
           await bingoChannel.setRateLimitPerUser(0);
           await BingoTimer.findOneAndUpdate(
-            { serverID: serverId },
-            { lastBingoTime: new Date(), isActive: false },
+            { serverID: guildId },
+            { lastBingoTime: new Date()},
             { upsert: true }
           );
+          scheduleNextGame();
           participants.forEach(async (participant) => {
             try {
-              await addXPToUser(participant.userId, serverId, 250);
+              await addXPToUser(participant.userId, guildId, 250);
             } catch (error) {
-              console.error("Erreur lors de l'ajout des XP :", error);
+              console.error("Erreur lors de l'ajout des XP au participant ${participant.userId} :", error);
             }
           });
           participants.clear();
         });
-        startBingoGame();
       }, delayInMillis);
     }
-    startBingoGame();
+    checkAndStartBingoGames();
+
+    const serverId = '716810235985133568';
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
     bot.guilds.cache.forEach(async guild => {
@@ -752,8 +794,6 @@ module.exports = {
           roleReglementName: null,
           ticketAdminRoleID: null,
           ticketAdminRoleName: null,
-          bingoChannelName : null,
-          bingoChannelID : null,
         });
         await serverConfig.save();
 
@@ -761,7 +801,7 @@ module.exports = {
           .setTitle(`\`𝐇ey! 𝐔n grand 𝐌𝐄𝐑𝐂𝐈\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\` mon créateur.\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐔ne monnaie exclusive. \n◟𝐒ystème d'avertissement en cas de mot désobligeant.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive.\n◟𝐒ystème de menu déroulant pour les rôles.\n◟𝐄t bien plus !!`
+            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\` mon créateur.\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement en cas de mot désobligeant.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive.\n◟𝐒ystème de menu déroulant pour les rôles.\n◟𝐄t bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()
@@ -977,9 +1017,13 @@ async function updateVoiceChannelServer(server) {
     const memberCount = server.members.cache.filter(member => !member.user.bot).size;
 
     channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
-      .catch(error => {
-        console.error("[ONLINE] Erreur lors de la mise à jour du nom du canal:", error);
-      });
+    .catch(error => {
+      if (error.code === 'GuildMembersTimeout') {
+        return;
+      } else {
+        throw error;
+      }
+    });
 
   } catch (error) {
     console.error("[ONLINE] Erreur lors de la mise à jour du salon vocal:", error);

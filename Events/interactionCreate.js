@@ -38,8 +38,8 @@ const {
   createAudioResource,
 } = require("@discordjs/voice");
 const { queue } = require("../models/queue");
-const SearchMateMessage = require('../models/apexSearchMate');
-const VocalChannel = require('../models/apexVocal');
+const SearchMateMessage = require('../models/searchMate');
+const VocalChannel = require('../models/vocalGames');
 const ApexStats = require('../models/apexStats');
 const Music = require("../models/music")
 const ServerRoleMenu = require('../models/serverRoleMenu')
@@ -1594,17 +1594,43 @@ module.exports = {
       }
     }
     if (interaction.customId === "BINGO_PUSH") {
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (!serverConfig) {
+          return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });
+      }
+
+      const bingoChannelName = serverConfig.bingoChannelName || "Salon non configuré";
+
       const result = await Bingo.findOneAndUpdate(
         { serverID: interaction.guild.id },
         {
           $set: {
-            etat: 'ACTIF'
+            etat: 'ACTIF',
+            serverName: interaction.guild.name,
+            bingoChannelName: bingoChannelName
+          },
+          $setOnInsert: {
+            nextBingoTime: null
           }
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
-    
-      await interaction.reply({ content: "Le Bingo a été activé ! Restez à l'écoute pour le prochain événement.", ephemeral: true });
+  
+      if (!result.nextBingoTime) {
+          const delayToNextBingo = randomInterval(2, 5);
+          const nextBingoTime = new Date(Date.now() + delayToNextBingo);
+          await Bingo.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              { $set: { nextBingoTime: nextBingoTime } }
+          );
+      }
+  
+      await interaction.reply({ content: "丨𝐋e \`𝐁ingo\` a été activé ! :comet:", ephemeral: true });
+    }
+    function randomInterval(minDays, maxDays) {
+        const minMilliseconds = minDays * 24 * 60 * 60 * 1000;
+        const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
+        return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
     if (interaction.customId === "BINGO_BUTTON") {
       await interaction.reply({
@@ -1807,7 +1833,37 @@ module.exports = {
       }
     }
     if (interaction.customId === "BINGO_DESAC") {
-
+      // Mettre à jour la configuration du bingo pour ce serveur
+      Bingo.findOneAndUpdate({ serverID: interaction.guild.id }, { 
+          etat: 'INACTIF', 
+          nextBingoTime: null,
+          bingoChannelName: null
+      }, { new: true }).then(updatedBingoConfig => {
+          if (updatedBingoConfig) {
+              console.log('Le bingo a été désactivé et le prochain temps de bingo enlevé.');
+              interaction.reply('Le bingo a été désactivé et le prochain temps de bingo enlevé.');
+          } else {
+              console.log('Configuration du bingo introuvable pour ce serveur.');
+              interaction.reply('Configuration du bingo introuvable pour ce serveur.');
+          }
+      }).catch(error => {
+          console.error('Erreur lors de la mise à jour du statut du bingo:', error);
+          interaction.reply('Une erreur s\'est produite lors de la désactivation du bingo.');
+      });
+  
+      // Mettre à jour la configuration du serveur pour enlever le salon du bingo
+      ServerConfig.findOneAndUpdate({ serverID: interaction.guild.id }, { 
+          bingoChannelID: null, 
+          bingoChannelName: null 
+      }, { new: true }).then(updatedServerConfig => {
+          if (updatedServerConfig) {
+              console.log('Le salon du bingo a été enlevé de la configuration.');
+          } else {
+              console.log('Configuration du serveur introuvable.');
+          }
+      }).catch(error => {
+          console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
+      });
     }
 
     //Bouton supprimé suggestion

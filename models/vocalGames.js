@@ -10,4 +10,4 @@ const vocalChannelSchema = new mongoose.Schema({
     },
 }, { versionKey: false, strict: true, collection: 'Apex Vocals' });
 
-module.exports = mongoose.model('VocalChannel', vocalChannelSchema);
+module.exports = mongoose.model('VocalChannel', vocalChannelSchema, 'Vocal Games');

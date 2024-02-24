@@ -9,4 +9,4 @@ const warningSchema = new mongoose.Schema({
     muteEnd: { type: Date },
 });
 
-module.exports = mongoose.model('Warning', warningSchema);
+module.exports = mongoose.model('Warning', warningSchema, 'Warnings');
