@@ -1447,6 +1447,16 @@ module.exports = {
           return interaction.reply({ content: "Le canal de rôles configuré est introuvable.", ephemeral: true });
       }
   
+      const invalidMenu = serverRoleMenus.menus.find(menu => !menu.menuName || menu.menuName.trim().length === 0);
+      if (invalidMenu) {
+          const errorEmbed = new EmbedBuilder()
+              .setColor("#ff0000")
+              .setTitle("❌丨𝐔n nom de rôle est vide.丨❌")
+              .setDescription("𝐋ors de ta réponse, ça doit correspondre **exactement** à ça : \"NOMDURÔLE   @TONRÔLE\". 𝐋'espace entre le nom et le tag est __très important__. 𝐑éinitialise avant de recommencer.. c'est mieux !")
+          await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+          return;
+      }
+
       const menuOptions = serverRoleMenus.menus.flatMap(menu =>
           menu.roles.map(role => ({
               label: menu.menuName,
