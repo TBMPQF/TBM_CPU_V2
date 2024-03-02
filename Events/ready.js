@@ -28,7 +28,7 @@ module.exports = {
     function checkAndStartBingoGames() {
       if (isCheckingBingoGames) return;
       isCheckingBingoGames = true;
-  
+    
       Bingo.find({ etat: 'ACTIF' }).then(activeBingos => {
           activeBingos.forEach(bingo => {
               if (!bingo.nextBingoTime || new Date(bingo.nextBingoTime) <= new Date()) {
@@ -36,15 +36,15 @@ module.exports = {
               }
           });
       }).catch(error => {
-          console.error("Erreur lors de la vérification des états des serveurs pour le Bingo :", error);
+          console.error("[BINGO] Erreur lors de la vérification des états des serveurs pour le Bingo :", error);
       }).finally(() => {
           isCheckingBingoGames = false;
           setTimeout(checkAndStartBingoGames, 10000);
       });
-  }
+    }
     function randomInterval(minDays, maxDays) {
-      const minMilliseconds = minDays * 60 * 1000; //minDays * 24 * 60 * 60 * 1000
-      const maxMilliseconds = maxDays * 60 * 1000; //maxDays * 24 * 60 * 60 * 1000
+      const minMilliseconds = minDays * 24 * 60 * 60 * 1000; //minDays * 24 * 60 * 60 * 1000
+      const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000; //maxDays * 24 * 60 * 60 * 1000
       return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
     async function addXPToUser(userId, guildId, xpToAdd) {
@@ -59,7 +59,10 @@ module.exports = {
         console.error("[XP BINGO] Erreur lors de l'ajout des XP :", error);
       }
     }
-    async function scheduleNextGame(guildId) {
+    async function scheduleNextGame(guildId) {;
+      if (!guildId) {
+        return;
+      }
       const bingoTimer = await BingoTimer.findOne({ serverID: guildId });
     
       if (bingoTimer && new Date(bingoTimer.nextBingoTime) > new Date()) {
@@ -75,9 +78,12 @@ module.exports = {
         { upsert: true, setDefaultsOnInsert: true }
       );
     
-      setTimeout(() => startBingoGame(guildId), delayToNextBingo);
+      setTimeout(() => scheduleNextGame(guildId), delayToNextBingo);
     }
     async function startBingoGame(guildId) {
+      if (!guildId) {
+        return;
+      }
       const serverConfig = await ServerConfig.findOne({ serverID: guildId });
       if (!serverConfig || !serverConfig.bingoChannelID) {
         return;
@@ -152,7 +158,7 @@ module.exports = {
         }
         let participants = new Map();
         const bingoCollector = bingoChannel.createMessageCollector({
-          time: 10000, // 5 minutes (300000ms) pour trouvé le bon nombre
+          time: 300000, // 5 minutes (300000ms) pour trouvé le bon nombre
         });
         async function addFalconixToUser(userId, guildId) {
           try {
@@ -207,7 +213,7 @@ module.exports = {
             { lastBingoTime: new Date()},
             { upsert: true }
           );
-          scheduleNextGame();
+          scheduleNextGame(guildId);
           participants.forEach(async (participant) => {
             try {
               await addXPToUser(participant.userId, guildId, 250);
