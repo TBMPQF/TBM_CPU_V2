@@ -1074,7 +1074,7 @@ module.exports = {
     if (interaction.customId === "LOG_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon de `𝐋og` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐋og` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1136,7 +1136,7 @@ module.exports = {
     if (interaction.customId === "ROLES_PERSOLISTE") {
       let currentPrestige = "prestige0Roles";
       await interaction.reply(
-        "Veuillez **répondre** avec les rôles personnalisés pour le prestige `0` (Niveau avant le prestige `1`). Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules. (123456789, 123456789 etc ... )"
+        "Merci de **répondre** (clique droit ◟**Répondre**) avec les rôles personnalisés pour le prestige `0` (Niveau avant le prestige `1`). Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules. (123456789, 123456789 etc ... )"
       );
 
       const collector = interaction.channel.createMessageCollector({
@@ -1205,7 +1205,7 @@ module.exports = {
     if (interaction.customId === "WELCOME_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon de `𝐁ienvenue` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐁ienvenue` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1214,7 +1214,7 @@ module.exports = {
     if (interaction.customId === "REGL_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de répondre avec le nom __exact__ ou l'ID du salon de `𝐑èglement` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐑èglement` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1268,7 +1268,7 @@ module.exports = {
     if (interaction.customId === "REGL_ROLE") {
       const message = await interaction.reply({
         content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1280,7 +1280,7 @@ module.exports = {
     if (interaction.customId === "WELCOME_ROLE") {
       const message = await interaction.reply({
         content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour donner le rôle lors de l'arrivé **et** lorsque votre utilisateur validera le `𝐑èglement`.",
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour donner le rôle lors de l'arrivé **et** lorsque votre utilisateur validera le `𝐑èglement`.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1292,7 +1292,7 @@ module.exports = {
     if (interaction.customId === "IMPLICATION_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour `𝐈mplications` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour `𝐈mplications` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1301,7 +1301,7 @@ module.exports = {
     if (interaction.customId === "DAILY_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour le `𝐃aily` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour le `𝐃aily` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1347,7 +1347,7 @@ module.exports = {
     if (interaction.customId === "SUGG_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** avec le nom __exact__ ou l'ID du salon pour les `𝐒uggestions` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐒uggestions` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1356,7 +1356,7 @@ module.exports = {
     if (interaction.customId === "ROLECHANNEL_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de répondre avec le nom __exact__ ou l'ID du salon pour les `𝐑oles`.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐑oles`.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1368,7 +1368,7 @@ module.exports = {
     if (interaction.customId === "TICKET_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de répondre avec le nom __exact__ ou l'ID du salon pour les `𝐓ickets`.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐓ickets` désiré.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1420,7 +1420,7 @@ module.exports = {
     if (interaction.customId === "TICKET_ROLE") {
       const message = await interaction.reply({
         content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** en faisant un tag (@votre_rôle) pour rentrer le rôle d'administration de votre serveur.",
+          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour rentrer le rôle d'administration de votre serveur.",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
@@ -1521,7 +1521,7 @@ module.exports = {
     }
     if (interaction.customId === "ROLECHANNEL_ROLE") {
       const message = await interaction.reply({
-        content: "𝐌erci de **répondre** avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex @Apex, Madrid @lala). Maximum 10 éléments.",
+        content: "Merci de **répondre** (clique droit ◟**Répondre**) avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex Legends @Apex, Minecraft @survie). Maximum 10 éléments à la suite __séparé__ par la virgule.",
         fetchReply: true
       });
     
@@ -1850,10 +1850,8 @@ module.exports = {
           bingoChannelName: null
       }, { new: true }).then(updatedBingoConfig => {
           if (updatedBingoConfig) {
-              console.log('Le bingo a été désactivé et le prochain temps de bingo enlevé.');
               interaction.reply('Le bingo a été désactivé et le prochain temps de bingo enlevé.');
           } else {
-              console.log('Configuration du bingo introuvable pour ce serveur.');
               interaction.reply('Configuration du bingo introuvable pour ce serveur.');
           }
       }).catch(error => {

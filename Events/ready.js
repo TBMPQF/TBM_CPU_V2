@@ -37,9 +37,10 @@ module.exports = {
           });
       }).catch(error => {
           console.error("[BINGO] Erreur lors de la vérification des états des serveurs pour le Bingo :", error);
+          throw error; 
       }).finally(() => {
           isCheckingBingoGames = false;
-          setTimeout(checkAndStartBingoGames, 10000);
+          setTimeout(checkAndStartBingoGames, 5000);
       });
     }
     function randomInterval(minDays, maxDays) {
@@ -966,6 +967,8 @@ module.exports = {
 };
 
 // Mise a jour du nombre de joueurs sur le serveur Minecraft
+let consecutiveFailures = 0;
+
 async function updateCategoryMinecraft(server) {
   try {
     let category = server.channels.cache.find(channel => 
@@ -983,14 +986,30 @@ async function updateCategoryMinecraft(server) {
         if (data.online) {
           const newCategoryName = `丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`;
           category.setName(newCategoryName)
-            .catch(error => console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error));
+            .then(() => consecutiveFailures = 0)
+            .catch(error => {
+              console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error);
+              handleFailure();
+            });
         }
       })
       .catch(error => {
         console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft:", error);
+        handleFailure();
       });
   } catch (error) {
     console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error);
+    handleFailure();
+  }
+}
+function handleFailure() {
+  consecutiveFailures++;
+  if (consecutiveFailures >= 2) {
+    
+    setTimeout(() => {
+      updateCategoryMinecraft(server);
+    }, 600000);
+    consecutiveFailures = 0;
   }
 }
 
