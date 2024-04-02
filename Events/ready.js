@@ -968,7 +968,6 @@ module.exports = {
 
 // Mise a jour du nombre de joueurs sur le serveur Minecraft
 let consecutiveFailures = 0;
-
 async function updateCategoryMinecraft(server) {
   try {
     let category = server.channels.cache.find(channel => 
@@ -976,7 +975,7 @@ async function updateCategoryMinecraft(server) {
     );
 
     if (!category) {
-      console.error("[MINECRAFT] Catégorie non trouvée pour mettre à jour le nombre d'utilisateurs connecté");
+      console.error("[MINECRAFT] Catégorie non trouvée pour mettre à jour le nombre d'utilisateurs connecté.");
       return;
     }
 
@@ -988,21 +987,21 @@ async function updateCategoryMinecraft(server) {
           category.setName(newCategoryName)
             .then(() => consecutiveFailures = 0)
             .catch(error => {
-              console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error);
+              console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie :", error);
               handleFailure();
             });
         }
       })
       .catch(error => {
-        console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft:", error);
+        console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft :", error);
         handleFailure();
       });
   } catch (error) {
-    console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie:", error);
-    handleFailure();
+    console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie :", error);
+    handleFailure(server);
   }
 }
-function handleFailure() {
+function handleFailure(server) {
   consecutiveFailures++;
   if (consecutiveFailures >= 2) {
     
