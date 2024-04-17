@@ -9,7 +9,7 @@ module.exports = {
       handleVoiceStateUpdate(oldState, newState, bot);
       initializeXpDistributionInterval(bot);
     } catch (error) {
-      console.error('[VOICE STATE] Erreur lors de la mise à jour de l\'état vocal :', error);
+      console.error('[VOCAL XP] Erreur lors de la mise à jour de l\'état vocal :', error);
     }
   }
 };
@@ -35,12 +35,15 @@ async function updateInVocalEntry(newState) {
     if (inVocal) {
       inVocal.vocalName = newState.channel.name;
       await inVocal.save();
+    } else {
+      await createInVocalEntry(newState);
     }
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de l\'entrée InVocal:', error);
+    console.error('[VOCAL XP] Erreur lors de la mise à jour de l\'entrée InVocal:', error);
   }
 }
 const joinTimestamp = moment().tz("Europe/Paris").toDate();
+
 async function createInVocalEntry(newState) {
   const newInVocal = new InVocal({
     discordId: newState.member.id,
@@ -53,7 +56,7 @@ async function createInVocalEntry(newState) {
   try {
     await newInVocal.save();
   } catch (error) {
-    console.error('Erreur lors de l\'enregistrement de l\'utilisateur en vocal:', error);
+    console.error('[VOCAL XP] Erreur lors de l\'enregistrement de l\'utilisateur en vocal:', error);
   }
 }
 
@@ -61,6 +64,6 @@ async function deleteInVocalEntry(oldState) {
   try {
     await InVocal.deleteOne({ discordId: oldState.member.id, serverId: oldState.guild.id });
   } catch (error) {
-    console.error('Erreur lors de la suppression de l\'entrée InVocal:', error);
+    console.error('[VOCAL XP] Erreur lors de la suppression de l\'entrée InVocal:', error);
   }
 }

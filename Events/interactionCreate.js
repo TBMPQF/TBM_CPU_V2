@@ -1074,14 +1074,19 @@ module.exports = {
     if (interaction.customId === "LOG_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐋og` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐋og` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       logRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "ROLE_LISTE") {
       const serverRoles = await ServerRole.findOne({
@@ -1205,23 +1210,36 @@ module.exports = {
     if (interaction.customId === "WELCOME_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐁ienvenue` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       welcomeRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "REGL_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon de `𝐑èglement` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐑èglement` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       reglementRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "REGL_PUSH") {
       let serverConfig = await ServerConfig.findOne({
@@ -1274,8 +1292,13 @@ module.exports = {
       const serverId = interaction.guild.id;
       RolereglementRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "WELCOME_ROLE") {
       const message = await interaction.reply({
@@ -1286,26 +1309,47 @@ module.exports = {
       const serverId = interaction.guild.id;
       RoleWelcomeRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "IMPLICATION_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour `𝐈mplications` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour `𝐈mplications` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       implicationRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "DAILY_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour le `𝐃aily` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour le `𝐃aily` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       dailyRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "DAILY_PUSH") {
       let serverConfig = await ServerConfig.findOne({
@@ -1347,35 +1391,53 @@ module.exports = {
     if (interaction.customId === "SUGG_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐒uggestions` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐒uggestions` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       suggestionsRequestMessageIds[serverId] = message.id;
+      setTimeout(() => {
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "ROLECHANNEL_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐑oles`.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐑oles` (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       roleChannelRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "TICKET_BUTTON") {
       const message = await interaction.reply({
         content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec le nom __exact__ ou l'ID du salon pour les `𝐓ickets` désiré.",
+          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐓ickets` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
         fetchReply: true,
       });
       const serverId = interaction.guild.id;
       ticketRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "TICKET_PUSH") {
       let serverConfig = await ServerConfig.findOne({
@@ -1426,8 +1488,13 @@ module.exports = {
       const serverId = interaction.guild.id;
       RoleAdminRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete();
-      }, 60000);
+        message.delete().catch(error => {
+            if (error.code === 10008) {
+            } else {
+                console.error('Erreur lors de la suppression du message:', error);
+            }
+        });
+    }, 60000);
     }
     if (interaction.customId === "ROLECHANNEL_PUSH") {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
@@ -2005,6 +2072,8 @@ module.exports = {
       if (!user) {
         return interaction.reply({ content: "Erreur : Utilisateur non trouvé dans la base de données.", ephemeral: true });
       }
+
+      const formattedFalconix = parseFloat(user.falconix).toFixed(5);
     
       const FalconixEmbed = new EmbedBuilder()
         .setAuthor({
@@ -2014,7 +2083,7 @@ module.exports = {
         .setThumbnail("https://i.postimg.cc/wjbvW906/Monnaie-Falconix.png")
         .addFields(
           { name: `\u200B`, value: `\u200B`, inline: true },
-          { name: `**Tu as** \`${user.falconix}\` **Falconix.**`, value: `\u200B`, inline: true},
+          { name: `**Tu as** \`${formattedFalconix}\` **Falconix.**`, value: `\u200B`, inline: true},
         )
         const message = await interaction.reply({ embeds: [FalconixEmbed], fetchReply: true });
         setTimeout(() => {

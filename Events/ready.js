@@ -970,7 +970,7 @@ module.exports = {
 let consecutiveFailures = 0;
 async function updateCategoryMinecraft(server) {
   try {
-    let category = server.channels.cache.find(channel => 
+    const category = server.channels.cache.find(channel =>
       channel.type === ChannelType.GuildCategory && channel.name.startsWith("丨MINECRAFT丨")
     );
 
@@ -979,37 +979,35 @@ async function updateCategoryMinecraft(server) {
       return;
     }
 
-    fetch(`https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_DOMAIN}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.online) {
-          const newCategoryName = `丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`;
-          category.setName(newCategoryName)
-            .then(() => consecutiveFailures = 0)
-            .catch(error => {
-              console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie :", error);
-              handleFailure();
-            });
-        }
-      })
-      .catch(error => {
-        console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft :", error);
-        handleFailure();
-      });
+    const response = await fetch(`https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_DOMAIN}`);
+    if (!response.ok) {
+      throw new Error(`[MINECRAFT] Erreur HTTP ! statut : ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.online) {
+      const newCategoryName = `丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`;
+      await category.setName(newCategoryName);
+      consecutiveFailures = 0;
+    }
   } catch (error) {
-    console.error("[MINECRAFT] Erreur lors de la mise à jour de la catégorie :", error);
+    console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft :", error);
     handleFailure(server);
   }
 }
 function handleFailure(server) {
   consecutiveFailures++;
   if (consecutiveFailures >= 2) {
-    
+    console.error("[MINECRAFT] Plusieurs échecs consécutifs. J'essaye une nouvelle tentative...");
     setTimeout(() => {
       updateCategoryMinecraft(server);
-    }, 600000);
+    }, calculateExponentialBackoff(consecutiveFailures));
     consecutiveFailures = 0;
   }
+}
+function calculateExponentialBackoff(failureCount) {
+  const baseDelay = 60000;
+  return Math.min(baseDelay * 2 ** (failureCount - 1), 3600000); //Max 1h de délai
 }
 
 // Mise à jour du nombre de personnes connectées sur le serveur
