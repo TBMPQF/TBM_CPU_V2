@@ -64,23 +64,11 @@ async function addExperience(member, serverId, xpToAdd) {
       console.error(`Utilisateur non trouvé: ${userId} dans le serveur: ${serverId}`);
     }
   } catch (error) {
-    console.error('[ADD XP] Erreur lors de l\'ajout de l\'expérience:', error);
+    console.error('[ADD XP VOCAL] Erreur lors de l\'ajout de l\'expérience:', error);
   }
 }
 
 module.exports = {
-    logRequestMessageIds: {},
-    welcomeRequestMessageIds: {},
-    reglementRequestMessageIds: {},
-    RolereglementRequestMessageIds : {},
-    RoleWelcomeRequestMessageIds : {},
-    implicationRequestMessageIds : {},
-    dailyRequestMessageIds : {},
-    suggestionsRequestMessageIds : {},
-    roleChannelRequestMessageIds : {},
-    ticketRequestMessageIds : {},
-    RoleAdminRequestMessageIds : {},
-    RoleMenuRequestMessageIds : {},
     voiceUsers,
     initializeXpDistributionInterval,
     updateUserVoiceTime,

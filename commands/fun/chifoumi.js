@@ -100,7 +100,7 @@ module.exports = {
 
     Embed.setColor(color)
       .setDescription(
-        `${gameResult === "É-GA-LI-TÉ" ? "Arf, on est connecté" : gameResult === "GAGNÉ" ? "Bien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}.\``
+        `${gameResult === "É-GA-LI-TÉ" ? "Arf, on est connecté" : gameResult === "GAGNÉ" ? "Bien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}\`.`
       )
       .setThumbnail(thumbUrl)
       .setFooter({

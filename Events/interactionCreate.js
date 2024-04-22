@@ -16,20 +16,6 @@ const interactionSetConfig = require("./interactionsetconfig");
 const ServerRole = require("../models/serverRole");
 const Bingo = require("../models/bingo")
 const axios = require('axios');
-const {
-  logRequestMessageIds,
-  welcomeRequestMessageIds,
-  reglementRequestMessageIds,
-  RolereglementRequestMessageIds,
-  RoleWelcomeRequestMessageIds,
-  implicationRequestMessageIds,
-  dailyRequestMessageIds,
-  suggestionsRequestMessageIds,
-  roleChannelRequestMessageIds,
-  ticketRequestMessageIds,
-  RoleAdminRequestMessageIds,
-  RoleMenuRequestMessageIds,
-} = require("../models/shared");
 const ServerConfig = require("../models/serverConfig");
 const ytdl = require("ytdl-core");
 const {
@@ -773,7 +759,6 @@ module.exports = {
           await interaction.reply({ content: "Aucune musique en cours de lecture.", ephemeral: true });
       }
     }
-
     async function handleRole(interaction, member, roleID, roleName) {
       if (member.roles.cache.some((role) => role.id == roleID)) {
         await member.roles.remove(roleID);
@@ -1071,22 +1056,80 @@ module.exports = {
     }
 
     //Gestion du SetConfig
-    if (interaction.customId === "LOG_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐋og` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+    if (interaction.customId === "LOG_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐋og` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      const serverId = interaction.guild.id;
-      logRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  logChannelID: channelId,
+                  logChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐋ogs\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a découvert de nouvelles planètes depuis.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
     }
     if (interaction.customId === "ROLE_LISTE") {
       const serverRoles = await ServerRole.findOne({
@@ -1207,48 +1250,162 @@ module.exports = {
         }
       });
     }
-    if (interaction.customId === "WELCOME_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+    if (interaction.customId === "WELCOME_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      const serverId = interaction.guild.id;
-      welcomeRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
-    }
-    if (interaction.customId === "REGL_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ de `𝐑èglement` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
       });
-      const serverId = interaction.guild.id;
-      reglementRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  welcomeChannelID: channelId,
+                  welcomeChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon de \`𝐁ienvenue\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
     }
-    if (interaction.customId === "REGL_PUSH") {
+    if (interaction.customId === "REGL_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐑èglement` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+      let followUpMessages = [];
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message:', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  reglementChannelID: channelId,
+                  reglementChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘🏻丨𝐋e salon pour le \`𝐑èglement\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as fini de peindre la Joconde ?", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "REGL_PUSH") { 
       let serverConfig = await ServerConfig.findOne({
         serverID: interaction.guild.id,
       });
       if (!serverConfig || !serverConfig.reglementChannelID) {
         return interaction.reply({
           content:
-            "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
+            "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salons`.",
           ephemeral: true,
         });
       }
@@ -1283,75 +1440,333 @@ module.exports = {
         });
       }
     }
-    if (interaction.customId === "REGL_ROLE") {
-      const message = await interaction.reply({
-        content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour donner le rôle lorsque votre utilisateur validera le `𝐑èglement`.",
-        fetchReply: true,
+    if (interaction.customId === "REGL_ROLE") { //OK
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre en faisant un **tag** (@votre_rôle) pour donner le rôle lorsqu'un utilisateur validera le `𝐑èglement`.";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      const serverId = interaction.guild.id;
-      RolereglementRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
-    }
-    if (interaction.customId === "WELCOME_ROLE") {
-      const message = await interaction.reply({
-        content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour donner le rôle lors de l'arrivé **et** lorsque votre utilisateur validera le `𝐑èglement`.",
-        fetchReply: true,
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
       });
-      const serverId = interaction.guild.id;
-      RoleWelcomeRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
-    }
-    if (interaction.customId === "IMPLICATION_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour `𝐈mplications` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const role = m.mentions.roles.first();
+          if (!role) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          if (role.position >= botMember.roles.highest.position) {
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              { roleReglementID: role.id, roleReglementName: role.name },
+              { upsert: true, new: true }
+          );
+  
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour le \`𝐑èglement\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
       });
-      const serverId = interaction.guild.id;
-      implicationRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même les glaciers fondent plus vite.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                        }
+                    });    
+                });
+          }, 1000);
         });
-    }, 60000);
     }
-    if (interaction.customId === "DAILY_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour le `𝐃aily` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+    if (interaction.customId === "WELCOME_ROLE") { //OK
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre en faisant un tag (@votre_rôle) pour le rôle `𝐁ienvenue` lors de l'arrivée de tes utilisateurs.";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      const serverId = interaction.guild.id;
-      dailyRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const role = m.mentions.roles.first();
+          if (!role) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          if (role.position >= botMember.roles.highest.position) {
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              { roleWelcomeID: role.id, roleWelcomeName: role.name },
+              { upsert: true, new: true }
+          );
+  
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle de \`𝐁ienvenue\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse. Même la confiture prend moins de temps à se figer.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
     }
-    if (interaction.customId === "DAILY_PUSH") {
+    if (interaction.customId === "IMPLICATION_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐈mplications` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  implicationsChannelID: channelId,
+                  implicationsChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐈mplications\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et la pizza est encore au four ?", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "DAILY_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour le `𝐃aily` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  dailyChannelID: channelId,
+                  dailyChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐃aily\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a changé de président depuis.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "DAILY_PUSH") { 
       let serverConfig = await ServerConfig.findOne({
         serverID: interaction.guild.id,
       });
@@ -1388,58 +1803,232 @@ module.exports = {
         });
       }
     }
-    if (interaction.customId === "SUGG_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐒uggestions` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+    if (interaction.customId === "SUGG_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐒uggestions` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      const serverId = interaction.guild.id;
-      suggestionsRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
-    }
-    if (interaction.customId === "ROLECHANNEL_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐑oles` (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
       });
-      const serverId = interaction.guild.id;
-      roleChannelRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
-    }
-    if (interaction.customId === "TICKET_BUTTON") {
-      const message = await interaction.reply({
-        content:
-          "Merci de **répondre** (clique droit ◟**Répondre**) avec __l'ID du salon__ pour les `𝐓ickets` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).",
-        fetchReply: true,
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  suggestionsChannelID: channelId,
+                  suggestionsChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐒uggestions\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
       });
-      const serverId = interaction.guild.id;
-      ticketRequestMessageIds[serverId] = message.id;
-      setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps d'apprendre le chinois.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
     }
-    if (interaction.customId === "TICKET_PUSH") {
+    if (interaction.customId === "ROLECHANNEL_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐑oles` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  roleChannelID: channelId,
+                  roleChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐑oles\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu préparais un gâteau ou un gratte-ciel ?", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "TICKET_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐓ickets` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐓u m'as mis quoi ton code de carte bleue ou quoi ?", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  ticketChannelID: channelId,
+                  ticketChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐓ickets\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et j'ai déjà oublié pourquoi j'attendais...", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "TICKET_PUSH") { 
       let serverConfig = await ServerConfig.findOne({
         serverID: interaction.guild.id,
       });
@@ -1479,39 +2068,111 @@ module.exports = {
         return interaction.reply({ content: "Embed crée.", ephemeral: true });
       }
     }
-    if (interaction.customId === "TICKET_ROLE") {
-      const message = await interaction.reply({
-        content:
-          "\n__**N'OUBLIE PAS DE ME METTRE TOUT EN HAUT DANS LA LISTE DE TES RÖLES.**__\n\nMerci de **répondre** (clique droit ◟**Répondre**) en faisant un tag (@votre_rôle) pour rentrer le rôle d'administration de votre serveur.",
-        fetchReply: true,
+    if (interaction.customId === "TICKET_ROLE") { // OK
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre en faisant un tag (@votre_rôle) pour le rôle `𝐀dministrateur` de ton serveur.";
+  
+  const replyMessage = await interaction.reply({
+      content: `${originalContent} ***${secondsRemaining}s***`,
+      fetchReply: true
+  });
+  
+  let followUpMessages = [];
+  
+  const interval = setInterval(() => {
+      secondsRemaining--;
+      if (secondsRemaining > 0) {
+          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+              clearInterval(interval);
+              console.error('Erreur lors de la mise à jour du message :', error);
+          });
+      } else {
+          clearInterval(interval);
+      }
+  }, 1000);
+  
+  const collector = interaction.channel.createMessageCollector({
+      filter: (m) => m.author.id === interaction.user.id,
+      time: 60000,
+      max: 1
+  });
+  
+  collector.on("collect", async (m) => {
+      clearInterval(interval);
+      followUpMessages.push(m);
+  
+      const role = m.mentions.roles.first();
+      if (!role) {
+          const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+          followUpMessages.push(errorMsg);
+          return;
+      }
+  
+      // Vérifier si le rôle du bot est supérieur au rôle mentionné
+      if (role.position >= botMember.roles.highest.position) {
+          const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+          followUpMessages.push(errorMsg);
+          return;
+      }
+  
+      await ServerConfig.findOneAndUpdate(
+          { serverID: interaction.guild.id },
+          { ticketAdminRoleID: role.id, ticketAdminRoleName: role.name },
+          { upsert: true, new: true }
+      );
+  
+      const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle \`𝐀dministrateur\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+      followUpMessages.push(successMsg);
+  });
+  
+  collector.on("end", async (collected, reason) => {
+      if (reason === "time") {
+          const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as démêlé tous les fils de tes écouteurs ?", ephemeral: true });
+          followUpMessages.push(timeoutMsg);
+      }
+      replyMessage.delete().catch(error => {
+          if (error.code === 10008) {
+          } else {
+              console.error('Erreur lors de la suppression du message initial :', error);
+          }
       });
-      const serverId = interaction.guild.id;
-      RoleAdminRequestMessageIds[serverId] = message.id;
       setTimeout(() => {
-        message.delete().catch(error => {
-            if (error.code === 10008) {
-            } else {
-                console.error('Erreur lors de la suppression du message:', error);
-            }
-        });
-    }, 60000);
+          followUpMessages.forEach(msg => {
+              msg.delete().catch(error => {
+                  if (error.code === 10008) {
+                  } else {
+                      console.error('Erreur lors de la suppression du message de suivi :', error);
+                  }
+              });
+          });
+      }, 1000);
+  });
     }
     if (interaction.customId === "ROLECHANNEL_PUSH") {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
   
       if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
-          return interaction.reply({ content: "Aucun menu de rôles n'a été configuré.", ephemeral: true });
+          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", ephemeral: true });
       }
   
       // Récupérer l'ID du canal de rôles à partir de ServerConfig
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig || !serverConfig.roleChannelID) {
-          return interaction.reply({ content: "Le canal de rôles n'est pas configuré.", ephemeral: true });
+          return interaction.reply({ content: "Le channel des rôles n'est pas configuré.", ephemeral: true });
       }
   
       const roleChannel = interaction.guild.channels.cache.get(serverConfig.roleChannelID);
       if (!roleChannel) {
-          return interaction.reply({ content: "Le canal de rôles configuré est introuvable.", ephemeral: true });
+          return interaction.reply({ content: "Le channel des rôles configuré est introuvable.", ephemeral: true });
       }
   
       const invalidMenu = serverRoleMenus.menus.find(menu => !menu.menuName || menu.menuName.trim().length === 0);
@@ -1554,7 +2215,7 @@ module.exports = {
       // Confirmer à l'utilisateur que le message a été envoyé
       await interaction.reply({ content: "Le menu de rôles a été envoyé dans le canal de rôles configuré.", ephemeral: true });
     }
-    if (interaction.customId === "ROLECHANNEL_LISTE") {
+    if (interaction.customId === "ROLECHANNEL_LISTE") { 
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
       const NewRoleButton = new ButtonBuilder()
         .setCustomId('ROLECHANNEL_ROLE')
@@ -1586,9 +2247,9 @@ module.exports = {
       const ModifyRole = new ActionRowBuilder().addComponents(ModifyButton);
       await interaction.reply({ content: replyContent, components: [ModifyRole], ephemeral: true });
     }
-    if (interaction.customId === "ROLECHANNEL_ROLE") {
+    if (interaction.customId === "ROLECHANNEL_ROLE") { 
       const message = await interaction.reply({
-        content: "Merci de **répondre** (clique droit ◟**Répondre**) avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex Legends @Apex, Minecraft @survie). Maximum 10 éléments à la suite __séparé__ par la virgule.",
+        content: "Merci de **répondre** (clique droit ◟**Répondre**) avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex Legends @Apex, Minecraft @survie). Maximum 10 éléments à la suite __séparé__ par les virgules.",
         fetchReply: true
       });
     
@@ -1601,11 +2262,10 @@ module.exports = {
       collector.on("collect", async (m) => {
         const entries = m.content.split(',').map(entry => entry.trim()).filter(entry => entry);
         if (entries.length === 0 || entries.length > 10) {
-            return interaction.followUp("Format invalide ou trop d'éléments. Assurez-vous de fournir entre 1 et 10 paires nom/tag de rôle.");
+            return interaction.followUp("Format invalide ou trop d'éléments. Assurez-vous de fournir entre 1 et 10 paires nom/tag de rôle _.");
         }
     
         for (const entry of entries) {
-            // Utilisez une expression régulière pour séparer le nom du menu du tag du rôle
             const match = entry.match(/^(.*?)\s*<@\s*(\S+)$/);
             if (!match) {
                 await interaction.followUp(`Format invalide pour "${entry}". Assurez-vous d'utiliser le format "NomDuMenu @TagDuRôle".`);
@@ -1614,7 +2274,6 @@ module.exports = {
     
             const menuName = match[1].trim();
             const roleTag = match[2].trim();
-            // Trouver le rôle par son ID ou son nom en ignorant le format mention
             const role = m.mentions.roles.find(role => role.id === roleTag.replace(/[<@&>]/g, '') || role.name === roleTag);
     
             if (!role) {
@@ -1642,7 +2301,7 @@ module.exports = {
       });
     }
     //Ajouté rôle du menu déroulant ROLE
-    if (interaction.customId === "Role_Menu") {
+    if (interaction.customId === "Role_Menu") { // A REVOIR
       const roleId = interaction.values[0];
       const role = interaction.guild.roles.cache.get(roleId);
 
@@ -1670,7 +2329,7 @@ module.exports = {
           }
       }
     }
-    if (interaction.customId === "BINGO_PUSH") {
+    if (interaction.customId === "BINGO_PUSH") { // A REVOIR
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig) {
           return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });
@@ -1709,41 +2368,79 @@ module.exports = {
         const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
         return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
-    if (interaction.customId === "BINGO_BUTTON") {
-      await interaction.reply({
-        content: "Merci de répondre avec l'**ID** du salon pour le `𝐁ingo`.",
-        fetchReply: true
+    if (interaction.customId === "BINGO_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour le `𝐁ingo` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-    
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
       const collector = interaction.channel.createMessageCollector({
-        filter: (m) => m.author.id === interaction.user.id,
-        time: 60000,
-        max: 1
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
       });
-    
+  
       collector.on("collect", async (m) => {
-        const channelId = m.content.trim();
-        const channel = interaction.guild.channels.cache.get(channelId);
-        if (!channel) {
-          return interaction.followUp({ content: "Salon invalide. Veuillez fournir un ID de salon valide.", ephemeral: true });
-        }
-    
-        await ServerConfig.findOneAndUpdate(
-          { serverID: interaction.guild.id },
-          {
-            bingoChannelID: channelId,
-            bingoChannelName: channel.name
-          },
-          { upsert: true, new: true }
-        );
-    
-        await interaction.followUp({ content: `Le salon pour le Bingo a été mis à jour avec succès : ${channel.name}.`, ephemeral: true });
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  bingoChannelID: channelId,
+                  bingoChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐁ingo\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
       });
-    
-      collector.on("end", (collected, reason) => {
-        if (reason === "time") {
-          interaction.followUp({ content: "Temps écoulé pour la réponse.", ephemeral: true });
-        }
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, les continents ont eu le temps de dériver.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
       });
     }
     
