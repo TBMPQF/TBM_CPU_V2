@@ -40,7 +40,6 @@ const usersVoted = new Map();
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
-    
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
       const user = await User.findOne({
@@ -589,33 +588,71 @@ module.exports = {
     // Arrête la musique en cours et supprime la playlist
     if (interaction.customId === "STOP_MUSIC") {
       const serverId = interaction.guild.id;
-  
+    
       // Arrêter le lecteur audio si la file d'attente existe
       if (queue[serverId] && queue[serverId].length > 0) {
-          player.stop();
+        player.stop();
       }
-  
+    
       // Vider la file d'attente
       queue[serverId] = [];
-  
+    
       // Déconnecter le bot du salon vocal et détruire la connexion
       if (connections[serverId]) {
-          connections[serverId].disconnect(); // S'assurer de déconnecter avant de détruire
-          connections[serverId].destroy();
-          delete connections[serverId];
+        connections[serverId].disconnect(); // S'assurer de déconnecter avant de détruire
+        connections[serverId].destroy();
+        delete connections[serverId];
       }
-  
+    
       // Mettre à jour l'embed pour refléter que la playlist est vide
       await updateMusicEmbed(interaction, serverId, queue);
-  
+    
       // Envoyer une réponse pour confirmer l'arrêt de la musique
       const stopMsg = await interaction.reply({
-          embeds: [{
-              description: ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.",
-              color: 0x800080,
-          }],
+        embeds: [{
+          description: ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.",
+          color: 0x800080,
+        }],
       });
       setTimeout(() => stopMsg.delete(), 5000);
+    }
+    
+    // Passe à la musique suivante
+    if (interaction.customId === "NEXT_MUSIC") {
+      const voiceChannel = await handleVoiceChannel(
+        interaction,
+        ":microphone2:丨𝐓u dois être dans un salon vocal pour passer à la prochaine musique !"
+      );
+      if (!voiceChannel) return;
+    
+      const serverId = interaction.guild.id;
+    
+      if (!queue[serverId] || queue[serverId].length === 0) {
+        sendAndDeleteMessage(
+          interaction,
+          ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.",
+          5000
+        );
+        return;
+      }
+    
+      if (!connections[serverId]) {
+        sendAndDeleteMessage(
+          interaction,
+          ":x:丨𝐉e ne suis pas connecté à un salon vocal.",
+          5000
+        );
+        return;
+      }
+    
+      queue[serverId].shift(); // Supprimer la chanson actuelle de la file d'attente
+      playNextSong(interaction, serverId, player, queue);
+    
+      sendAndDeleteMessage(
+        interaction,
+        ":next_track:丨𝐉'ai passé à la prochaine musique !",
+        5000
+      );
     }
     // Passe à la musique suivante
     if (interaction.customId === "NEXT_MUSIC") {
@@ -1131,7 +1168,7 @@ module.exports = {
           }, 1000);
       });
     }
-    if (interaction.customId === "ROLE_LISTE") {
+    if (interaction.customId === "ROLE_LISTE") { //OK
       const serverRoles = await ServerRole.findOne({
         serverID: interaction.guild.id,
       });
@@ -1146,7 +1183,7 @@ module.exports = {
 
       if (!serverRoles) {
         return interaction.reply({
-          content: "Il n'y a pas de rôles stockés pour ce serveur.",
+          content: "👁️‍🗨️丨𝐈l n'y a pas de rôles stockés pour ce serveur.",
           components: [rowRolesListe],
         });
       }
@@ -1156,7 +1193,7 @@ module.exports = {
       const prestige0Roles = serverRoles.prestige0Roles
         .map(
           (id, index) =>
-            `Niveau ${levels[index]} | ${
+            `𝐍iveau **${levels[index]}** | ${
               interaction.guild.roles.cache.get(id)?.toString() ||
               "Rôle inconnu"
             }`
@@ -1165,7 +1202,7 @@ module.exports = {
       const prestige1Roles = serverRoles.prestige1Roles
         .map(
           (id, index) =>
-            `Niveau ${levels[index]} | ${
+            `𝐍iveau **${levels[index]}** | ${
               interaction.guild.roles.cache.get(id)?.toString() ||
               "Rôle inconnu"
             }`
@@ -1173,81 +1210,89 @@ module.exports = {
         .join("\n");
 
       const roleEmbed = new EmbedBuilder()
-        .setTitle("__Liste des Rôles__")
+        .setTitle("__𝐋iste des Rôles__")
         .setColor("#b3c7ff")
         .setDescription(
-          `__**Rôles Prestige 0 :**__\n\n ${prestige0Roles}\n\n\n__**Rôles Prestige 1 :**__\n\n ${prestige1Roles}`
+          `__**𝐑ôles Prestige 0 :**__\n\n ${prestige0Roles}\n\n\n__**𝐑ôles Prestige 1 :**__\n\n ${prestige1Roles}`
         );
 
       interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
     }
     if (interaction.customId === "ROLES_PERSOLISTE") {
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+      }
+  
       let currentPrestige = "prestige0Roles";
-      await interaction.reply(
-        "Merci de **répondre** (clique droit ◟**Répondre**) avec les rôles personnalisés pour le prestige `0` (Niveau avant le prestige `1`). Vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules. (123456789, 123456789 etc ... )"
-      );
-
+      let secondsRemaining = 180;
+      let originalContent = `🙏🏻丨Merci de répondre en mentionnant les rôles personnalisés. Tu peux mentionner jusqu'à 12 rôles. *(Exemple: @Role1, @Role2, etc.)*`;
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(console.error);
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
       const collector = interaction.channel.createMessageCollector({
-        filter: (m) => m.author.id === interaction.user.id,
-        time: 60000,
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 180000
       });
-
+  
       collector.on("collect", async (m) => {
-        const roles = m.content.split(",").map((role) => role.trim());
-
-        if (roles.length > 12) {
-          interaction.followUp(
-            "Vous avez entré trop de rôles. Veuillez entrer jusqu'à 12 rôles __maximum__."
-          );
-          return;
-        }
-
-        const rolesInGuild = interaction.guild.roles.cache.map(
-          (role) => role.id
-        );
-        const rolesExist = roles.every((role) => rolesInGuild.includes(role));
-
-        if (!rolesExist) {
-          interaction.followUp(
-            "Un ou plusieurs rôles que vous avez entrés n'existent pas sur ce serveur. Veuillez vérifier les ID's des rôles et réessayer."
-          );
-          return;
-        }
-
-        let server = await ServerRole.findOne({
-          serverID: interaction.guild.id,
-        });
-
-        if (!server) {
-          server = new ServerRole({
-            serverID: interaction.guild.id,
-            serverName: interaction.guild.name,
-            prestige0Roles: [],
-            prestige1Roles: [],
+          clearInterval(interval);
+  
+          const roles = m.mentions.roles.map(role => role.id);
+  
+          if (roles.length > 12) {
+              await interaction.followUp("😵 Vous avez mentionné trop de rôles, le maximum est de 12.");
+              return;
+          }
+  
+          if (roles.some(roleId => interaction.guild.roles.cache.get(roleId).position >= botMember.roles.highest.position)) {
+              await interaction.followUp("↘️ Un ou plusieurs des rôles mentionnés sont supérieurs à mon rôle le plus élevé.");
+              return;
+          }
+  
+          let server = await ServerRole.findOne({ serverID: interaction.guild.id }) || new ServerRole({
+              serverID: interaction.guild.id,
+              serverName: interaction.guild.name,
+              prestige0Roles: [],
+              prestige1Roles: [],
           });
-        }
-        server[currentPrestige] = roles;
-        await server.save();
-
-        if (currentPrestige === "prestige0Roles") {
-          interaction.followUp(
-            "Rôles pour le prestige `0` enregistrés avec succès ! Veuillez maintenant entrer les rôles pour le prestige `1`. N'oubliez pas, vous pouvez entrer jusqu'à 12 rôles, séparés par des virgules."
-          );
-          currentPrestige = "prestige1Roles";
-        } else {
-          interaction.followUp(
-            "**Tous les rôles ont été enregistrés avec succès !**"
-          );
-          collector.stop();
-        }
+  
+          server[currentPrestige] = roles;
+          await server.save();
+  
+          const successMessage = `🤘 Les rôles pour le prestige \`${currentPrestige.replace('prestige', '').replace('Roles', '')}\` ont été enregistrés avec succès !`;
+          await interaction.followUp({ content: successMessage, ephemeral: true });
+  
+          if (currentPrestige === "prestige0Roles") {
+              currentPrestige = "prestige1Roles";
+              originalContent = `🙏🏻 Entrez maintenant les rôles pour le prestige \`1\`. N'oubliez pas, vous pouvez mentionner jusqu'à 12 rôles pour chaque prestige.`;
+              await interaction.followUp({ content: originalContent, ephemeral: false });
+              secondsRemaining = 180; // Reset timer for next collection
+          } else {
+              collector.stop();
+          }
       });
-
-      collector.on("end", (collected, reason) => {
-        if (reason === "time") {
-          interaction.followUp(
-            "__**Le temps pour entrer les rôles est écoulé. Veuillez réessayer.**__"
-          );
-        }
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              await interaction.followUp({ content: "⏳ Temps écoulé pour la réponse. Veuillez réessayer.", ephemeral: true });
+          }
       });
     }
     if (interaction.customId === "WELCOME_BUTTON") { //OK
@@ -1304,8 +1349,7 @@ module.exports = {
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série", ephemeral: true });
-              followUpMessages.push(timeoutMsg);
+              interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série.", ephemeral: true });
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
@@ -1335,15 +1379,18 @@ module.exports = {
       });
       let followUpMessages = [];
       const interval = setInterval(() => {
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message:', error);
-              });
-          } else {
+        secondsRemaining--;
+        if (secondsRemaining > 0) {
+          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+            if (error.code === 10008) {
               clearInterval(interval);
-          }
+            } else {
+              console.error('Erreur lors de la mise à jour du message :', error);
+            }
+          });
+        } else {
+          clearInterval(interval);
+        }
       }, 1000);
   
       const collector = interaction.channel.createMessageCollector({
@@ -2108,6 +2155,7 @@ module.exports = {
   
   collector.on("collect", async (m) => {
       clearInterval(interval);
+      await deleteMessage(m)
       followUpMessages.push(m);
   
       const role = m.mentions.roles.first();
@@ -2117,7 +2165,6 @@ module.exports = {
           return;
       }
   
-      // Vérifier si le rôle du bot est supérieur au rôle mentionné
       if (role.position >= botMember.roles.highest.position) {
           const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
           followUpMessages.push(errorMsg);
@@ -2301,7 +2348,7 @@ module.exports = {
       });
     }
     //Ajouté rôle du menu déroulant ROLE
-    if (interaction.customId === "Role_Menu") { // A REVOIR
+    if (interaction.customId === "Role_Menu") { 
       const roleId = interaction.values[0];
       const role = interaction.guild.roles.cache.get(roleId);
 
@@ -2329,7 +2376,7 @@ module.exports = {
           }
       }
     }
-    if (interaction.customId === "BINGO_PUSH") { // A REVOIR
+    if (interaction.customId === "BINGO_PUSH") { 
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig) {
           return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });

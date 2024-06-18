@@ -22,6 +22,37 @@ const Bingo = require('../models/bingo');
 module.exports = {
   name: "ready",
   async execute(bot, member) {
+
+    // Vérification des membres et serveurs + ajout dans la BDD si besoin
+    await initializeServersAndUsers(bot);
+    async function initializeServersAndUsers(bot) {
+      bot.guilds.cache.forEach(async (guild) => {
+        let serverConfig = await ServerConfig.findOne({ serverID: guild.id });
+        if (!serverConfig) {
+          serverConfig = new ServerConfig({
+            serverID: guild.id,
+            serverName: guild.name,
+          });
+          await serverConfig.save();
+        }
+    
+        guild.members.cache.forEach(async (member) => {
+          if (!member.user.bot) {
+            let user = await User.findOne({ userID: member.id, serverID: guild.id });
+            if (!user) {
+              user = new User({
+                userID: member.id,
+                username: member.user.tag,
+                serverID: guild.id,
+                serverName: guild.name,
+                joinedAt: member.joinedAt,
+              });
+              await user.save();
+            }
+          }
+        });
+      });
+    }
     
     //Bingo qui apparaît entre 2 et 5 jours avec gains de Falconix
     let isCheckingBingoGames = false
@@ -470,94 +501,95 @@ module.exports = {
       const streamThumbnailUrl = await getLiveStreamThumbnailByUsername(streamData.user_login, twitchHeaders);
       const gameThumbnailUrl = await getGameThumbnailUrl(streamData.game_id, twitchHeaders);
       const viewersCount = streamData.viewer_count;
-  
+    
       member.roles.add(roleId).catch(error => {
-          console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
+        console.error(`Erreur lors de l'ajout du rôle à ${member.user.tag} :`, error);
       });
+    
       if (streamData.user_login.toLowerCase() === specificStreamerUsername.toLowerCase()) {
         channel = bot.channels.cache.get(specificChannelId);
       } else {
-          channel = bot.channels.cache.get('812530008823955506');
+        channel = bot.channels.cache.get('812530008823955506');
       }
-  
-      const liveEmbed = new EmbedBuilder()
-          .setColor('#9146FF')
-          .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
-          .setTitle(streamTitle)
-          .setURL(`https://www.twitch.tv/${streamData.user_login}`)
-          .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n@here ➠ 𝐕ient on lui donne de la force.`)
-          .setThumbnail(gameThumbnailUrl)
-          .addFields(
-              { name: gameName, value: `\u200B`, inline: true },
-              { name: `\u200B`, value: `\u200B`, inline: true },
-              { name: `:eyes:丨${viewersCount}`, value: `\u200B`, inline: true },
-          )
-          .setImage(streamThumbnailUrl)
-          .setTimestamp()
-          .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
-  
-          if (data.isLive && data.lastMessageId) {
-            try {
-                const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-                await messageToUpdate.edit({ embeds: [liveEmbed] });
-                return;
-            } catch (error) {
-                if (error.httpStatus === 404 || error.code === '10008') {
-                    console.log(`Le message précédent pour ${streamData.user_name} n'existe pas, création d'un nouveau message.`);
-                    const newMessage = await channel.send({ embeds: [liveEmbed] });
-                    data.lastMessageId = newMessage.id;
-                } else {
-                    console.error(`Erreur lors de la mise à jour du message pour ${streamData.user_name}: ${error}`);
-                }
-            }
-        } else {
-            const newMessage = await channel.send({ embeds: [liveEmbed] });
-            data.lastMessageId = newMessage.id;
-            data.isLive = true;
-        }
     
-        streamerEntry.lastMessageId = data.lastMessageId;
-        streamerEntry.isLive = true;
-        streamerEntry.startedAt = new Date();
-        await streamerEntry.save();
-    }
+      const liveEmbed = new EmbedBuilder()
+        .setColor('#9146FF')
+        .setAuthor({ name: streamData.user_name, iconURL: profilePic, url: `https://www.twitch.tv/${streamData.user_login}` })
+        .setTitle(streamTitle)
+        .setURL(`https://www.twitch.tv/${streamData.user_login}`)
+        .setDescription(`𝐌aintenant en Live sur 𝐓𝐖𝐈𝐓𝐂𝐇 !\n@here ➠ 𝐕ient on lui donne de la force.`)
+        .setThumbnail(gameThumbnailUrl)
+        .addFields(
+          { name: gameName, value: `\u200B`, inline: true },
+          { name: `\u200B`, value: `\u200B`, inline: true },
+          { name: `:eyes:丨${viewersCount}`, value: `\u200B`, inline: true },
+        )
+        .setImage(streamThumbnailUrl)
+        .setTimestamp()
+        .setFooter({ text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
+    
+      if (data.isLive && data.lastMessageId) {
+        try {
+          const messageToDelete = await channel.messages.fetch(data.lastMessageId);
+          if (messageToDelete.author.id === bot.user.id) {
+            await messageToDelete.delete();
+          }
+        } catch (error) {
+          console.error(`Erreur lors de la suppression du message pour ${streamData.user_name}: ${error}`);
+        }
+      }
+      
+      const newMessage = await channel.send({ embeds: [liveEmbed] });
+      data.lastMessageId = newMessage.id;
+      data.isLive = true;
+    
+      streamerEntry.lastMessageId = data.lastMessageId;
+      streamerEntry.isLive = true;
+      streamerEntry.startedAt = new Date();
+      await streamerEntry.save();
+    } 
     async function handleStreamerOffline(streamerEntry, member, channel, data) {
       const specificStreamerUsername = 'tbmpqf';
       const specificChannelId = '717117472355909693';
       member.roles.remove(roleId).catch(error => {
-          console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
+        console.error(`Erreur lors de la suppression du rôle de ${member.user.tag} :`, error);
       });
-  
+    
       const streamDuration = getStreamDuration(data.startedAt);
       const profilePic = await getUserProfilePic(streamerEntry.twitchUsername);
-  
-      // Modification : Utiliser le nom d'utilisateur spécifique pour déterminer le canal
+    
       if (streamerEntry.twitchUsername.toLowerCase() === specificStreamerUsername.toLowerCase()) {
-          channel = bot.channels.cache.get(specificChannelId);
+        channel = bot.channels.cache.get(specificChannelId);
       } else {
-          channel = bot.channels.cache.get('812530008823955506');
+        channel = bot.channels.cache.get('812530008823955506');
       }
-  
+    
       const offlineEmbed = new EmbedBuilder()
-          .setColor('#9146FF')
-          .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
-          .setTitle('𝐇ors Ligne... :x:')
-          .setDescription(`𝐈l était en live pendant \`${streamDuration}\`.\n\n𝐌ais il revient prochainement pour de nouvelles aventures !`)
-          .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
-          .setThumbnail('https://i.postimg.cc/rFhsTf7F/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
-          .setTimestamp()
-          .setFooter({text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png'});
-  
+        .setColor('#9146FF')
+        .setAuthor({ name: streamerEntry.twitchUsername, iconURL: profilePic, url: `https://www.twitch.tv/${streamerEntry.twitchUsername}` })
+        .setTitle('𝐇ors Ligne... :x:')
+        .setDescription(`𝐈l était en live pendant \`${streamDuration}\`.\n\n𝐌ais il revient prochainement pour de nouvelles aventures !`)
+        .setURL(`https://www.twitch.tv/${streamerEntry.twitchUsername}`)
+        .setThumbnail('https://i.postimg.cc/rFhsTf7F/72958602-d4c8-49d9-9f97-a330dbdc3bbc.png')
+        .setTimestamp()
+        .setFooter({ text: `𝐓witch`, iconURL: 'https://seeklogo.com/images/T/twitch-logo-4931D91F85-seeklogo.com.png' });
+    
       if (data.lastMessageId) {
-          try {
-              const messageToUpdate = await channel.messages.fetch(data.lastMessageId);
-              await messageToUpdate.edit({ embeds: [offlineEmbed] });
-          } catch (error) {
-              console.error(`Erreur lors de la mise à jour du message pour ${streamerEntry.twitchUsername}: ${error}`);
+        try {
+          const messageToDelete = await channel.messages.fetch(data.lastMessageId);
+          if (messageToDelete.author.id === bot.user.id) {
+            await messageToDelete.delete();
           }
+        } catch (error) {
+          console.error(`Erreur lors de la suppression du message pour ${streamerEntry.twitchUsername}: ${error}`);
+        }
       }
+      
+      const newMessage = await channel.send({ embeds: [offlineEmbed] });
+      data.lastMessageId = newMessage.id;
       data.isLive = false;
       data.startedAt = null;
+    
       streamerEntry.isLive = false;
       streamerEntry.startedAt = null;
       streamerEntry.lastMessageId = data.lastMessageId;

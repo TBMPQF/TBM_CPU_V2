@@ -277,7 +277,7 @@ module.exports = {
         case "ROLES":
           const ROLESEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration des 𝐑ôles pour niveaux丨`")
-            .setDescription("Gestion des rôles de niveau, tu peux modifié les rôles donné lorsque un utilisateur passe niveau 1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45 et 50. Tu peux faire cela sur le prestige 1 aussi.")
+            .setDescription("𝐆estion des rôles de niveau, tu peux modifié les rôles donné lorsque un utilisateur passe niveau **1**, **2**, **5**, **10**, **15**, **20**, **25**, **30**, **35**, **40**, **45** et **50**.\n𝐓u peux faire cela sur le prestige 1 aussi.\n◟𝐈l te suffit juste de faire \`Liste\` et ensuite \`Modifier les rôles\`.")
             .setThumbnail(
               "https://cdn-icons-png.flaticon.com/512/33/33056.png"
             )
