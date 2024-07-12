@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const warningSchema = new mongoose.Schema({
+const warnSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     guildId: { type: String, required: true },
     userName: { type: String, required: true },
@@ -9,4 +9,4 @@ const warningSchema = new mongoose.Schema({
     muteEnd: { type: Date },
 });
 
-module.exports = mongoose.model('Warning', warningSchema, 'Warnings');
+module.exports = mongoose.model('Warning', warnSchema, 'Warns');

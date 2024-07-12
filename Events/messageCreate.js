@@ -17,7 +17,7 @@ module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
     if (message.author.bot) return;
-    filterMessage(message);
+    await filterMessage(message);
 
     //Gestion des messages pour la musique dans le salon musique
     function formatDuration(seconds) {
@@ -47,7 +47,7 @@ module.exports = {
       const formattedTitle = videos[0].title.replace(/ *\([^)]*\) */g, "").replace(/ *\[[^\]]*] */g, "");
       queue[serverId2].push({
           url: songUrl,
-          title: formattedTitle,  // Utilisez le titre formaté ici
+          title: formattedTitle,
           duration: duration
       });
 

@@ -23,12 +23,13 @@ const {
   createAudioPlayer,
   createAudioResource,
 } = require("@discordjs/voice");
-const { queue } = require("../models/queue");
+const queue = require('../models/queue').queue
 const SearchMateMessage = require('../models/searchMate');
 const VocalChannel = require('../models/vocalGames');
 const ApexStats = require('../models/apexStats');
 const Music = require("../models/music")
 const ServerRoleMenu = require('../models/serverRoleMenu')
+const Warning = require('../models/warns')
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -419,6 +420,70 @@ module.exports = {
       }
     }
 
+    //Unmute quelqu'un avec le bouton sur le message des logs
+    if (interaction.customId.startsWith("UNMUTE_")) {
+      const memberId = interaction.customId.split("_")[1];
+      const member = await interaction.guild.members.fetch(memberId);
+      if (!member) {
+        return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
+      }
+    
+      await interaction.reply({ content: 'Veuillez entrer la raison pour l\'unmute dans les 30 secondes.' });
+    
+      const filter = response => {
+        return response.author.id === interaction.user.id && !response.author.bot;
+      };
+    
+      const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 30000 });
+    
+      collector.on('collect', async response => {
+        const reason = response.content;
+    
+        const muteRole = interaction.guild.roles.cache.find(role => role.name === "丨𝐌uted");
+        if (muteRole) {
+          await member.roles.remove(muteRole).catch(console.error);
+          const roleStillInUse = interaction.guild.members.cache.some(m => m.roles.cache.has(muteRole.id));
+          if (!roleStillInUse) {
+            await muteRole.delete().catch(console.error);
+          }
+        }
+    
+        await Warning.deleteOne({ userId: member.id, guildId: interaction.guild.id });
+    
+        await interaction.deleteReply().catch(console.error);
+    
+        const logEmbed = new EmbedBuilder()
+          .setAuthor({
+            name: interaction.user.username,
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+          })
+          .setTitle(`Vient d'unmute ${member.user.tag}`)
+          .setDescription(`Pour la raison suivante : \`${reason}\``)
+          .setColor("Green")
+          .setTimestamp();
+    
+        const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+        if (serverConfig && serverConfig.logChannelID) {
+          const logChannel = interaction.guild.channels.cache.get(serverConfig.logChannelID);
+          if (logChannel) {
+            await logChannel.send({ embeds: [logEmbed] }).catch(console.error);
+          }
+        }
+    
+        // Supprimer le message de réponse de l'utilisateur après traitement
+        await response.delete().catch(console.error);
+        const originalMessage = await interaction.channel.messages.fetch(interaction.message.id);
+        const newEmbed = originalMessage.embeds[0];
+        await originalMessage.edit({ embeds: [newEmbed], components: [] }).catch(console.error);
+      });
+    
+      collector.on('end', collected => {
+        if (collected.size === 0) {
+          interaction.editReply({ content: 'Temps écoulé. Aucune raison fournie pour l\'unmute.', components: [] });
+        }
+      });
+    }
+
     // Gestion de la musique
     let connections = {};
     let playerIdleHandlerAttached = false;
@@ -432,87 +497,16 @@ module.exports = {
       }
       return voiceChannel;
     }
-    if (interaction.customId === "PLAY_MUSIC") {
-      const voiceChannel = await handleVoiceChannel(
-        interaction,
-        ":microphone2:丨𝐓u dois être dans un salon vocal pour lancer la playlist !"
-      );
-      if (!voiceChannel) return;
-
-      const serverId = interaction.guild.id;
-
-      if (!queue[serverId] || queue[serverId].length === 0) {
-        await sendAndDeleteMessage(
-          interaction,
-          ":snowflake:丨𝐋a playlist est actuellement vide.",
-          5000
-        );
-        return;
-      }
-
-      connections[serverId] = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: voiceChannel.guild.id,
-        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-      });
-
-      const player = createAudioPlayer();
-      await playNextSong(interaction, serverId, player, queue);
-
-      await sendAndDeleteMessage(
-        interaction,
-        ":saxophone:丨𝐉e lance la musique poulet !",
-        5000
-      );
-    }
-    async function playNextSong(interaction, serverId, player, queue) {
-      if (!queue[serverId] || queue[serverId].length === 0) {
-          if (connections[serverId]) {
-              connections[serverId].destroy();
-              delete connections[serverId];
-          }
-          return;
-      }
-      const song = queue[serverId][0];
-      queue[serverId].startTime = Date.now();
+    async function sendAndDeleteMessage(interaction, description, delay) {
       try {
-          const stream = ytdl(song.url, { filter: 'audioonly', quality: 'highestaudio' });
-          stream.on('error', error => {
-              console.error(`Erreur lors de la lecture de la musique : ${error.message}`);
-              queue[serverId].shift();
-              playNextSong(interaction, serverId, player, queue);
-          });
-  
-          const resource = createAudioResource(stream);
-          player.play(resource);
-          connections[serverId].subscribe(player);
-  
-      } catch (error) {
-          console.error(`Erreur lors de la création du flux de musique : ${error.message}`);
-          queue[serverId].shift();
-          playNextSong(interaction, serverId, player, queue);
-      }
-      if (!playerIdleHandlerAttached) {
-        player.on('idle', async () => { 
-          clearInterval(updateInterval);
-            if (queue[serverId] && queue[serverId].length > 0) {
-                queue[serverId].shift(); 
-                await updateMusicEmbed(interaction, serverId, queue);
-                playNextSong(interaction, serverId, player, queue);
-            } else {
-                if (connections[serverId]) {
-                    connections[serverId].destroy();
-                    delete connections[serverId];
-                }
-            }
+        const msg = await interaction.reply({
+          embeds: [{ description, color: 0x800080 }],
+          fetchReply: true,
         });
-        playerIdleHandlerAttached = true;
-    
+        setTimeout(() => msg.delete().catch(console.error), delay);
+      } catch (error) {
+        console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
       }
-      if (updateInterval) clearInterval(updateInterval);
-      updateInterval = setInterval(async () => {
-          await updateMusicEmbed(interaction, serverId, queue);
-      }, 10000);
     }
     async function updateMusicEmbed(interaction, serverId, queue) {
       try {
@@ -534,39 +528,31 @@ module.exports = {
           console.error('Entrée musicale ou channelId non trouvée dans la base de données pour le serveur:', serverId);
           return;
         }
-    
+
         const channel = await interaction.guild.channels.fetch(musicEntry.channelId);
         const message = await channel.messages.fetch(messageId).catch(console.error);
-    
+
         if (!message) {
           console.error("Le message à mettre à jour n'a pas été trouvé ou une erreur s'est produite lors de la récupération:", messageId);
           return;
         }
 
-    
         let playlistText = "";
-        for (let i = 0; i < queue[serverId].length; i++) {
-          let title = queue[serverId][i].title;
-          let duration = queue[serverId][i].duration
-          title = title.replace(/ *\([^)]*\) */g, "");
-          title = title.replace(/ *\[[^\]]*] */g, "");
-          const song = queue[serverId][i];
-          if (i === 0) {
-            playlistText += `\`${i + 1}\`丨**${song.title}** - \`${duration}\`\n`;
-          } else {
-            playlistText += `\`${i + 1}\`丨${song.title}\n`;
-          }
-        }
+        queue[serverId].forEach((song, index) => {
+          let title = song.title.replace(/ *\([^)]*\) */g, "").replace(/ *\[[^\]]*] */g, "");
+          playlistText += `\`${index + 1}\`丨${index === 0 ? `**${title}** - \`${song.duration}\`` : title}\n`;
+        });
+
         if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
-        
+
         const newEmbed = new EmbedBuilder()
           .setColor("Purple")
           .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
           .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
           .setDescription(playlistText.length === 0 ? "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist." : playlistText)
           .setFooter({
-            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
-            iconURL: bot.guilds.cache.get(serverId).iconURL(),
+            text: `Cordialement, l'équipe${interaction.guild.name}`,
+            iconURL: interaction.guild.iconURL(),
           });
 
         await message.edit({ embeds: [newEmbed] });
@@ -574,228 +560,202 @@ module.exports = {
         console.error('Erreur dans la fonction updateEmbedMessage:', error);
       }
     }
-    async function sendAndDeleteMessage(interaction, description, delay) {
+    async function playNextSong(interaction, serverId, player, queue) {
+      if (!queue[serverId] || queue[serverId].length === 0) {
+        if (connections[serverId]) {
+          connections[serverId].destroy();
+          delete connections[serverId];
+        }
+        return;
+      }
+
+      const song = queue[serverId][0];
+      queue[serverId].startTime = Date.now();
       try {
-        const msg = await interaction.reply({
-          embeds: [{ description, color: 0x800080 }],
-          fetchReply: true,
+        const stream = ytdl(song.url, { filter: 'audioonly', quality: 'highestaudio' });
+        stream.on('error', error => {
+          console.error(`Erreur lors de la lecture de la musique : ${error.message}`);
+          queue[serverId].shift();
+          playNextSong(interaction, serverId, player, queue);
         });
-        setTimeout(() => msg.delete().catch(console.error), delay);
+
+        const resource = createAudioResource(stream);
+        player.play(resource);
+        connections[serverId].subscribe(player);
+
       } catch (error) {
-        console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
+        console.error(`Erreur lors de la création du flux de musique : ${error.message}`);
+        queue[serverId].shift();
+        playNextSong(interaction, serverId, player, queue);
       }
+
+      if (!playerIdleHandlerAttached) {
+        player.on('idle', async () => {
+          clearInterval(updateInterval);
+          if (queue[serverId] && queue[serverId].length > 0) {
+            queue[serverId].shift();
+            await updateMusicEmbed(interaction, serverId, queue);
+            playNextSong(interaction, serverId, player, queue);
+          } else {
+            if (connections[serverId]) {
+              connections[serverId].destroy();
+              delete connections[serverId];
+            }
+          }
+        });
+        playerIdleHandlerAttached = true;
+      }
+
+      if (updateInterval) clearInterval(updateInterval);
+      updateInterval = setInterval(async () => {
+        await updateMusicEmbed(interaction, serverId, queue);
+      }, 10000);
     }
-    // Arrête la musique en cours et supprime la playlist
-    if (interaction.customId === "STOP_MUSIC") {
+    async function handleMusicInteractions(interaction, customId) {
       const serverId = interaction.guild.id;
-    
-      // Arrêter le lecteur audio si la file d'attente existe
-      if (queue[serverId] && queue[serverId].length > 0) {
-        player.stop();
-      }
-    
-      // Vider la file d'attente
-      queue[serverId] = [];
-    
-      // Déconnecter le bot du salon vocal et détruire la connexion
-      if (connections[serverId]) {
-        connections[serverId].disconnect(); // S'assurer de déconnecter avant de détruire
-        connections[serverId].destroy();
-        delete connections[serverId];
-      }
-    
-      // Mettre à jour l'embed pour refléter que la playlist est vide
-      await updateMusicEmbed(interaction, serverId, queue);
-    
-      // Envoyer une réponse pour confirmer l'arrêt de la musique
-      const stopMsg = await interaction.reply({
-        embeds: [{
-          description: ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.",
-          color: 0x800080,
-        }],
-      });
-      setTimeout(() => stopMsg.delete(), 5000);
-    }
-    
-    // Passe à la musique suivante
-    if (interaction.customId === "NEXT_MUSIC") {
       const voiceChannel = await handleVoiceChannel(
         interaction,
-        ":microphone2:丨𝐓u dois être dans un salon vocal pour passer à la prochaine musique !"
+        ":microphone2:丨𝐓u dois être dans un salon vocal pour lancer la playlist !"
       );
-      if (!voiceChannel) return;
-    
-      const serverId = interaction.guild.id;
-    
-      if (!queue[serverId] || queue[serverId].length === 0) {
-        sendAndDeleteMessage(
-          interaction,
-          ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.",
-          5000
-        );
-        return;
-      }
-    
-      if (!connections[serverId]) {
-        sendAndDeleteMessage(
-          interaction,
-          ":x:丨𝐉e ne suis pas connecté à un salon vocal.",
-          5000
-        );
-        return;
-      }
-    
-      queue[serverId].shift(); // Supprimer la chanson actuelle de la file d'attente
-      playNextSong(interaction, serverId, player, queue);
-    
-      sendAndDeleteMessage(
-        interaction,
-        ":next_track:丨𝐉'ai passé à la prochaine musique !",
-        5000
-      );
-    }
-    // Passe à la musique suivante
-    if (interaction.customId === "NEXT_MUSIC") {
-      const voiceChannel = await handleVoiceChannel(
-        interaction,
-        ":microphone2:丨𝐓u dois être dans un salon vocal pour passer à la prochaine musique !"
-      );
+
       if (!voiceChannel) return;
 
-      const serverId = interaction.guild.id;
+      if (customId === "PLAY_MUSIC") {
+        if (!queue[serverId] || queue[serverId].length === 0) {
+          await sendAndDeleteMessage(interaction, ":snowflake:丨𝐋a playlist est actuellement vide.", 5000);
+          return;
+        }
 
-      if (!queue[serverId] || queue[serverId].length === 0) {
-        sendAndDeleteMessage(
-          interaction,
-          ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.",
-          5000
-        );
-        return;
+        connections[serverId] = joinVoiceChannel({
+          channelId: voiceChannel.id,
+          guildId: voiceChannel.guild.id,
+          adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+        });
+
+        await playNextSong(interaction, serverId, player, queue);
+        await sendAndDeleteMessage(interaction, ":saxophone:丨𝐉e lance la musique poulet !", 5000);
+      } else if (customId === "STOP_MUSIC") {
+        if (queue[serverId] && queue[serverId].length > 0) {
+          player.stop();
+        }
+
+        queue[serverId] = [];
+        if (connections[serverId]) {
+          await connections[serverId].disconnect();
+          connections[serverId].destroy();
+          delete connections[serverId];
+        }
+
+        await updateMusicEmbed(interaction, serverId, queue);
+        await sendAndDeleteMessage(interaction, ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.", 5000);
+      } else if (customId === "NEXT_MUSIC") {
+        if (!queue[serverId] || queue[serverId].length === 0) {
+          await sendAndDeleteMessage(interaction, ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.", 5000);
+          return;
+        }
+
+        if (!connections[serverId]) {
+          await sendAndDeleteMessage(interaction, ":x:丨𝐉e ne suis pas connecté à un salon vocal.", 5000);
+          return;
+        }
+
+        queue[serverId].shift();
+        await playNextSong(interaction, serverId, player, queue);
+        await sendAndDeleteMessage(interaction, ":next_track:丨𝐉'ai passé à la prochaine musique !", 5000);
+      } else if (customId === "LYRICS_MUSIC") {
+        if (queue[serverId] && queue[serverId].length > 0) {
+          const currentSong = queue[serverId][0];
+          const [artist, title] = currentSong.title.split(" - ");
+          const lyrics = await getLyrics(artist, title);
+          const cleanedLyrics = lyrics.split('\n').slice(1).join('\n'); 
+          await sendLyricsEmbed(interaction, cleanedLyrics);
+        } else {
+          await sendAndDeleteMessage(interaction, "Aucune musique en cours de lecture.", 5000);
+        }
       }
-
-      if (!connections[serverId]) {
-        sendAndDeleteMessage(
-          interaction,
-          ":x:丨𝐉e ne suis pas connecté à un salon vocal.",
-          5000
-        );
-        return;
-      }
-
-      const player = createAudioPlayer();
-      playNextSong(interaction, serverId, player, queue);
-
-      sendAndDeleteMessage(
-        interaction,
-        ":next_track:丨𝐉'ai passé à la prochaine musique !",
-        5000
-      );
     }
     async function getLyrics(artist, title) {
       try {
-          const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
-          return response.data.lyrics;
+        const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
+        return response.data.lyrics;
       } catch (error) {
         console.error("Erreur lors de la récupération des paroles: ", error.message);
-        if (error.response) {
-            console.log(error.response.data);
-            console.log(error.response.status);
-            console.log(error.response.headers);
-        } else if (error.request) {
-            console.log(error.request);
-        } else {
-            console.log('Error', error.message);
-        }
         return "Les paroles ne sont pas disponibles.";
       }
     }
-    // Affiche les paroles de la musique en cours
     async function sendLyricsEmbed(interaction, lyrics, maxCharsPerPage = 2048) {
       function paginateLyrics(lyrics) {
-          let pages = [];
-          let currentPage = '';
-          lyrics.split('\n').forEach(line => {
-              if (currentPage.length + line.length + 1 > maxCharsPerPage) {
-                  pages.push(currentPage);
-                  currentPage = '';
-              }
-              currentPage += line + '\n';
-          });
-          if (currentPage.length > 0) {
-              pages.push(currentPage);
+        let pages = [];
+        let currentPage = '';
+        lyrics.split('\n').forEach(line => {
+          if (currentPage.length + line.length + 1 > maxCharsPerPage) {
+            pages.push(currentPage);
+            currentPage = '';
           }
-          return pages;
+          currentPage += line + '\n';
+        });
+        if (currentPage.length > 0) {
+          pages.push(currentPage);
+        }
+        return pages;
       }
-  
+
       const pages = paginateLyrics(lyrics);
       let currentPageIndex = 0;
-  
+
       const embed = new EmbedBuilder()
-          .setColor("Purple")
-          .setTitle("__𝐏aroles de la 𝐂hanson__")
-          .setDescription(pages[currentPageIndex])
-          .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
-  
+        .setColor("Purple")
+        .setTitle("__𝐏aroles de la 𝐂hanson__")
+        .setDescription(pages[currentPageIndex])
+        .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
+
       const row = new ActionRowBuilder()
-          .addComponents(
-              new ButtonBuilder()
-                  .setCustomId('previous')
-                  .setLabel('Précédent')
-                  .setStyle(ButtonStyle.Primary)
-                  .setDisabled(currentPageIndex === 0),
-              new ButtonBuilder()
-                  .setCustomId('next')
-                  .setLabel('Suivant')
-                  .setStyle(ButtonStyle.Primary)
-                  .setDisabled(currentPageIndex === pages.length - 1)
-          );
-  
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('previous')
+            .setLabel('Précédent')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPageIndex === 0),
+          new ButtonBuilder()
+            .setCustomId('next')
+            .setLabel('Suivant')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPageIndex === pages.length - 1)
+        );
+
       const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
-  
+
       const filter = (buttonInteraction) => ['previous', 'next'].includes(buttonInteraction.customId) && buttonInteraction.user.id === interaction.user.id;
-  
+
       const collector = message.createMessageComponentCollector({ filter, componentType: 'BUTTON', time: 60000 });
-  
+
       collector.on('collect', async (buttonInteraction) => {
-          if (buttonInteraction.customId === 'next' && currentPageIndex < pages.length - 1) {
-              currentPageIndex++;
-          } else if (buttonInteraction.customId === 'previous' && currentPageIndex > 0) {
-              currentPageIndex--;
-          }
-  
-          embed.setDescription(pages[currentPageIndex])
-              .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
-  
-          row.components[0].setDisabled(currentPageIndex === 0);
-          row.components[1].setDisabled(currentPageIndex === pages.length - 1);
-  
-          await buttonInteraction.update({ embeds: [embed], components: [row] });
+        if (buttonInteraction.customId === 'next' && currentPageIndex < pages.length - 1) {
+          currentPageIndex++;
+        } else if (buttonInteraction.customId === 'previous' && currentPageIndex > 0) {
+          currentPageIndex--;
+        }
+
+        embed.setDescription(pages[currentPageIndex])
+          .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
+
+        row.components[0].setDisabled(currentPageIndex === 0);
+        row.components[1].setDisabled(currentPageIndex === pages.length - 1);
+
+        await buttonInteraction.update({ embeds: [embed], components: [row] });
       });
-  
       collector.on('end', () => {
-          if (!message.deleted) {
-              message.edit({ components: [] }).catch(console.error);
-          }
+        if (!message.deleted) {
+          message.edit({ components: [] }).catch(console.error);
+        }
       });
     }
-    if (interaction.customId === "LYRICS_MUSIC") {
-      const serverId = interaction.guild.id;
-
-      if (queue[serverId] && queue[serverId].length > 0) {
-          const currentSong = queue[serverId][0];
-          const [artist, title] = currentSong.title.split(" - ");
-
-          const lyrics = await getLyrics(artist, title);
-          if (lyrics !== "Les paroles ne sont pas disponibles.") {
-              const cleanedLyrics = lyrics.split('\n').slice(1).join('\n'); 
-              await sendLyricsEmbed(interaction, cleanedLyrics);
-          } else {
-              await interaction.reply({ content: "Les paroles de cette chanson ne sont pas disponibles.", ephemeral: true });
-          }
-      } else {
-          await interaction.reply({ content: "Aucune musique en cours de lecture.", ephemeral: true });
-      }
+    const { customId } = interaction;
+    if (["PLAY_MUSIC", "STOP_MUSIC", "NEXT_MUSIC", "LYRICS_MUSIC"].includes(customId)) {
+      await handleMusicInteractions(interaction, customId);
     }
+
+    // Gérer les rôles des utilisateurs
     async function handleRole(interaction, member, roleID, roleName) {
       if (member.roles.cache.some((role) => role.id == roleID)) {
         await member.roles.remove(roleID);

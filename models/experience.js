@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
   voiceTime: { type: Number, default: 0 },
   prestige: { type: Number, default: 0 },
   falconix: { type: Number, default: 0},
+  recidive: { type: Number, default: 0},
 }, { versionKey: false, strict: true });
 
 userSchema.index({ userID: 1, serverID: 1 }, { unique: true });

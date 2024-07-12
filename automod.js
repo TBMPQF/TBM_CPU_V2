@@ -1,7 +1,8 @@
-const { EmbedBuilder } = require("discord.js");
-const Warning = require("./models/warnings");
+const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const Warning = require("./models/warns");
+const ServerConfig = require("./models/serverConfig");
+const User = require('./models/experience');
 
-// Expression régulière pour les mots interdits
 const forbiddenWords = new RegExp(
   `\\b(${[
     "fdp",
@@ -20,16 +21,57 @@ const forbiddenWords = new RegExp(
   "i"
 );
 
-const MUTED_ROLE_ID = "839824802038677524";
-const ROLE_TO_REMOVE_ID = "811662602530717738";
-const LOG_CHANNEL_ID = "1136953262818459718";
-
 const WARNING_MESSAGES = {
-  first: ":anger:丨{author}丨**𝐀ttention à ton language puceau.** :anger:\n**𝐍ombre d'avertissement(s) : `{warnings}`**",
-  second: "\n\n:warning:丨𝐀ttention ! 𝐏lus qu'__une erreur__ et tu es __muté__ pour 3 jours.",
-  muted: "丨**𝐁ien joué** {author}, tu as été mis en sourdine pour **`3`** jours en raison de **`3`** avertissements pour __langage inapproprié__.",
-  log: "丨{author} a été muté pour __3 jours__ après **`3`** avertissements pour **`langage inapproprié`**."
+  first: ":anger:丨**𝐀ttention à ton langage mon petit.** 🤏\n**𝐍ombre d'avertissement(s) : `{warnings}`**.",
+  second: "\n\n:warning:丨𝐏rends garde ! 𝐏lus qu'__une erreur__ et tu es **muté** pour 3 jours.",
+  muted: "丨𝐁ien joué, tu as été mis en sourdine pour **`3`** jours en raison de tes **`3`** avertissements pour __langage inapproprié__.",
+  log: "丨𝐕ient d'être muté après \`3\` avertissements pour langage inapproprié."
 };
+
+async function createMutedRole(guild) {
+  let muteRole = guild.roles.cache.find(role => role.name === "丨𝐌uted");
+  if (!muteRole) {
+    muteRole = await guild.roles.create({
+      name: "丨𝐌uted",
+      color: "#69e2ff",
+      permissions: [],
+      hoist: true
+    });
+  }
+  
+  const botHighestRole = guild.roles.cache.find(role => role.managed);
+  await muteRole.setPosition(botHighestRole.position - 1).catch(console.error);
+
+  guild.channels.cache.forEach(async (channel) => {
+    let permissionOverwrites = [
+      {
+        id: guild.roles.everyone.id,
+        deny: [PermissionsBitField.Flags.ViewChannel],
+      },
+      {
+        id: muteRole.id,
+        deny: [
+          PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.AddReactions,
+          PermissionsBitField.Flags.Connect,
+          PermissionsBitField.Flags.Speak,
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.CreatePrivateThreads,
+          PermissionsBitField.Flags.CreatePublicThreads,
+          PermissionsBitField.Flags.UseEmbeddedActivities,
+        ],
+      },
+    ];
+
+    try {
+      await channel.permissionOverwrites.edit(muteRole.id, { SendMessages: false , Connect: false, CreatePrivateThreads: false, CreatePublicThreads: false, UseEmbeddedActivities: false });
+    } catch (error) {
+      console.error(`[PERMISSION] Erreur lors de la configuration des permissions pour le canal ${channel.name} du serveur ${guild.name}:`, error);
+    }
+  });
+
+  return muteRole;
+}
 
 async function handleWarning(user, guild) {
   let warning = await Warning.findOne({ userId: user.id, guildId: guild.id });
@@ -45,54 +87,107 @@ async function handleWarning(user, guild) {
     warning.warnings += 1;
   }
   await warning.save();
-  return warning;
+  return warning;S
 }
 
 async function muteMember(member, warning) {
-  const muteRole = member.guild.roles.cache.get(MUTED_ROLE_ID);
-  const roleToRemove = member.guild.roles.cache.get(ROLE_TO_REMOVE_ID);
+  const muteRole = await createMutedRole(member.guild);
+  if (muteRole) {
+    await member.roles.add(muteRole).catch(console.error);
+  }
 
-  if (muteRole) member.roles.add(muteRole).catch(console.error);
-  if (roleToRemove) member.roles.remove(roleToRemove).catch(console.error);
+  await User.findOneAndUpdate(
+    { userID: member.id, serverID: member.guild.id },
+    { $inc: { recidive: 1 } },
+    { new: true, upsert: true }
+  ).catch(console.error);
 
   const muteEnd = new Date();
   muteEnd.setDate(muteEnd.getDate() + 3);
   warning.muteEnd = muteEnd;
   await warning.save();
+
+  setTimeout(async () => {
+    const updatedWarning = await Warning.findOne({ userId: member.id, guildId: member.guild.id });
+    if (updatedWarning && updatedWarning.muteEnd <= new Date()) {
+      await member.roles.remove(muteRole).catch(console.error);
+      const roleStillInUse = member.guild.members.cache.some(m => m.roles.cache.has(muteRole.id));
+      if (!roleStillInUse) {
+        await muteRole.delete().catch(console.error);
+      }
+      await Warning.deleteOne({ userId: member.id, guildId: member.guild.id });
+    }
+  }, 3 * 24 * 60 * 60 * 1000);
 }
 
 async function sendWarningMessage(channel, member, warning) {
-  let description = WARNING_MESSAGES.first.replace("{author}", member.toString()).replace("{warnings}", warning.warnings);
+  let description = WARNING_MESSAGES.first.replace("{warnings}", warning.warnings);
+  description = description.replace("{author}", member.toString());
+  if (warning.warnings === 1) {
+    description = description.replace("avertissement(s)", "avertissement");
+  } else {
+    description = description.replace("avertissement(s)", "avertissements");
+  }
   if (warning.warnings === 2) description += WARNING_MESSAGES.second;
 
-  const embed = new EmbedBuilder().setDescription(description).setColor("Red");
-  channel.send({ embeds: [embed] });
+  const embed = new EmbedBuilder()
+    .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+    .setDescription(description)
+    .setColor("Red");
+
+  if (channel) {
+    await channel.send({ embeds: [embed] }).catch(console.error);
+  }
+}
+
+async function sendLogMessage(guild, member, description) {
+  const serverConfig = await ServerConfig.findOne({ serverID: guild.id });
+  if (!serverConfig || !serverConfig.logChannelID) {
+    return;
+  }
+
+  const logChannel = guild.channels.cache.get(serverConfig.logChannelID);
+  if (logChannel) {
+    const user = await User.findOne({ userID: member.id, serverID: guild.id });
+    const recidiveCount = user ? user.recidive : 0;
+
+    const logEmbed = new EmbedBuilder()
+      .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+      .setDescription(description)
+      .setColor("Red")
+      .setTimestamp()
+      .setFooter({ text: `𝐍ombre de récidives : ${recidiveCount}` });
+
+    const unmuteButton = new ButtonBuilder()
+      .setCustomId(`UNMUTE_${member.id}`)
+      .setLabel("𝐃emande d'unmute. 📣")
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(unmuteButton);
+
+    await logChannel.send({ embeds: [logEmbed], components: [row] }).catch(console.error);
+  }
 }
 
 async function filterMessage(message) {
   if (message.author.bot || !message.content || !forbiddenWords.test(message.content)) return;
-  message.delete();
+  await message.delete().catch(console.error);
 
   const warning = await handleWarning(message.author, message.guild);
-  sendWarningMessage(message.channel, message.member, warning);
+  await sendWarningMessage(message.channel, message.member, warning);
 
   if (warning.warnings >= 3) {
-    muteMember(message.member, warning);
-
-    const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
-    const logEmbed = new EmbedBuilder()
-      .setDescription(WARNING_MESSAGES.log.replace("{author}", message.author.tag))
-      .setColor("Red")
-      .setTimestamp();
-
-    logChannel.send({ embeds: [logEmbed] });
+    await muteMember(message.member, warning);
+    const logDescription = WARNING_MESSAGES.log.replace("{author}", message.author.tag);
+    await sendLogMessage(message.guild, message.member, logDescription);
 
     const userEmbed = new EmbedBuilder()
+      .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
       .setDescription(WARNING_MESSAGES.muted.replace("{author}", message.author.tag))
       .setColor("Red")
       .setTimestamp();
 
-    message.channel.send({ embeds: [userEmbed] });
+    await message.channel.send({ embeds: [userEmbed] }).catch(console.error);
   }
 }
 
