@@ -428,7 +428,28 @@ module.exports = {
         return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
       }
     
-      await interaction.reply({ content: 'Veuillez entrer la raison pour l\'unmute dans les 30 secondes.' });
+      let secondsRemaining = 30;
+      const originalContent = `🙏🏻丨𝐌erci de répondre la **raison** pour laquelle tu veux unmute \`${member.user.tag}\`.`;
+      
+      const replyMessage = await interaction.reply({
+        content: `${originalContent} ***${secondsRemaining}s***`,
+        fetchReply: true
+      });
+      
+      const interval = setInterval(() => {
+        secondsRemaining--;
+        if (secondsRemaining > 0) {
+          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+            if (error.code === 10008) {
+              clearInterval(interval);
+            } else {
+              console.error('Erreur lors de la mise à jour du message :', error);
+            }
+          });
+        } else {
+          clearInterval(interval);
+        }
+      }, 1000);
     
       const filter = response => {
         return response.author.id === interaction.user.id && !response.author.bot;
@@ -437,6 +458,7 @@ module.exports = {
       const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 30000 });
     
       collector.on('collect', async response => {
+        clearInterval(interval);
         const reason = response.content;
     
         const muteRole = interaction.guild.roles.cache.find(role => role.name === "丨𝐌uted");
@@ -457,8 +479,8 @@ module.exports = {
             name: interaction.user.username,
             iconURL: interaction.user.displayAvatarURL({ dynamic: true })
           })
-          .setTitle(`Vient d'unmute ${member.user.tag}`)
-          .setDescription(`Pour la raison suivante : \`${reason}\``)
+          .setTitle(`丨𝐕ient d'unmute **${member.user.tag}**.`)
+          .setDescription(`𝐏our la raison suivante : \`${reason}.\``)
           .setColor("Green")
           .setTimestamp();
     
@@ -470,16 +492,16 @@ module.exports = {
           }
         }
     
-        // Supprimer le message de réponse de l'utilisateur après traitement
         await response.delete().catch(console.error);
         const originalMessage = await interaction.channel.messages.fetch(interaction.message.id);
         const newEmbed = originalMessage.embeds[0];
         await originalMessage.edit({ embeds: [newEmbed], components: [] }).catch(console.error);
       });
     
-      collector.on('end', collected => {
+      collector.on('end', async collected => {
+        clearInterval(interval);
         if (collected.size === 0) {
-          interaction.editReply({ content: 'Temps écoulé. Aucune raison fournie pour l\'unmute.', components: [] });
+          await interaction.editReply({ content: `⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série. 𝐀ucune raison fournie pour l\'unmute.`, components: [] });
         }
       });
     }
