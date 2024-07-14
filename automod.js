@@ -2,6 +2,7 @@ const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, Butt
 const Warning = require("./models/warns");
 const ServerConfig = require("./models/serverConfig");
 const User = require('./models/experience');
+const { unmuteRequests } = require('./models/shared');
 
 const forbiddenWords = new RegExp(
   `\\b(${[
@@ -224,13 +225,14 @@ async function sendLogMessage(guild, member, description) {
         .setFooter({ text: `𝐍ombre de récidives : ${recidiveCount}` });
 
       const unmuteButton = new ButtonBuilder()
-        .setCustomId(`UNMUTE_${member.id}`)
+        .setCustomId(`UNMUTE`)
         .setLabel("𝐃emande d'unmute. 📣")
         .setStyle(ButtonStyle.Danger);
 
       const row = new ActionRowBuilder().addComponents(unmuteButton);
 
-      await logChannel.send({ embeds: [logEmbed], components: [row] }).catch(console.error);
+      const message = await logChannel.send({ embeds: [logEmbed], components: [row] });
+      unmuteRequests.set(message.id, member.id);
     }
   } catch (error) {
     console.error(`[ERROR] Erreur lors de l'envoi du message de log:`, error);

@@ -30,6 +30,7 @@ const ApexStats = require('../models/apexStats');
 const Music = require("../models/music")
 const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
+const { unmuteRequests } = require('../models/shared');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -421,25 +422,28 @@ module.exports = {
     }
 
     //Unmute quelqu'un avec le bouton sur le message des logs
-    if (interaction.customId.startsWith("UNMUTE_")) {
-      const memberId = interaction.customId.split("_")[1];
+    if (interaction.customId === "UNMUTE") {
+      const memberId = unmuteRequests.get(interaction.message.id);
+      if (!memberId) {
+        return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
+      }
+    
       const member = await interaction.guild.members.fetch(memberId);
       if (!member) {
         return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
       }
     
       let secondsRemaining = 30;
-      const originalContent = `🙏🏻丨𝐌erci de répondre la **raison** pour laquelle tu veux unmute \`${member.user.tag}\`.`;
-      
+      const originalContent = `🙏🏻丨𝐌erci de répondre la **raison** pour laquelle tu veux unmute **\`${member.user.tag}\`**.`;
       const replyMessage = await interaction.reply({
         content: `${originalContent} ***${secondsRemaining}s***`,
         fetchReply: true
       });
-      
+    
       const interval = setInterval(() => {
         secondsRemaining--;
         if (secondsRemaining > 0) {
-          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+          replyMessage.edit({ content: `${originalContent} ***${secondsRemaining}s***` }).catch(error => {
             if (error.code === 10008) {
               clearInterval(interval);
             } else {
@@ -451,10 +455,7 @@ module.exports = {
         }
       }, 1000);
     
-      const filter = response => {
-        return response.author.id === interaction.user.id && !response.author.bot;
-      };
-    
+      const filter = response => response.author.id === interaction.user.id && !response.author.bot;
       const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 30000 });
     
       collector.on('collect', async response => {
@@ -472,14 +473,12 @@ module.exports = {
     
         await Warning.deleteOne({ userId: member.id, guildId: interaction.guild.id });
     
-        await interaction.deleteReply().catch(console.error);
-    
         const logEmbed = new EmbedBuilder()
           .setAuthor({
             name: interaction.user.username,
             iconURL: interaction.user.displayAvatarURL({ dynamic: true })
           })
-          .setTitle(`丨𝐕ient d'unmute **${member.user.tag}**.`)
+          .setTitle(`丨𝐕ient d'unmute ***${member.user.tag}***.`)
           .setDescription(`𝐏our la raison suivante : \`${reason}.\``)
           .setColor("Green")
           .setTimestamp();
@@ -493,15 +492,15 @@ module.exports = {
         }
     
         await response.delete().catch(console.error);
+        await replyMessage.delete().catch(console.error);
         const originalMessage = await interaction.channel.messages.fetch(interaction.message.id);
         const newEmbed = originalMessage.embeds[0];
         await originalMessage.edit({ embeds: [newEmbed], components: [] }).catch(console.error);
       });
     
-      collector.on('end', async collected => {
-        clearInterval(interval);
+      collector.on('end', collected => {
         if (collected.size === 0) {
-          await interaction.editReply({ content: `⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série. 𝐀ucune raison fournie pour l\'unmute.`, components: [] });
+          interaction.editReply({ content: '⏳丨𝐓emps écoulé pour la réponse, on est déjà à l\'épisode suivant de la série. 𝐀ucune raison fournie pour l\'unmute.', components: [] });
         }
       });
     }

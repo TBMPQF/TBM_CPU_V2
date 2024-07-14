@@ -2,13 +2,13 @@ const User = require("../models/experience");
 const voiceUsers = new Map();
 let xpDistributionInterval;
 const levelUp = require('../models/levelUp');
+const unmuteRequests = new Map();
 
 function initializeXpDistributionInterval(bot) {
   if (!xpDistributionInterval) {
     xpDistributionInterval = setInterval(() => updateVoiceTimeForAllUsers(bot), 420000);
   }
 }
-
 async function updateVoiceTimeForAllUsers(bot) {
   for (const [userId, userVoiceData] of voiceUsers.entries()) {
     await updateVoiceTimeForUser(userId, bot);
@@ -23,7 +23,6 @@ async function updateVoiceTimeForAllUsers(bot) {
     }
   }
 }
-
 async function updateVoiceTimeForUser(userId, bot) {
   const userVoiceData = voiceUsers.get(userId);
   if (userVoiceData) {
@@ -73,4 +72,5 @@ module.exports = {
     initializeXpDistributionInterval,
     updateUserVoiceTime,
     updateVoiceTimeForUser,
+    unmuteRequests,
   };
