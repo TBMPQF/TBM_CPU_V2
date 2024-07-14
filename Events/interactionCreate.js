@@ -31,6 +31,7 @@ const Music = require("../models/music")
 const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
 const { unmuteRequests } = require('../models/shared');
+const { intervalleAleatoire, lancerJeuBingo } = require('../bingoFunctions');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -2357,14 +2358,14 @@ module.exports = {
           }
       }
     }
-    if (interaction.customId === "BINGO_PUSH") { 
+    if (interaction.customId === "BINGO_PUSH") {
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig) {
-          return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });
+        return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });
       }
-
+    
       const bingoChannelName = serverConfig.bingoChannelName || "Salon non configuré";
-
+    
       const result = await Bingo.findOneAndUpdate(
         { serverID: interaction.guild.id },
         {
@@ -2379,22 +2380,17 @@ module.exports = {
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
-  
+    
       if (!result.nextBingoTime) {
-          const delayToNextBingo = randomInterval(2, 5);
-          const nextBingoTime = new Date(Date.now() + delayToNextBingo);
-          await Bingo.findOneAndUpdate(
-              { serverID: interaction.guild.id },
-              { $set: { nextBingoTime: nextBingoTime } }
-          );
+        const delayToNextBingo = intervalleAleatoire(2, 5); // 2 à 5 jours
+        const nextBingoTime = new Date(Date.now() + delayToNextBingo);
+        await Bingo.findOneAndUpdate(
+          { serverID: interaction.guild.id },
+          { $set: { nextBingoTime: nextBingoTime } }
+        );
       }
-  
+    
       await interaction.reply({ content: "丨𝐋e \`𝐁ingo\` a été activé ! :comet:", ephemeral: true });
-    }
-    function randomInterval(minDays, maxDays) {
-        const minMilliseconds = minDays * 24 * 60 * 60 * 1000;
-        const maxMilliseconds = maxDays * 24 * 60 * 60 * 1000;
-        return Math.floor(Math.random() * (maxMilliseconds - minMilliseconds + 1) + minMilliseconds);
     }
     if (interaction.customId === "BINGO_BUTTON") { //OK
       let secondsRemaining = 60;
@@ -2642,7 +2638,7 @@ module.exports = {
           bingoChannelName: null
       }, { new: true }).then(updatedBingoConfig => {
           if (updatedBingoConfig) {
-              interaction.reply('Le bingo a été désactivé et le prochain temps de bingo enlevé.');
+              interaction.reply({content: '丨𝐋e \`𝐁ingo\` a été désactivé et le prochain temps de bingo enlevé.',  ephemeral: true });
           } else {
               interaction.reply('Configuration du bingo introuvable pour ce serveur.');
           }
@@ -2656,11 +2652,6 @@ module.exports = {
           bingoChannelID: null, 
           bingoChannelName: null 
       }, { new: true }).then(updatedServerConfig => {
-          if (updatedServerConfig) {
-              console.log('Le salon du bingo a été enlevé de la configuration.');
-          } else {
-              console.log('Configuration du serveur introuvable.');
-          }
       }).catch(error => {
           console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
       });
