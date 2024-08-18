@@ -8,7 +8,6 @@ const ServerRole = require("../models/serverRole");
 const User = require("../models/experience");
 const MINECRAFT_SERVER_DOMAIN = config.serveurMinecraftDOMAIN;
 const Music = require("../models/music")
-const queue = require('../models/queue')
 const SearchMateMessage = require('../models/searchMate');
 const userChannels = require('../models/userChannels');
 const VocalChannel = require('../models/vocalGames');
@@ -571,13 +570,12 @@ module.exports = {
         
         channel.messages.fetch(musicEntry.messageId)
         .then((message) => {
-          if(queue[serverId]) queue[serverId] = [];
           
           const newEmbed = new EmbedBuilder()
             .setColor("Purple")
             .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
             .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist.")
+            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.")
             .setFooter({
               text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
               iconURL: bot.guilds.cache.get(serverId).iconURL(),

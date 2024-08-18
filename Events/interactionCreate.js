@@ -534,7 +534,7 @@ module.exports = {
         if (member.roles.cache.has(roleId)) {
           await interaction.reply({
             content:
-              "Tu as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:",
+              "丨𝐓u as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:",
             ephemeral: true,
           });
           return;
