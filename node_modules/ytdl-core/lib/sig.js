@@ -55,7 +55,7 @@ exports.extractFunctions = body => {
     }
   };
   const extractNCode = () => {
-    let functionName = utils.between(body, `&&(b=a.get("n"))&&(b=`, `(b)`);
+    let functionName = utils.between(body, `&&(b=a.get("n"))&&(b=`, `(b)`) || utils.between(body, `&&(b=String.fromCharCode(110),c=a.get(b))&&(c=`, `(c)`);
     if (functionName.includes('[')) functionName = utils.between(body, `var ${functionName.split('[')[0]}=[`, `]`);
     if (functionName && functionName.length) {
       const functionStart = `${functionName}=function(a)`;

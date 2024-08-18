@@ -1,27 +1,30 @@
 const fs = require("fs");
 
+const successIcon = "\x1b[32m\u2714\x1b[0m"; // Symbole CHECK en vert
+const commandColor = "\x1b[36m"; // Couleur cyan pour les commandes
+const resetColor = "\x1b[0m"; // Réinitialisation de la couleur
+const lineSeparator = `${resetColor}------------------------------------------------`;
+
 module.exports = async (bot) => {
   const commandSubFolders = fs
     .readdirSync("./commands/")
     .filter((f) => !f.endsWith(".js"));
+  
+  let totalCommands = 0;
+  
   commandSubFolders.forEach((folder) => {
     const commandFiles = fs
       .readdirSync(`./commands/${folder}/`)
       .filter((f) => f.endsWith(".js"));
 
-    for (const file of commandFiles) {
+    commandFiles.forEach((file) => {
       const command = require(`./../../commands/${folder}/${file}`);
       bot.commands.set(command.name, command);
-      console.log(
-        "\x1b[31m" +
-          `La commande ` +
-          "\x1b[35m" +
-          `${file.split(".")[0]}` +
-          "\x1b[31m" +
-          " est chargé depuis " +
-          "\x1b[35m" +
-          `${folder}`
-      );
-    }
+      totalCommands++;
+    });
   });
+
+  console.log(lineSeparator);
+  console.log(`| ${successIcon} ${commandColor}${totalCommands}${resetColor} commandes ont été chargées avec succès ! |`);
+  console.log(lineSeparator);
 };

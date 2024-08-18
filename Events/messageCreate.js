@@ -7,113 +7,13 @@ const {
 const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const ServerConfig = require("../models/serverConfig");
-const yts = require("yt-search");
-const { queue } = require("../models/queue");
-const Music = require("../models/music");
 const { filterMessage } = require('../automod');
-const ytdl = require('ytdl-core');
 
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
     if (message.author.bot) return;
     await filterMessage(message);
-
-    //Gestion des messages pour la musique dans le salon musique
-    function formatDuration(seconds) {
-      const date = new Date(0);
-      date.setSeconds(seconds);
-      const timeString = date.toISOString().substr(11, 8);
-      return timeString.startsWith("00:") ? timeString.substr(3) : timeString;
-    }
-    if (message.channel.id === "1136327173343559810") {
-      const { videos } = await yts.search(message.content);
-      if (videos.length == 0) {
-        const noResultEmbed = new EmbedBuilder()
-          .setColor("Purple")
-          .setDescription("Aucun résultat trouvé");
-        return message.channel.send({ embeds: [noResultEmbed] }).then((msg) => {
-          setTimeout(() => msg.delete(), 5000);
-        });
-      }
-
-      const songUrl = videos[0].url;
-      const videoInfo = await ytdl.getInfo(songUrl);
-      const duration = formatDuration(videoInfo.videoDetails.lengthSeconds);
-      const serverId2 = message.guild.id;
-      if (!queue[serverId2]) {
-        queue[serverId2] = [];
-      }
-      const formattedTitle = videos[0].title.replace(/ *\([^)]*\) */g, "").replace(/ *\[[^\]]*] */g, "");
-      queue[serverId2].push({
-          url: songUrl,
-          title: formattedTitle,
-          duration: duration
-      });
-
-      const musicEntry = await Music.findOne({ serverId: serverId2 });
-
-      let messageEntry;
-
-      if (musicEntry && musicEntry.messageId) {
-        messageEntry = await message.channel.messages.fetch(
-          musicEntry.messageId
-        );
-      }
-
-      const songAddedEmbed = new EmbedBuilder()
-        .setColor("Purple")
-        .setDescription(
-          `"${videos[0].title}" a été ajouté à la liste de lecture.`
-        );
-
-      if (messageEntry) {
-        const oldEmbed = messageEntry.embeds[0];
-
-        let playlistText = "";
-        for (let i = 0; i < queue[serverId2].length; i++) {
-          const song = queue[serverId2][i];
-          let title = queue[serverId2][i].title;
-          const duration = song.duration;
-          title = title.replace(/ *\([^)]*\) */g, "");
-          title = title.replace(/ *\[[^\]]*] */g, "");
-
-          if (i === 0) {
-            playlistText += `\`${i + 1}\`丨**${title}** - \`${duration}\`\n`;
-          } else {
-            playlistText += `\`${i + 1}\`丨${title}\n`;
-          }
-        }
-
-        const newEmbed = new EmbedBuilder()
-          .setColor("Purple")
-          .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
-          .setThumbnail(
-            "https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj"
-          )
-          .setDescription(playlistText)
-          .setFooter({
-            text: `Cordialement, l'équipe${message.guild.name}`,
-            iconURL: message.guild.iconURL(),
-          });
-
-        await messageEntry.edit({ embeds: [newEmbed] });
-      } else {
-        messageEntry = await message.channel.send({ embeds: [songAddedEmbed] });
-
-        if (musicEntry) {
-          musicEntry.messageId = messageEntry.id;
-          await musicEntry.save();
-        } else {
-          await Music.create({
-            serverId: serverId2,
-            messageId: messageEntry.id,
-          });
-        }
-      }
-
-      message.delete();
-    }
 
     // Expérience pour chaque message
     const now = new Date();

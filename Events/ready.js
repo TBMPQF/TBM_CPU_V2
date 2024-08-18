@@ -17,10 +17,53 @@ const InVocal = require("../models/inVocal")
 const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
 const moment = require('moment-timezone');
 const { verifierEtLancerJeuxBingo } = require('../bingoFunctions');
+const fs = require('fs');
 
 module.exports = {
   name: "ready",
   async execute(bot, member) {
+    //Log de portainer en fichier .txt
+    const CHANNEL_ID = '1272586896920285365';
+    const logFilePath = 'logs/error.log';
+
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    const timestamp = `${day}-${month}-${year}_${hours}h${minute}min${seconds}s`;
+    const filteredLogFilePath = `Error_Scan_${timestamp}.js`;
+
+    async function sendLogs() {
+      try {
+        if (fs.existsSync(logFilePath)) {
+          const logContent = fs.readFileSync(logFilePath, 'utf-8');
+          if (logContent.trim().length === 0) {
+            return; 
+          }
+          fs.writeFileSync(filteredLogFilePath, logContent);
+
+          const channel = await bot.channels.fetch(CHANNEL_ID);
+          if (channel) {
+            await channel.send({
+              files: [filteredLogFilePath],
+            });
+          }
+
+          fs.unlinkSync(filteredLogFilePath);
+        } else {
+          console.error(`Le fichier de logs n'a pas été trouvé à l'emplacement : ${logFilePath}`);
+        }
+      } catch (error) {
+        console.error('Erreur lors de l\'envoi des logs:', error);
+      }
+    }
+
+    await sendLogs();
+
     // Lancer le Bingo
     verifierEtLancerJeuxBingo(bot);
 
@@ -550,6 +593,7 @@ module.exports = {
       console.error(`Failed to fetch music entry: ${error}`);
     });
 
+    loadSlashCommands(bot);
     //Donne l'heure Française
     function formatTwoDigits(num) {
       return num < 10 ? `0${num}` : num.toString();
@@ -569,8 +613,6 @@ module.exports = {
         "\x1b[33m" +
         `${dateHeureFrancaise}\n`
     );
-
-    loadSlashCommands(bot);
 
     //Interval pour mettre a jour le salon vocal Minecraft et check les lives Twitch
     const TBMPQF_SERVER_ID = '716810235985133568';

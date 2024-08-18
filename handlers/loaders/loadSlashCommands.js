@@ -72,5 +72,4 @@ module.exports = async bot => {
     const rest = new REST({version: "10"}).setToken(bot.token)
 
     await rest.put(Routes.applicationCommands(bot.user.id), {body: commands})
-    console.log("Les slashs commands OK")
 }

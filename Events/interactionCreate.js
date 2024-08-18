@@ -17,17 +17,9 @@ const ServerRole = require("../models/serverRole");
 const Bingo = require("../models/bingo")
 const axios = require('axios');
 const ServerConfig = require("../models/serverConfig");
-const ytdl = require("ytdl-core");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-} = require("@discordjs/voice");
-const queue = require('../models/queue').queue
 const SearchMateMessage = require('../models/searchMate');
 const VocalChannel = require('../models/vocalGames');
 const ApexStats = require('../models/apexStats');
-const Music = require("../models/music")
 const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
 const { unmuteRequests } = require('../models/shared');
@@ -506,277 +498,6 @@ module.exports = {
       });
     }
 
-    // Gestion de la musique
-    let connections = {};
-    let playerIdleHandlerAttached = false;
-    const player = createAudioPlayer();
-    let updateInterval;
-    async function handleVoiceChannel(interaction, notInChannelMessage) {
-      const voiceChannel = interaction.member.voice.channel;
-      if (!voiceChannel) {
-        await sendAndDeleteMessage(interaction, notInChannelMessage, 5000);
-        return null;
-      }
-      return voiceChannel;
-    }
-    async function sendAndDeleteMessage(interaction, description, delay) {
-      try {
-        const msg = await interaction.reply({
-          embeds: [{ description, color: 0x800080 }],
-          fetchReply: true,
-        });
-        setTimeout(() => msg.delete().catch(console.error), delay);
-      } catch (error) {
-        console.error('Erreur dans la fonction sendAndDeleteMessage :', error);
-      }
-    }
-    async function updateMusicEmbed(interaction, serverId, queue) {
-      try {
-        const musicEntry = await Music.findOne({ serverId });
-        if (!musicEntry) {
-          console.error('Music entry not found in the database');
-          return;
-        }
-        const messageId = musicEntry.messageId;
-        await updateEmbedMessage(interaction, serverId, queue, messageId);
-      } catch (error) {
-        console.error('Error in updateMusicEmbed:', error);
-      }
-    }
-    async function updateEmbedMessage(interaction, serverId, queue, messageId) {
-      try {
-        const musicEntry = await Music.findOne({ serverId });
-        if (!musicEntry || !musicEntry.channelId) {
-          console.error('Entrée musicale ou channelId non trouvée dans la base de données pour le serveur:', serverId);
-          return;
-        }
-
-        const channel = await interaction.guild.channels.fetch(musicEntry.channelId);
-        const message = await channel.messages.fetch(messageId).catch(console.error);
-
-        if (!message) {
-          console.error("Le message à mettre à jour n'a pas été trouvé ou une erreur s'est produite lors de la récupération:", messageId);
-          return;
-        }
-
-        let playlistText = "";
-        queue[serverId].forEach((song, index) => {
-          let title = song.title.replace(/ *\([^)]*\) */g, "").replace(/ *\[[^\]]*] */g, "");
-          playlistText += `\`${index + 1}\`丨${index === 0 ? `**${title}** - \`${song.duration}\`` : title}\n`;
-        });
-
-        if (playlistText.length > 4096) playlistText = playlistText.substring(0, 4093) + '...';
-
-        const newEmbed = new EmbedBuilder()
-          .setColor("Purple")
-          .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
-          .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-          .setDescription(playlistText.length === 0 ? "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouté dans la playlist." : playlistText)
-          .setFooter({
-            text: `Cordialement, l'équipe${interaction.guild.name}`,
-            iconURL: interaction.guild.iconURL(),
-          });
-
-        await message.edit({ embeds: [newEmbed] });
-      } catch (error) {
-        console.error('Erreur dans la fonction updateEmbedMessage:', error);
-      }
-    }
-    async function playNextSong(interaction, serverId, player, queue) {
-      if (!queue[serverId] || queue[serverId].length === 0) {
-        if (connections[serverId]) {
-          connections[serverId].destroy();
-          delete connections[serverId];
-        }
-        return;
-      }
-
-      const song = queue[serverId][0];
-      queue[serverId].startTime = Date.now();
-      try {
-        const stream = ytdl(song.url, { filter: 'audioonly', quality: 'highestaudio' });
-        stream.on('error', error => {
-          console.error(`Erreur lors de la lecture de la musique : ${error.message}`);
-          queue[serverId].shift();
-          playNextSong(interaction, serverId, player, queue);
-        });
-
-        const resource = createAudioResource(stream);
-        player.play(resource);
-        connections[serverId].subscribe(player);
-
-      } catch (error) {
-        console.error(`Erreur lors de la création du flux de musique : ${error.message}`);
-        queue[serverId].shift();
-        playNextSong(interaction, serverId, player, queue);
-      }
-
-      if (!playerIdleHandlerAttached) {
-        player.on('idle', async () => {
-          clearInterval(updateInterval);
-          if (queue[serverId] && queue[serverId].length > 0) {
-            queue[serverId].shift();
-            await updateMusicEmbed(interaction, serverId, queue);
-            playNextSong(interaction, serverId, player, queue);
-          } else {
-            if (connections[serverId]) {
-              connections[serverId].destroy();
-              delete connections[serverId];
-            }
-          }
-        });
-        playerIdleHandlerAttached = true;
-      }
-
-      if (updateInterval) clearInterval(updateInterval);
-      updateInterval = setInterval(async () => {
-        await updateMusicEmbed(interaction, serverId, queue);
-      }, 10000);
-    }
-    async function handleMusicInteractions(interaction, customId) {
-      const serverId = interaction.guild.id;
-      const voiceChannel = await handleVoiceChannel(
-        interaction,
-        ":microphone2:丨𝐓u dois être dans un salon vocal pour lancer la playlist !"
-      );
-
-      if (!voiceChannel) return;
-
-      if (customId === "PLAY_MUSIC") {
-        if (!queue[serverId] || queue[serverId].length === 0) {
-          await sendAndDeleteMessage(interaction, ":snowflake:丨𝐋a playlist est actuellement vide.", 5000);
-          return;
-        }
-
-        connections[serverId] = joinVoiceChannel({
-          channelId: voiceChannel.id,
-          guildId: voiceChannel.guild.id,
-          adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-        });
-
-        await playNextSong(interaction, serverId, player, queue);
-        await sendAndDeleteMessage(interaction, ":saxophone:丨𝐉e lance la musique poulet !", 5000);
-      } else if (customId === "STOP_MUSIC") {
-        if (queue[serverId] && queue[serverId].length > 0) {
-          player.stop();
-        }
-
-        queue[serverId] = [];
-        if (connections[serverId]) {
-          await connections[serverId].disconnect();
-          connections[serverId].destroy();
-          delete connections[serverId];
-        }
-
-        await updateMusicEmbed(interaction, serverId, queue);
-        await sendAndDeleteMessage(interaction, ":no_entry_sign:丨La musique a été arrêtée et la playlist est vide.", 5000);
-      } else if (customId === "NEXT_MUSIC") {
-        if (!queue[serverId] || queue[serverId].length === 0) {
-          await sendAndDeleteMessage(interaction, ":snowflake:丨𝐈l n'y a pas d'autre chanson dans la playlist après celle-là.", 5000);
-          return;
-        }
-
-        if (!connections[serverId]) {
-          await sendAndDeleteMessage(interaction, ":x:丨𝐉e ne suis pas connecté à un salon vocal.", 5000);
-          return;
-        }
-
-        queue[serverId].shift();
-        await playNextSong(interaction, serverId, player, queue);
-        await sendAndDeleteMessage(interaction, ":next_track:丨𝐉'ai passé à la prochaine musique !", 5000);
-      } else if (customId === "LYRICS_MUSIC") {
-        if (queue[serverId] && queue[serverId].length > 0) {
-          const currentSong = queue[serverId][0];
-          const [artist, title] = currentSong.title.split(" - ");
-          const lyrics = await getLyrics(artist, title);
-          const cleanedLyrics = lyrics.split('\n').slice(1).join('\n'); 
-          await sendLyricsEmbed(interaction, cleanedLyrics);
-        } else {
-          await sendAndDeleteMessage(interaction, "Aucune musique en cours de lecture.", 5000);
-        }
-      }
-    }
-    async function getLyrics(artist, title) {
-      try {
-        const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
-        return response.data.lyrics;
-      } catch (error) {
-        console.error("Erreur lors de la récupération des paroles: ", error.message);
-        return "Les paroles ne sont pas disponibles.";
-      }
-    }
-    async function sendLyricsEmbed(interaction, lyrics, maxCharsPerPage = 2048) {
-      function paginateLyrics(lyrics) {
-        let pages = [];
-        let currentPage = '';
-        lyrics.split('\n').forEach(line => {
-          if (currentPage.length + line.length + 1 > maxCharsPerPage) {
-            pages.push(currentPage);
-            currentPage = '';
-          }
-          currentPage += line + '\n';
-        });
-        if (currentPage.length > 0) {
-          pages.push(currentPage);
-        }
-        return pages;
-      }
-
-      const pages = paginateLyrics(lyrics);
-      let currentPageIndex = 0;
-
-      const embed = new EmbedBuilder()
-        .setColor("Purple")
-        .setTitle("__𝐏aroles de la 𝐂hanson__")
-        .setDescription(pages[currentPageIndex])
-        .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
-
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('previous')
-            .setLabel('Précédent')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPageIndex === 0),
-          new ButtonBuilder()
-            .setCustomId('next')
-            .setLabel('Suivant')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPageIndex === pages.length - 1)
-        );
-
-      const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
-
-      const filter = (buttonInteraction) => ['previous', 'next'].includes(buttonInteraction.customId) && buttonInteraction.user.id === interaction.user.id;
-
-      const collector = message.createMessageComponentCollector({ filter, componentType: 'BUTTON', time: 60000 });
-
-      collector.on('collect', async (buttonInteraction) => {
-        if (buttonInteraction.customId === 'next' && currentPageIndex < pages.length - 1) {
-          currentPageIndex++;
-        } else if (buttonInteraction.customId === 'previous' && currentPageIndex > 0) {
-          currentPageIndex--;
-        }
-
-        embed.setDescription(pages[currentPageIndex])
-          .setFooter({ text: `Page ${currentPageIndex + 1} sur ${pages.length}`, iconURL: interaction.guild.iconURL() });
-
-        row.components[0].setDisabled(currentPageIndex === 0);
-        row.components[1].setDisabled(currentPageIndex === pages.length - 1);
-
-        await buttonInteraction.update({ embeds: [embed], components: [row] });
-      });
-      collector.on('end', () => {
-        if (!message.deleted) {
-          message.edit({ components: [] }).catch(console.error);
-        }
-      });
-    }
-    const { customId } = interaction;
-    if (["PLAY_MUSIC", "STOP_MUSIC", "NEXT_MUSIC", "LYRICS_MUSIC"].includes(customId)) {
-      await handleMusicInteractions(interaction, customId);
-    }
-
     // Gérer les rôles des utilisateurs
     async function handleRole(interaction, member, roleID, roleName) {
       if (member.roles.cache.some((role) => role.id == roleID)) {
@@ -851,76 +572,88 @@ module.exports = {
     //Bouton pour Ticket => Création salon avec fermeture une fois terminé.
     if (interaction.customId === "CREATE_CHANNEL") {
       const serverConfig = await mongoose
-        .model("ServerConfig")
-        .findOne({ serverID: interaction.guild.id });
+          .model("ServerConfig")
+          .findOne({ serverID: interaction.guild.id });
       const DisboardBOTId = "302050872383242240";
       const AdminRoleID = serverConfig.ticketAdminRoleID;
       await interaction.deferReply({ ephemeral: true });
-
+  
       const parentChannel = interaction.channel;
-
-      let permissionOverwrites = [
-        {
-          id: interaction.guild.roles.everyone.id,
-          deny: [PermissionsBitField.Flags.ViewChannel],
-        },
-        {
-          id: interaction.user,
-          allow: [
-            PermissionsBitField.Flags.SendMessages,
-            PermissionsBitField.Flags.ViewChannel,
-          ],
-        },
-        {
-          id: DisboardBOTId,
-          deny: [PermissionsBitField.Flags.ViewChannel],
-        },
-      ];
-
-      if (AdminRoleID) {
-        permissionOverwrites.push({
-          id: AdminRoleID,
-          allow: [
-            PermissionsBitField.Flags.SendMessages,
-            PermissionsBitField.Flags.ViewChannel,
-          ],
-        });
-      }
-
-      let channel = await interaction.guild.channels.create({
-        name: `🎫丨𝐓icket丨${interaction.user.username}`,
-        parent: parentChannel.parentId,
-        type: ChannelType.GuildText,
-        permissionOverwrites: permissionOverwrites,
-      });
-
-      const clearembed = new EmbedBuilder()
-        .setDescription(
-          `${interaction.user}\n丨𝐓on dossier va être étudié, __merci d'être patient__, notre équipe s'occupe de tout !`
-        )
-        .setColor("Blue");
-
-      const deletebutton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("DELETE_TICKET")
-          .setEmoji("❌")
-          .setLabel("Supprimer le ticket")
-          .setStyle(ButtonStyle.Danger)
+  
+      const existingChannel = interaction.guild.channels.cache.find(channel => 
+          channel.name.includes(`𝐓icket丨${interaction.user.username}`) && 
+          channel.parentId === parentChannel.parentId
       );
-
-      await channel.send({
-        embeds: [clearembed],
-        components: [deletebutton],
-      });
-
-      if (!AdminRoleID) {
-        await channel.send(
-          "⚠丨__**Attention**__丨Le rôle d'administrateur __n'est pas__ défini pour la gestion des tickets. Un modérateur vient d'être contacté pour traité le problème dans les plus bref délais, désolé de l'attente."
-        );
+  
+      if (existingChannel) {
+            await interaction.editReply({
+              content: "丨𝐖hoa, du calme champion ! 𝐓u as déjà un __ticket__ ouvert. 𝐎n n'est pas des robots... enfin presque. 𝐋aisse-nous un peu de temps avant d'en ouvrir un autre !",
+          });
+          return;
       }
-
+  
+      let permissionOverwrites = [
+          {
+              id: interaction.guild.roles.everyone.id,
+              deny: [PermissionsBitField.Flags.ViewChannel],
+          },
+          {
+              id: interaction.user.id,
+              allow: [
+                  PermissionsBitField.Flags.SendMessages,
+                  PermissionsBitField.Flags.ViewChannel,
+              ],
+          },
+          {
+              id: DisboardBOTId,
+              deny: [PermissionsBitField.Flags.ViewChannel],
+          },
+      ];
+  
+      if (AdminRoleID) {
+          permissionOverwrites.push({
+              id: AdminRoleID,
+              allow: [
+                  PermissionsBitField.Flags.SendMessages,
+                  PermissionsBitField.Flags.ViewChannel,
+              ],
+          });
+      }
+  
+      let channel = await interaction.guild.channels.create({
+          name: `🎫丨𝐓icket丨${interaction.user.username}`,
+          parent: parentChannel.parentId,
+          type: ChannelType.GuildText,
+          permissionOverwrites: permissionOverwrites,
+      });
+  
+      const clearembed = new EmbedBuilder()
+          .setDescription(
+              `${interaction.user}\n丨𝐓on dossier va être étudié, __merci d'être patient__, notre équipe s'occupe de tout !`
+          )
+          .setColor("Blue");
+  
+      const deletebutton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+              .setCustomId("DELETE_TICKET")
+              .setEmoji("❌")
+              .setLabel("Supprimer le ticket")
+              .setStyle(ButtonStyle.Danger)
+      );
+  
+      await channel.send({
+          embeds: [clearembed],
+          components: [deletebutton],
+      });
+  
+      if (!AdminRoleID) {
+          await channel.send(
+              "⚠丨__**Attention**__丨Le rôle d'administrateur __n'est pas__ défini pour la gestion des tickets. Un modérateur vient d'être contacté pour traiter le problème dans les plus brefs délais, désolé de l'attente."
+          );
+      }
+  
       await interaction.editReply({
-        content: "Ticket créé avec succès !",
+          content: "丨𝐍otre équipe arrive à ton soutien camarade !",
       });
     }
     if (interaction.customId === "DELETE_TICKET") {
@@ -2110,81 +1843,81 @@ module.exports = {
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre en faisant un tag (@votre_rôle) pour le rôle `𝐀dministrateur` de ton serveur.";
   
-  const replyMessage = await interaction.reply({
-      content: `${originalContent} ***${secondsRemaining}s***`,
-      fetchReply: true
-  });
-  
-  let followUpMessages = [];
-  
-  const interval = setInterval(() => {
-      secondsRemaining--;
-      if (secondsRemaining > 0) {
-          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-              clearInterval(interval);
-              console.error('Erreur lors de la mise à jour du message :', error);
-          });
-      } else {
-          clearInterval(interval);
-      }
-  }, 1000);
-  
-  const collector = interaction.channel.createMessageCollector({
-      filter: (m) => m.author.id === interaction.user.id,
-      time: 60000,
-      max: 1
-  });
-  
-  collector.on("collect", async (m) => {
-      clearInterval(interval);
-      await deleteMessage(m)
-      followUpMessages.push(m);
-  
-      const role = m.mentions.roles.first();
-      if (!role) {
-          const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
-          followUpMessages.push(errorMsg);
-          return;
-      }
-  
-      if (role.position >= botMember.roles.highest.position) {
-          const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
-          followUpMessages.push(errorMsg);
-          return;
-      }
-  
-      await ServerConfig.findOneAndUpdate(
-          { serverID: interaction.guild.id },
-          { ticketAdminRoleID: role.id, ticketAdminRoleName: role.name },
-          { upsert: true, new: true }
-      );
-  
-      const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle \`𝐀dministrateur\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
-      followUpMessages.push(successMsg);
-  });
-  
-  collector.on("end", async (collected, reason) => {
-      if (reason === "time") {
-          const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as démêlé tous les fils de tes écouteurs ?", ephemeral: true });
-          followUpMessages.push(timeoutMsg);
-      }
-      replyMessage.delete().catch(error => {
-          if (error.code === 10008) {
-          } else {
-              console.error('Erreur lors de la suppression du message initial :', error);
-          }
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
       });
-      setTimeout(() => {
-          followUpMessages.forEach(msg => {
-              msg.delete().catch(error => {
-                  if (error.code === 10008) {
-                  } else {
-                      console.error('Erreur lors de la suppression du message de suivi :', error);
-                  }
+      
+      let followUpMessages = [];
+      
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
               });
-          });
+          } else {
+              clearInterval(interval);
+          }
       }, 1000);
-  });
+      
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+      
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          await deleteMessage(m)
+          followUpMessages.push(m);
+      
+          const role = m.mentions.roles.first();
+          if (!role) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+      
+          if (role.position >= botMember.roles.highest.position) {
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+      
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              { ticketAdminRoleID: role.id, ticketAdminRoleName: role.name },
+              { upsert: true, new: true }
+          );
+      
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle \`𝐀dministrateur\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+      
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as démêlé tous les fils de tes écouteurs ?", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                      } else {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
     }
     if (interaction.customId === "ROLECHANNEL_PUSH") {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
