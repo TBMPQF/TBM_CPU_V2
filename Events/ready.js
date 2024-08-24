@@ -847,7 +847,7 @@ async function updateCategoryMinecraft(server) {
       return;
     }
 
-    const response = await fetch(`https://api.mcsrvstat.us/2/${MINECRAFT_SERVER_DOMAIN}`);
+    const response = await fetch(`https://api.mcsrvstat.us/3/${MINECRAFT_SERVER_DOMAIN}`);
     if (!response.ok) {
       throw new Error(`[MINECRAFT] Erreur HTTP ! statut : ${response.status}`);
     }
@@ -882,8 +882,9 @@ function calculateExponentialBackoff(failureCount) {
 async function updateVoiceChannelServer(server) {
   let channel;
   try {
-    await server.members.fetch();
-    channel = server.channels.cache.find((channel) => 
+    await server.members.fetch({ withPresences: true });
+
+    channel = server.channels.cache.find((channel) =>
       channel.name.startsWith("丨𝐎n𝐋ine")
     );
 
@@ -899,21 +900,25 @@ async function updateVoiceChannelServer(server) {
         ],
       });
     }
-    const filteredMembers = server.members.cache.filter(member => 
-      ['online', 'dnd', 'idle'].includes(member.presence?.status) && !member.user.bot
+
+    const filteredMembers = server.members.cache.filter(
+      (member) =>
+        ['online', 'dnd', 'idle'].includes(member.presence?.status) &&
+        !member.user.bot
     );
 
     const onlineMembers = filteredMembers.size;
     const memberCount = server.members.cache.filter(member => !member.user.bot).size;
 
-    channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
-    .catch(error => {
-      if (error.code === 'GuildMembersTimeout') {
-        return;
-      } else {
-        throw error;
-      }
-    });
+    await channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
+      .catch(error => {
+        if (error.code === 'GuildMembersTimeout') {
+          console.warn("[ONLINE] Timeout lors de la mise à jour du canal, mais continuation du processus.");
+          return;
+        } else {
+          throw error;
+        }
+      });
 
   } catch (error) {
     console.error("[ONLINE] Erreur lors de la mise à jour du salon vocal:", error);

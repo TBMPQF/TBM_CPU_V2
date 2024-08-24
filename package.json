@@ -25,6 +25,8 @@
     "dockerode": "^4.0.2",
     "ffmpeg-static": "^5.2.0",
     "fs": "^0.0.1-security",
+    "genius-lyrics": "^4.4.7",
+    "lyrics-finder": "^21.7.0",
     "mc-ping-updated": "^0.1.1",
     "minecraft-server-util": "^5.1.1",
     "moment-timezone": "^0.5.43",
