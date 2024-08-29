@@ -178,7 +178,13 @@ module.exports = {
       try {
         const url = new URL(`${TWITCH_BASE_API}/${endpoint}`);
         Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        return await axios.get(url.toString(), twitchHeaders);
+        const response = await axios.get(url.toString(), twitchHeaders);
+        if (response?.data?.data && response.data.data.length > 0) {
+          return response;
+        } else {
+          console.error(`[TWITCH] Aucune donnée trouvée pour l'endpoint ${endpoint} avec les paramètres ${JSON.stringify(params)}`);
+          return null;
+        }
       } catch (error) {
         console.error(`[TWITCH] Erreur lors de la récupération de ${endpoint} : ${error}`);
         return null;
@@ -193,7 +199,7 @@ module.exports = {
               startedAt: streamer.startedAt || null
           };
       });
-  }
+    }
     async function getUserProfilePic(streamer) {
       const response = await fetchFromTwitch('users', { login: streamer });
       return response?.data.data[0].profile_image_url;
