@@ -837,6 +837,22 @@ module.exports = {
     
       i = (i + 1) % activities.length;
     }, 30 * 1000);
+
+    // Même emoji lors d'un emoji react
+    bot.on('messageReactionAdd', async (reaction, user) => {
+      if (user.bot) return;
+      try {
+        if (!reaction.message.partial) {
+          await reaction.message.fetch();
+        }
+        if (!reaction.partial) {
+          await reaction.fetch();
+        }
+        await reaction.message.react(reaction.emoji);
+      } catch (error) {
+        console.error('Erreur lors de la réaction automatique :', error);
+      }
+    });
   },
 };
 
