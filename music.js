@@ -291,7 +291,7 @@ module.exports = (bot) => {
                 await updateMusicEmbed(message.channel, message.guild.id);
             } catch (error) {
                 console.error(`[MUSIC] Error playing song: ${error.message}`);
-                await message.channel.send({ embeds: [new EmbedBuilder().setColor("Red").setDescription(":x:丨𝐔n problème est survenu lors de l'ajout de la musique à la file d'attente.")] });
+                await message.channel.send({ embeds: [new EmbedBuilder().setColor("Red").setDescription(":x:丨𝐔n problème est survenu lors de l'ajout de la musique à la file d'attente. 𝐍e t'en fais pas on essaye de résoudre ça au plus vite ! :speedboat:")] });
             }
         } else {
             await storeSongForLaterPlayback(song, message.guild.id, message.channel);
