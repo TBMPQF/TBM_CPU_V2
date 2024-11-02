@@ -8,7 +8,8 @@ const User = require("../../models/experience");
 
 module.exports = {
   name: "rank",
-  description: "丨Affiche ton niveau d'expérience.",
+  description: "丨𝐀ffiche ton niveau d'expérience.",
+  longDescription: ` 𝐀lors, tu veux savoir où tu te situes dans l'arène du XP ? 𝐁ienvenue dans la bataille de prestige où chaque message compte. 𝐂ette commande est là pour flatter ton ego (ou te donner un petit coup de réalité si tu n'as pas encore atteint le sommet 😜).\n\n𝐃isons-le franchement : avec **rank**, tu peux voir ton niveau actuel, ton prestigieux (ou non) classement, et combien de messages tu as envoyés. 𝐄n gros, plus tu envoies de messages, plus tu grimpes dans la hiérarchie. 🔥\n𝐅élicitations si tu as assez d'XP ! 𝐆arde en tête que tu vas peut-être bientôt passer au niveau supérieur et débloquer... bah, juste le droit de te vanter, mais c'est déjà pas mal, non ? 🤷‍♂️\n\n𝐇onnêtement, si tu n'as pas encore assez d'XP, pas de panique ! 𝐈l suffit de continuer de spammer (euh... discuter) et tu pourras admirer ta progression dans cette magnifique barre de progression. 𝐉uste à quel point tu es proche de devenir **le maître du serveur** ! 😎\n\n𝐊omment dire, tu peux soit afficher fièrement tes stats, soit pleurer en silence dans ton coin. 𝐋e choix t'appartient ! 💪`,
   dm: false,
   permission: "Aucune",
   async execute(interaction) {
@@ -18,8 +19,7 @@ module.exports = {
 
     if (!user) {
       return interaction.reply({
-        content:
-          "Tu veux que j'affiche quoi ? Il faut envoyé des messages avant !",
+        content: "𝐓u veux que j'affiche quoi ? 𝐈l faut envoyer des messages avant !",
         ephemeral: true,
       });
     }
@@ -69,6 +69,7 @@ module.exports = {
         .setEmoji("1186719745106513971")
         .setStyle(ButtonStyle.Secondary)
     );
+
     const embed = new EmbedBuilder()
       .setAuthor({
         name: interaction.user.username,
@@ -77,13 +78,8 @@ module.exports = {
       .setColor("Random")
       .setTitle(`丨${position}${positionEmoji}`)
       .setDescription(
-        `\n\n𝐓u as : \*\*${user.xp.toLocaleString()} / ${xpRequiredForNextLevel.toLocaleString()}\*\* XP.\n𝐓u es niveau : \*\*${user.level.toString()}\*\*.\n𝐓u es prestige : \*\*${
-          user.prestige
-        }\*\*.\n\n𝐓u as envoyé : \*\*${
-          user.messageCount
-        }\*\* messages.\n\n𝐏rogression : ${progressBar} \*\*${percentage}\*\*%`
-      )
-      
+        `\n\n🔹 𝐍iveau : \*\*${user.level.toString()}\*\*.\n:large_blue_diamond: 𝐏restige : \*\*${user.prestige}\*\*.\n💠 𝐗P : \*\*${user.xp.toLocaleString()} / ${xpRequiredForNextLevel.toLocaleString()}\*\*.\n\n𝐓u as envoyé : \*\*${user.messageCount}\*\* messages.\n\n𝐏rogression : ${progressBar} \*\*\`${percentage}%\`\*\*`
+      );
 
     const reply = await interaction.reply({
       embeds: [embed],
@@ -91,11 +87,15 @@ module.exports = {
       fetchReply: true,
     });
 
-    setTimeout(() => {
-      interaction.channel.messages
-        .fetch(reply.id)
-        .then((message) => message.delete())
-        .catch(console.error);
+    setTimeout(async () => {
+      try {
+        const message = await interaction.channel.messages.fetch(reply.id);
+        await message.delete();
+      } catch (error) {
+        if (error.code !== 10008) {
+          console.error("[RANK] Erreur lors de la suppression du message : ", error);
+        }
+      }
     }, 15000);
   },
 };

@@ -1,8 +1,8 @@
 const fs = require("fs");
 
-const successIcon = "\x1b[32m\u2714\x1b[0m"; // Symbole CHECK en vert
-const commandColor = "\x1b[36m"; // Couleur cyan pour les commandes
-const resetColor = "\x1b[0m"; // Réinitialisation de la couleur
+const successIcon = "\x1b[32m\u2714\x1b[0m";
+const commandColor = "\x1b[36m";
+const resetColor = "\x1b[0m";
 const lineSeparator = `${resetColor}------------------------------------------------`;
 
 module.exports = async (bot) => {

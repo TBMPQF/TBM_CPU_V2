@@ -26,7 +26,12 @@ const serverConfigSchema = new mongoose.Schema({
   roleReglementID : { type: String, default: null },
   roleReglementName : { type: String, default: null },
   bingoChannelName : { type: String, default: null },
-  bingoChannelID : { type: String, default: null },
+  TwitchChannelID : { type: String, default: null },
+  TwitchChannelName : { type: String, default: null },
+  TwitchRoleName : { type: String, default: null },
+  TwitchRoleID : { type: String, default: null },
+  AnnoucementChannelID : { type: String, default: null },
+  AnnoucementChannelName : { type: String, default: null },
 }, { versionKey: false, strict: true });
 
 module.exports = mongoose.model('ServerConfig', serverConfigSchema, 'Serveur Channels');

@@ -1,5 +1,10 @@
 const {
   ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  TextInputComponent,
+  TextInputAssertions,
   PermissionsBitField,
   ButtonBuilder,
   EmbedBuilder,
@@ -24,17 +29,364 @@ const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
 const { unmuteRequests } = require('../models/shared');
 const { intervalleAleatoire, lancerJeuBingo } = require('../bingoFunctions');
+const Suggestion = require('../models/suggestion');
+const TwitchStreamers = require("../models/TwitchStreamers")
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-const usersVoted = new Map();
-
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
+
+    //Gestion des suggestions
+    async function sendLogMessage(interaction, message) {
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+    
+      if (serverConfig && serverConfig.logChannelID) {
+        const logChannel = interaction.guild.channels.cache.get(serverConfig.logChannelID);
+        if (logChannel) {
+          const logEmbed = new EmbedBuilder()
+            .setColor("Blue")
+            .setTitle(message)
+            .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+            .setTimestamp();
+    
+          await logChannel.send({ embeds: [logEmbed] });
+        }
+      }
+    }
+    async function handleAcceptSugg(interaction, suggestionMessageID) {
+      const suggestion = await Suggestion.findOne({ messageID: suggestionMessageID });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion n'a pas été trouvée.",
+          ephemeral: true,
+        });
+      }
+    
+      const hasVotedUp = suggestion.upvotes.includes(interaction.user.id);
+      const hasVotedDown = suggestion.downvotes.includes(interaction.user.id);
+    
+      if (hasVotedUp || hasVotedDown) {
+        const alreadyVotedMessage = hasVotedUp
+          ? "🚫丨**𝐎ops!** 𝐓u as déjà voté `𝐏𝐎𝐔𝐑` à cette suggestion, pas besoin de doubler la mise !"
+          : "🚫丨**𝐇é!** 𝐓u as déjà voté `𝐂𝐎𝐍𝐓𝐑𝐄` à cette suggestion !";
+        
+        return interaction.reply({
+          content: alreadyVotedMessage,
+          ephemeral: true,
+        });
+      }
+    
+      suggestion.upvotes.push(interaction.user.id);
+      await suggestion.save();
+    
+      const embed = interaction.message.embeds[0];
+      const newFieldValue = parseInt(embed.fields[1].value) + 1;
+      embed.fields[1].value = newFieldValue.toString();
+    
+      const updatedEmbed = new EmbedBuilder()
+        .setColor(embed.color)
+        .setTitle(embed.title)
+        .setDescription(embed.description)
+        .setThumbnail(embed.thumbnail.url)
+        .addFields(embed.fields);
+    
+      await interaction.message.edit({ embeds: [updatedEmbed] });
+      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", ephemeral: true });
+    
+      await sendLogMessage(interaction, `✔️丨𝐕ient de voter **POUR** à la suggestion : \n\n\`${embed.description}\`.`);
+    }
+    async function handleNopSugg(interaction, suggestionMessageID) {
+      const suggestion = await Suggestion.findOne({ messageID: suggestionMessageID });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion n'a pas été trouvée.",
+          ephemeral: true,
+        });
+      }
+    
+      const hasVotedUp = suggestion.upvotes.includes(interaction.user.id);
+      const hasVotedDown = suggestion.downvotes.includes(interaction.user.id);
+    
+      if (hasVotedUp || hasVotedDown) {
+        const alreadyVotedMessage = hasVotedDown
+          ? "🚫丨**𝐇é!** 𝐓u as déjà voté `𝐂𝐎𝐍𝐓𝐑𝐄` à cette suggestion !"
+          : "🚫丨**𝐎ops!** 𝐓u as déjà voté `𝐏𝐎𝐔𝐑` à cette suggestion !";
+        
+        return interaction.reply({
+          content: alreadyVotedMessage,
+          ephemeral: true,
+        });
+      }
+    
+      suggestion.downvotes.push(interaction.user.id);
+      await suggestion.save();
+    
+      const embed = interaction.message.embeds[0];
+      const newFieldValue = parseInt(embed.fields[2].value) + 1;
+      embed.fields[2].value = newFieldValue.toString();
+    
+      const updatedEmbed = new EmbedBuilder()
+        .setColor(embed.color)
+        .setTitle(embed.title)
+        .setDescription(embed.description)
+        .setThumbnail(embed.thumbnail.url)
+        .addFields(embed.fields);
+    
+      await interaction.message.edit({ embeds: [updatedEmbed] });
+      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", ephemeral: true });
+    
+      await sendLogMessage(interaction, `❌丨𝐕ient de voter **CONTRE** à la suggestion : \n\n\`${embed.description}\`.`);
+    }
+    async function handleDeleteSugg(interaction, suggestionMessageID) {
+      const suggestion = await Suggestion.findOne({ messageID: suggestionMessageID });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion est introuvable dans la base de données.",
+          ephemeral: true,
+        });
+      }
+    
+      const suggestionMessage = await interaction.channel.messages.fetch(suggestionMessageID).catch(() => null);
+    
+      if (!suggestionMessage) {
+        return interaction.reply({
+          content: "❌丨𝐋e message de la suggestion est introuvable ou a déjà été supprimé.",
+          ephemeral: true,
+        });
+      }
+    
+      await suggestionMessage.delete();
+      await Suggestion.deleteOne({ messageID: suggestionMessageID });
+    
+      await interaction.reply({
+        content: "✅丨𝐋a suggestion a été supprimée avec succès.",
+        ephemeral: true,
+      });
+    
+      await sendLogMessage(interaction, `🗑️丨La suggestion \`${suggestion.suggestionText}\` a été supprimée par **${interaction.user.tag}**.`);
+    }
+    async function handleMarkAsDone(interaction, suggestionMessageID) {
+      const suggestion = await Suggestion.findOne({ messageID: suggestionMessageID });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion n'a pas été trouvée.",
+          ephemeral: true,
+        });
+      }
+    
+      const suggestionMessage = await interaction.channel.messages.fetch(suggestionMessageID).catch(() => null);
+    
+      if (!suggestionMessage) {
+        return interaction.reply({
+          content: "❌丨𝐋e message original de la suggestion est introuvable.",
+          ephemeral: true,
+        });
+      }
+    
+      const embed = suggestionMessage.embeds[0];
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('fr-FR');
+    
+      const updatedFields = embed.fields.filter(field => !field.name.includes("𝐏our") && !field.name.includes("𝐂ontre"));
+    
+      const updatedEmbed = new EmbedBuilder()
+        .setColor("Green")
+        .setTitle(embed.title)
+        .setDescription(embed.description)
+        .setThumbnail(embed.thumbnail.url)
+        .addFields(updatedFields)
+        .setFooter({ text: `丨𝐄ffectué le ${formattedDate}`, iconURL: interaction.guild.iconURL() });
+    
+      await suggestionMessage.edit({ embeds: [updatedEmbed], components: [] });
+      await Suggestion.deleteOne({ messageID: suggestionMessageID });
+    
+      await interaction.reply({
+        content: "✅丨𝐋a suggestion a été marquée comme effectuée.",
+        ephemeral: true,
+      });
+    
+      await sendLogMessage(interaction, `✔️丨La suggestion \`${embed.description}\` a été marquée comme effectuée par **${interaction.user.tag}**.`);
+    }
+    async function handleRecycleVotes(interaction, suggestionMessageID) {
+      const suggestion = await Suggestion.findOne({
+        serverID: interaction.guild.id,
+        messageID: suggestionMessageID,
+      });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion n'a pas été trouvée dans la base de données.",
+          ephemeral: true,
+        });
+      }
+    
+      const suggestionMessage = await interaction.channel.messages.fetch(suggestionMessageID).catch(() => null);
+    
+      if (!suggestionMessage) {
+        return interaction.reply({
+          content: "❌丨𝐋e message original de la suggestion est introuvable.",
+          ephemeral: true,
+        });
+      }
+    
+      const embed = suggestionMessage.embeds[0];
+    
+      const isAlreadyZeroInEmbed = embed.fields.some(field => field.name.includes("𝐏our") && field.value === "0") &&
+        embed.fields.some(field => field.name.includes("𝐂ontre") && field.value === "0");
+    
+      const isAlreadyZeroInDB = suggestion.upvotes.length === 0 && suggestion.downvotes.length === 0;
+    
+      if (isAlreadyZeroInEmbed && isAlreadyZeroInDB) {
+        return interaction.reply({
+          content: "⚠️丨𝐋es votes sont déjà à zéro.",
+          ephemeral: true,
+        });
+      }
+    
+      // Mettre à jour les champs des votes dans l'embed
+      const updatedFields = embed.fields.map(field => {
+        if (field.name.includes("𝐏our")) {
+          return { name: field.name, value: "0", inline: true };
+        }
+        if (field.name.includes("𝐂ontre")) {
+          return { name: field.name, value: "0", inline: true };
+        }
+        return field;
+      });
+    
+      const updatedEmbed = new EmbedBuilder()
+        .setColor(embed.color)
+        .setTitle(embed.title)
+        .setDescription(embed.description)
+        .setThumbnail(embed.thumbnail.url)
+        .addFields(updatedFields);
+    
+      await suggestionMessage.edit({ embeds: [updatedEmbed] });
+    
+      // Remettre les votes à zéro dans la base de données
+      await Suggestion.updateOne(
+        { serverID: interaction.guild.id, messageID: suggestionMessageID },
+        { $set: { upvotes: [], downvotes: [] } }
+      );
+    
+      await interaction.reply({
+        content: "♻️丨𝐋es votes ont été remis à zéro avec succès.",
+        ephemeral: true,
+      });
+    
+      await sendLogMessage(interaction, `♻️丨Les votes de la suggestion \`${embed.description}\` ont été réinitialisés par **${interaction.user.tag}**.`);
+    }
+    async function handleConfigSugg(interaction, suggestionMessageID) {
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+    
+      if (!serverConfig || !serverConfig.ticketAdminRoleID) {
+        return interaction.reply({
+          content: "**𝐀ction impossible car la configuration du rôle administrateur n'a pas été définie dans le `/setconfig`.**",
+          ephemeral: true,
+        });
+      }
+    
+      const member = interaction.guild.members.cache.get(interaction.user.id);
+      const adminRole = interaction.guild.roles.cache.get(serverConfig.ticketAdminRoleID);
+    
+      if (!adminRole || !member.roles.cache.has(adminRole.id)) {
+        return interaction.reply({
+          content: "𝐌on petit... 𝐃ésolé, mais tu n'as pas la permission d'utiliser ce bouton.",
+          ephemeral: true,
+        });
+      }
+    
+      // Récupère la suggestion en fonction de serverID et messageID
+      const suggestion = await Suggestion.findOne({
+        serverID: interaction.guild.id,
+        messageID: suggestionMessageID,  // Utilise suggestionMessageID
+      });
+    
+      if (!suggestion) {
+        return interaction.reply({
+          content: "❌丨𝐋a suggestion est introuvable dans la base de données.",
+          ephemeral: true,
+        });
+      }
+    
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`SUGG_DELETE_SUGGESTION_${suggestionMessageID}`)  // Ajout de suggestionMessageID
+          .setLabel("Supprimer")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`SUGG_MARK_DONE_${suggestionMessageID}`)  // Ajout de suggestionMessageID
+          .setLabel("Effectuer")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`SUGG_RECYCLE_VOTES_${suggestionMessageID}`)  // Ajout de suggestionMessageID
+          .setEmoji("♻")
+          .setStyle(ButtonStyle.Secondary)
+      );
+    
+      await interaction.reply({
+        content: "**𝐐ue veux-tu faire avec cette suggestion ?**\n𝐀ttention néanmoins à ne pas faire n'importe quoi. :no_pedestrians:",
+        components: [row],
+        ephemeral: true,
+      });
+    }
+    if (interaction.customId && interaction.customId.startsWith("SUGG_")) {
+      const customIdParts = interaction.customId.split('_');
+      
+      if (customIdParts.length === 3) {
+        const action = customIdParts[1];
+        const suggestionMessageID = customIdParts[2];
+    
+        switch (action) {
+          case "ACCEPTSUGG":
+            await handleAcceptSugg(interaction, suggestionMessageID);
+            break;
+          case "NOPSUGG":
+            await handleNopSugg(interaction, suggestionMessageID);
+            break;
+          case "CONFIGSUGG":
+            await handleConfigSugg(interaction, suggestionMessageID);
+            break;
+          default:
+            return interaction.reply({
+              content: "❌丨Action inconnue.",
+              ephemeral: true,
+            });
+        }
+      } else if (customIdParts.length === 4) {
+        const action = `${customIdParts[1]}_${customIdParts[2]}`;
+        const suggestionMessageID = customIdParts[3];
+    
+        switch (action) {
+          case "DELETE_SUGGESTION":
+            await handleDeleteSugg(interaction, suggestionMessageID);
+            break;
+          case "MARK_DONE":
+            await handleMarkAsDone(interaction, suggestionMessageID);
+            break;
+          case "RECYCLE_VOTES":
+            await handleRecycleVotes(interaction, suggestionMessageID);
+            break;
+          default:
+            return interaction.reply({
+              content: "❌丨Action inconnue.",
+              ephemeral: true,
+            });
+        }
+      }
+    } else {
+      
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
       const user = await User.findOne({
@@ -45,7 +397,7 @@ module.exports = {
       if (!user) {
         return interaction.reply({
           content:
-            "Avant de vouloir récupérer ton bonus, ne veux-tu pas d'abord faire un peu connaissance avec tes nouveaux camarades ?",
+            "𝐀vant de vouloir récupérer ton bonus, ne veux-tu pas d'abord faire un peu connaissance avec tes nouveaux camarades ?",
           ephemeral: true,
         });
       }
@@ -97,10 +449,21 @@ module.exports = {
       }
 
       const SPECIAL_DAILY_STREAK = 50;
+      const randomMessages = [
+        `𝐀ttention, **${interaction.user.username}** vient d'atteindre \`${user.consecutiveDaily}\` jours consécutifs de bonus quotidien ! 💥 Peut-on l'arrêter ?!`,
+        `**${interaction.user.username}** a enchaîné \`${user.consecutiveDaily}\` jours d'affilée ! On dirait qu'il ou elle ne dort jamais ! 🛌`,
+        `𝐀vec \`${user.consecutiveDaily}\` jours consécutifs, **${interaction.user.username}** est devenu un maître du daily bonus ! 🏆`,
+        `𝐎h là là ! **${interaction.user.username}** a survécu \`${user.consecutiveDaily}\` jours sans oublier son bonus quotidien ! Respect ! 🙌`,
+        `𝐄st-ce un robot ? 𝐍on, c'est juste **${interaction.user.username}** qui a atteint \`${user.consecutiveDaily}\` jours de streak !`,
+        `\`${user.consecutiveDaily}\` jours consécutifs de daily bonus pour **${interaction.user.username}** ! 𝐁ientôt une statue à son effigie dans le serveur ! 🗿`
+      ];
+
+      const selectedMessage = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+
       if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
           const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
           if (specialChannel) {
-              specialChannel.send(`𝐅élicitations à **${interaction.user.username}** pour avoir atteint \`${user.consecutiveDaily}\` jours __consécutifs__ de bonus quotidien ! 🎉`)
+              specialChannel.send(selectedMessage)
                   .then(message => {
                       const reactions = ['🇱', '🇴', '🇸', '🇪', '🇷'];
                       reactions.forEach(reaction => message.react(reaction));
@@ -108,6 +471,7 @@ module.exports = {
                   .catch(console.error);
           }
       }
+
 
       const baseXP = 200;
       const weeksConsecutive = Math.floor(user.consecutiveDaily / daysInWeek);
@@ -681,132 +1045,6 @@ module.exports = {
       await interaction.guild.channels.delete(interaction.channel);
     }
 
-    // Boutton suggestion
-    if (interaction.customId === "ACCEPTSUGG") {
-      const serverConfig = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
-      });
-
-      if (!serverConfig || !serverConfig.logChannelID) {
-        return;
-      }
-
-      const messageVotes = usersVoted.get(interaction.message.id) || new Map();
-
-      if (messageVotes.has(interaction.user.id)) {
-        const previousVote = messageVotes.get(interaction.user.id);
-        const alreadyVotedMessage =
-          previousVote === "ACCEPTSUGG"
-            ? "Eh non! Tu as déjà voté `POUR` à cette suggestion !"
-            : "Eh non! Tu as déjà voté `CONTRE` à cette suggestion !";
-
-        await interaction.reply({
-          content: alreadyVotedMessage,
-          ephemeral: true,
-        });
-        return;
-      }
-
-      messageVotes.set(interaction.user.id, interaction.customId);
-      usersVoted.set(interaction.message.id, messageVotes);
-
-      const embed = interaction.message.embeds[0];
-      const indexToUpdate = interaction.customId === "ACCEPTSUGG" ? 1 : 2;
-
-      const newFieldValue = parseInt(embed.fields[indexToUpdate].value) + 1;
-      embed.fields[indexToUpdate].value = newFieldValue.toString();
-
-      const updatedEmbed = new EmbedBuilder()
-        .setColor(embed.color)
-        .setTitle(embed.title)
-        .setDescription(embed.description)
-        .setThumbnail(embed.thumbnail.url)
-        .addFields(embed.fields);
-
-      await interaction.message.edit({ embeds: [updatedEmbed] });
-
-      await interaction.reply({
-        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le __fil__ de la suggestion. :bulb:**`,
-        ephemeral: true,
-      });
-
-      const ACCEPTSUGGLOG = new EmbedBuilder()
-        .setColor("Blue")
-        .setTitle(
-          `:ok:丨𝐕ient de réagir __positivement__ à la suggestion :\n\n\`"${embed.description}"\`.`
-        )
-        .setAuthor({
-          name: interaction.user.username,
-          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
-        })
-        .setTimestamp();
-
-      const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
-      logChannel.send({ embeds: [ACCEPTSUGGLOG] });
-    }
-    if (interaction.customId === "NOPSUGG") {
-      const serverConfig = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
-      });
-
-      if (!serverConfig || !serverConfig.logChannelID) {
-        return;
-      }
-
-      const messageVotes = usersVoted.get(interaction.message.id) || new Map();
-
-      if (messageVotes.has(interaction.user.id)) {
-        const previousVote = messageVotes.get(interaction.user.id);
-        const alreadyVotedMessage =
-          previousVote === "ACCEPTSUGG"
-            ? "Eh non! Tu as déjà voté `POUR` à cette suggestion !"
-            : "Eh non! Tu as déjà voté `CONTRE` à cette suggestion !";
-
-        await interaction.reply({
-          content: alreadyVotedMessage,
-          ephemeral: true,
-        });
-        return;
-      }
-
-      messageVotes.set(interaction.user.id, interaction.customId);
-      usersVoted.set(interaction.message.id, messageVotes);
-
-      const embed = interaction.message.embeds[0];
-      const indexToUpdate = interaction.customId === "ACCEPTSUGG" ? 1 : 2;
-
-      const newFieldValue = parseInt(embed.fields[indexToUpdate].value) + 1;
-      embed.fields[indexToUpdate].value = newFieldValue.toString();
-
-      const updatedEmbed = new EmbedBuilder()
-        .setColor(embed.color)
-        .setTitle(embed.title)
-        .setDescription(embed.description)
-        .setThumbnail(embed.thumbnail.url)
-        .addFields(embed.fields);
-
-      await interaction.message.edit({ embeds: [updatedEmbed] });
-
-      await interaction.reply({
-        content: `**Merci. Ton vote à bien été pris en compte. N'hésite surtout pas à commenter ton choix dans le __fil__ de la suggestion. :bulb:**`,
-        ephemeral: true,
-      });
-
-      const NOPSUGGLOG = new EmbedBuilder()
-        .setColor("Blue")
-        .setTitle(
-          `:x:丨𝐕ient de réagir __négativement__ à la suggestion :\n\n\`"${embed.description}"\`.`
-        )
-        .setAuthor({
-          name: interaction.user.username,
-          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
-        })
-        .setTimestamp();
-
-      const logChannel = bot.channels.cache.get(serverConfig.logChannelID);
-      logChannel.send({ embeds: [NOPSUGGLOG] });
-    }
-
     //Gestion du SetConfig
     if (interaction.customId === "LOG_BUTTON") { //OK
       let secondsRemaining = 60;
@@ -818,13 +1056,23 @@ module.exports = {
       });
   
       let followUpMessages = [];
+      let messageDeleted = false;
   
       const interval = setInterval(() => {
+          if (messageDeleted) {
+              clearInterval(interval);
+              return;
+          }
+  
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
@@ -861,12 +1109,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) {
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a découvert de nouvelles planètes depuis.", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -874,8 +1123,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1010,7 +1258,7 @@ module.exports = {
           }
       });
     }
-    if (interaction.customId === "WELCOME_BUTTON") { //OK
+    if (interaction.customId === "WELCOME_BUTTON") { // OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
   
@@ -1020,13 +1268,23 @@ module.exports = {
       });
   
       let followUpMessages = [];
+      let messageDeleted = false;
   
       const interval = setInterval(() => {
+          if (messageDeleted) { 
+              clearInterval(interval);
+              return;
+          }
+  
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
@@ -1063,11 +1321,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
-              interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série.", ephemeral: true });
+          if (reason === "time" && !messageDeleted) {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1075,8 +1335,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1084,7 +1343,7 @@ module.exports = {
           }, 1000);
       });
     }
-    if (interaction.customId === "REGL_BUTTON") { //OK
+    if (interaction.customId === "REGL_BUTTON") { // OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐑èglement` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
   
@@ -1092,20 +1351,29 @@ module.exports = {
           content: `${originalContent} ***${secondsRemaining}s***`,
           fetchReply: true
       });
+  
       let followUpMessages = [];
+      let messageDeleted = false;
+  
       const interval = setInterval(() => {
-        secondsRemaining--;
-        if (secondsRemaining > 0) {
-          replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-            if (error.code === 10008) {
+          if (messageDeleted) { 
               clearInterval(interval);
-            } else {
-              console.error('Erreur lors de la mise à jour du message :', error);
-            }
-          });
-        } else {
-          clearInterval(interval);
-        }
+              return;
+          }
+  
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
+              });
+          } else {
+              clearInterval(interval);
+          }
       }, 1000);
   
       const collector = interaction.channel.createMessageCollector({
@@ -1138,12 +1406,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) {
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as fini de peindre la Joconde ?", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1151,8 +1420,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1182,7 +1450,7 @@ module.exports = {
         )
         .setThumbnail(interaction.guild.iconURL())
         .setFooter({
-          text: `Cordialement l'équipe ${interaction.guild.name}`,
+          text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
           iconURL: interaction.guild.iconURL(),
         });
 
@@ -1388,13 +1656,23 @@ module.exports = {
       });
   
       let followUpMessages = [];
+      let messageDeleted = false;
   
       const interval = setInterval(() => {
+          if (messageDeleted) {
+              clearInterval(interval);
+              return;
+          }
+  
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
@@ -1431,12 +1709,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) {
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et la pizza est encore au four ?", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1444,8 +1723,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1456,36 +1734,46 @@ module.exports = {
     if (interaction.customId === "DAILY_BUTTON") { //OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour le `𝐃aily` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
-  
+    
       const replyMessage = await interaction.reply({
           content: `${originalContent} ***${secondsRemaining}s***`,
           fetchReply: true
       });
-  
+    
       let followUpMessages = [];
-  
+      let messageDeleted = false; // Variable pour suivre si le message initial a été supprimé
+    
       const interval = setInterval(() => {
+          if (messageDeleted) { 
+              clearInterval(interval);
+              return;
+          }
+    
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) { // Si le message n'existe plus
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
           }
       }, 1000);
-  
+    
       const collector = interaction.channel.createMessageCollector({
           filter: (m) => m.author.id === interaction.user.id,
           time: 60000,
           max: 1
       });
-  
+    
       collector.on("collect", async (m) => {
           clearInterval(interval);
           followUpMessages.push(m);
-  
+    
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
@@ -1504,14 +1792,15 @@ module.exports = {
           const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐃aily\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
           followUpMessages.push(successMsg);
       });
-  
+    
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) { // Vérifie si le message initial existe toujours
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a changé de président depuis.", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1519,8 +1808,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1565,7 +1853,7 @@ module.exports = {
         });
       }
     }
-    if (interaction.customId === "SUGG_BUTTON") { //OK
+    if (interaction.customId === "IDEE_BUTTON") { //OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐒uggestions` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
   
@@ -1575,13 +1863,18 @@ module.exports = {
       });
   
       let followUpMessages = [];
+      let messageDeleted = false; // Variable pour suivre si le message a été supprimé
   
       const interval = setInterval(() => {
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) { // Vérifie si le message n'existe plus
+                      clearInterval(interval);
+                      messageDeleted = true;
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
@@ -1618,12 +1911,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) { // Vérifie si le message initial a été supprimé
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps d'apprendre le chinois.", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1631,8 +1925,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1642,7 +1935,7 @@ module.exports = {
     }
     if (interaction.customId === "ROLECHANNEL_BUTTON") { //OK
       let secondsRemaining = 60;
-      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐑oles` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐑ôles` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
   
       const replyMessage = await interaction.reply({
           content: `${originalContent} ***${secondsRemaining}s***`,
@@ -1651,28 +1944,34 @@ module.exports = {
   
       let followUpMessages = [];
   
+      let messageDeleted = false;
+
       const interval = setInterval(() => {
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      clearInterval(interval);
+                      messageDeleted = true;
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
           }
       }, 1000);
-  
+
       const collector = interaction.channel.createMessageCollector({
           filter: (m) => m.author.id === interaction.user.id,
           time: 60000,
           max: 1
       });
-  
+
       collector.on("collect", async (m) => {
           clearInterval(interval);
           followUpMessages.push(m);
-  
+
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
@@ -1688,17 +1987,18 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐑oles\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐑ôles\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
           followUpMessages.push(successMsg);
       });
-  
+
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu préparais un gâteau ou un gratte-ciel ?", ephemeral: true });
+          if (reason === "time" && !messageDeleted) {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu préparais un gâteau ouuuu un gratte-ciel ?", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1706,8 +2006,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1718,32 +2017,42 @@ module.exports = {
     if (interaction.customId === "TICKET_BUTTON") { //OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐓ickets` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
-  
+    
       const replyMessage = await interaction.reply({
           content: `${originalContent} ***${secondsRemaining}s***`,
           fetchReply: true
       });
   
       let followUpMessages = [];
-  
+      let messageDeleted = false;
+    
       const interval = setInterval(() => {
+          if (messageDeleted) {
+              clearInterval(interval);
+              return;
+          }
+  
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
           }
       }, 1000);
-  
+    
       const collector = interaction.channel.createMessageCollector({
           filter: (m) => m.author.id === interaction.user.id,
           time: 60000,
           max: 1
       });
-  
+    
       collector.on("collect", async (m) => {
           clearInterval(interval);
           followUpMessages.push(m);
@@ -1766,14 +2075,15 @@ module.exports = {
           const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐓ickets\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
           followUpMessages.push(successMsg);
       });
-  
+    
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
+          if (reason === "time" && !messageDeleted) {
               const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et j'ai déjà oublié pourquoi j'attendais...", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -1781,8 +2091,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -1926,7 +2235,6 @@ module.exports = {
           return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", ephemeral: true });
       }
   
-      // Récupérer l'ID du canal de rôles à partir de ServerConfig
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig || !serverConfig.roleChannelID) {
           return interaction.reply({ content: "Le channel des rôles n'est pas configuré.", ephemeral: true });
@@ -1937,158 +2245,358 @@ module.exports = {
           return interaction.reply({ content: "Le channel des rôles configuré est introuvable.", ephemeral: true });
       }
   
-      const invalidMenu = serverRoleMenus.menus.find(menu => !menu.menuName || menu.menuName.trim().length === 0);
-      if (invalidMenu) {
-          const errorEmbed = new EmbedBuilder()
-              .setColor("#ff0000")
-              .setTitle("❌丨𝐔n nom de rôle est vide.丨❌")
-              .setDescription("𝐋ors de ta réponse, ça doit correspondre **exactement** à ça : \"NOMDURÔLE   @TONRÔLE\". 𝐋'espace entre le nom et le tag est __très important__. 𝐑éinitialise avant de recommencer.. c'est mieux !")
-          await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-          return;
-      }
-
-      const menuOptions = serverRoleMenus.menus.flatMap(menu =>
-          menu.roles.map(role => ({
-              label: menu.menuName,
-              value: role.roleId,
-          }))
-      ).slice(0, 25);
+      const menuOptions = serverRoleMenus.menus.flatMap(menu => {
+          if (!menu.menuName || !Array.isArray(menu.roles) || menu.roles.length === 0) {
+              console.warn(`Menu invalide trouvé : ${menu.menuName}`);
+              return [];
+          }
+  
+          return menu.roles.map(role => {
+              const emojiMatch = role.displayName.match(/<:\w+:\d+>/);
+              const emoji = emojiMatch ? {
+                  name: emojiMatch[0].slice(2, -1).split(':')[0],
+                  id: emojiMatch[0].slice(2, -1).split(':')[1]
+              } : undefined;
+  
+              const label = emojiMatch ? role.displayName.replace(emojiMatch[0], '').trim() : role.displayName;
+  
+              return {
+                  label: label,
+                  value: role.roleId,
+                  emoji: emoji || undefined,
+              };
+          });
+      });
   
       const row = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
               .setCustomId('Role_Menu')
-              .setPlaceholder('𝐂hoisis tes rôles.')
+              .setPlaceholder('丨𝐒éléctionne un rôle. 🎭')
               .addOptions(menuOptions)
       );
   
-      const RoleEmbed = new EmbedBuilder()
-          .setColor("#b3c7ff")
-          .setTitle(`丨𝐂hoisis tes rôles 🎭`)
-          .setDescription(
-              `𝐓u peux à présent sélectionner tes rôles pour avoir accès aux salons dédiés et ainsi communiquer avec la communauté de ton jeu préféré !\n 𝐀 tout moment si ton envie de changer de jeu te vient, tu peux modifier tes rôles préalablement sélectionnés.`
-          )
-          .setFooter({
-              text: `Cordialement, l'équipe ${interaction.guild.name}`,
-              iconURL: interaction.guild.iconURL(),
-          });
+      const descriptions = [
+          `🌟 ◟𝐂hoisis tes rôles et débloque l’accès aux salons réservés pour papoter avec la communauté passionnée de ton jeu préféré ! 🎮\n\n🔥 ◟𝐐ue tu sois là pour échanger des stratégies, partager tes exploits ou simplement pour rigoler avec d'autres gamers, cet endroit est fait pour toi ! 𝐄t si l'envie de changer de jeu te prend, pas de souci : tu peux modifier tes rôles à tout moment.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de fun et d’amitié ! 𝐏rêt à faire partie de cette légende ? 𝐂’est parti, à toi de jouer ! ✨`,
+          `🎊 ◟𝐓u es à un clic de l'aventure ! Choisis tes rôles et ouvre les portes des salons où les passionnés de ton jeu se réunissent ! 🎮\n\n🔥 ◟𝐓u peux discuter de stratégies, partager tes réussites, ou juste t’amuser avec d’autres gamers ! 𝐄t si un autre jeu t’appelle, change tes rôles sans hésiter !\n\n **𝐑ejoins-nous**, amuse-toi, et fais partie de cette communauté incroyable ! 𝐏rêt à te lancer ? 𝐂’est à toi de jouer ! ✨`,
+          `🎮 ◟𝐂'est le moment de briller ! Choisis tes rôles et accède aux salons réservés où les fans de ton jeu se retrouvent ! 🌟\n\n🔥 ◟𝐔ne multitude de discussions t'attendent, que ce soit pour échanger des conseils ou juste pour passer un bon moment ! 𝐄t si l'envie d'explorer un autre jeu te prend, adapte tes rôles à ta guise.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans l'univers du gaming ! 𝐏rêt à écrire ta propre légende ? 𝐂’est parti, à toi de jouer ! ✨`,
+          `✨ ◟𝐍e manque plus qu'une chose : tes rôles ! Choisis-les pour accéder aux salons où se trouve la communauté de ton jeu préféré ! 🎮\n\n🔥 ◟𝐂e lieu est parfait pour échanger des stratégies, partager tes exploits, ou juste rigoler avec d'autres gamers ! 𝐄t si un nouveau défi te tente, change tes rôles à tout moment.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de fun ! 𝐏rêt à faire partie de cette grande aventure ? 𝐂’est le moment de te lancer ! 💥`,
+          `💬 ◟𝐒électionne tes rôles et débloque des salons exclusifs pour discuter avec d'autres passionnés de ton jeu ! 🎮\n\n🔥 ◟𝐓u peux échanger des astuces, partager tes victoires ou juste profiter d'un bon moment ensemble ! 𝐄t si tu veux changer d’univers, modifie tes rôles comme bon te semble.\n\n **𝐑ejoins-nous**, éclate-toi, et fais partie de cette communauté dynamique ! 𝐏rêt à vivre cette aventure ? 𝐂’est à toi de jouer ! ✨`,
+          `🚀 ◟**𝐄mbarque pour une nouvelle quête !** 𝐂hoisis tes rôles pour accéder aux salons exclusifs et connecter avec la communauté de ton jeu adoré ! 🎮\n\n🌟 ◟Que tu sois ici pour partager des astuces, célébrer tes victoires ou juste t'amuser, cet endroit est fait pour toi ! 𝐄t si l’appel d’un autre jeu se fait sentir, pas de souci : change tes rôles quand tu veux.\n\n**𝐑ejoins-nous**, éclate-toi, et plonges dans un océan de fun et d’amitié ! 𝐏rêt à faire partie de cette aventure incroyable ? 𝐂’est le moment de briller ! ✨`,
+          `🎉 ◟**𝐋a fête commence ici !** 𝐂hoisis tes rôles pour accéder aux salons réservés et te connecter avec les fans de ton jeu préféré ! 🎮\n\n🎊 ◟Que tu sois là pour échanger des conseils, partager tes succès ou juste pour rire, cet endroit est fait pour toi ! 𝐄t si l’envie d’un autre jeu te prend, pas de problème : modifie tes rôles à ta guise.\n\n**𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de bonne humeur et d’amitié ! 𝐏rêt à rejoindre la légende ? 𝐂’est parti, à toi de jouer ! ✨`,
+          `🌈 ◟**𝐋’aventure t’attend !** 𝐂hoisis tes rôles pour débloquer l’accès aux salons dédiés et interagir avec la communauté de ton jeu favori ! 🎮\n\n💪 ◟Que tu souhaites échanger des stratégies, partager tes succès ou simplement t’amuser, cet espace est pour toi ! 𝐄t si tu veux changer de jeu, aucun souci : adapte tes rôles à tout moment.\n\n**𝐑ejoins-nous**, amuse-toi, et plonge dans un monde de fun et d’amitié ! 𝐏rêt à faire partie de cette grande aventure ? 𝐂’est le moment de briller ! 💥`,
+      ];
   
-      // Envoyer le message dans le canal de rôles
-      await roleChannel.send({ embeds: [RoleEmbed], components: [row] });
-      // Confirmer à l'utilisateur que le message a été envoyé
-      await interaction.reply({ content: "Le menu de rôles a été envoyé dans le canal de rôles configuré.", ephemeral: true });
+      const randomDescription = descriptions[Math.floor(Math.random() * descriptions.length)];
+  
+      if (menuOptions.length === 0) {
+          console.error('[ROLEMENU] Aucune option de menu disponible. Vérifiez les noms des menus et les rôles associés.');
+          await interaction.reply({ content: "Aucune option de rôle valide à afficher. -> contact mon créateur `tbmpqf`", ephemeral: true });
+          return;
+      } else {
+          const RoleEmbed = new EmbedBuilder()
+              .setColor("#b3c7ff")
+              .setTitle(`丨𝐂hoisis tes rôles 🏷️`)
+              .setDescription(randomDescription)
+              .setFooter({
+                  text: `𝐂ordialement, l'équipe ${interaction.guild.name}`,
+                  iconURL: interaction.guild.iconURL(),
+              });
+  
+          await roleChannel.send({ embeds: [RoleEmbed], components: [row] });
+          await interaction.reply({ content: "丨𝐋e menu des rôles a été envoyé dans le salon de rôles configuré.", ephemeral: true });
+      }
     }
     if (interaction.customId === "ROLECHANNEL_LISTE") { 
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+      
       const NewRoleButton = new ButtonBuilder()
-        .setCustomId('ROLECHANNEL_ROLE')
-        .setLabel('Ajouter rôles')
-        .setEmoji("🖌️")
-        .setStyle(ButtonStyle.Primary);
-
-      const NewRoleMenu = new ActionRowBuilder().addComponents(NewRoleButton);
+          .setCustomId('ROLECHANNEL_ADD')
+          .setLabel('Ajouter rôle')
+          .setEmoji("➕")
+          .setStyle(ButtonStyle.Success);
+  
+      const DeleteRoleButton = new ButtonBuilder()
+          .setCustomId('ROLECHANNEL_REMOVE')
+          .setLabel('Supprimer rôle')
+          .setEmoji("❌")
+          .setStyle(ButtonStyle.Danger);
+  
+      const ActionButtons = new ActionRowBuilder().addComponents(NewRoleButton, DeleteRoleButton);
       
       if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
-          return interaction.reply({ content: "Aucune donnée pour le __rôle menu__ n'a été configuré pour ce serveur.", components: [NewRoleMenu], ephemeral: true });
+          return interaction.reply({
+              content: "丨𝐀ucune donnée pour le rôle menu n'a été configurée pour ce serveur. 𝐏our en ajouter un, utilise le bouton \`Ajouter rôle\` ! 𝐂ela te permettra de créer un nouveau menu et d’y associer les rôles souhaités. 𝐏rends quelques instants pour configurer cela et donner plus de choix à la communauté ! 𝐒i jamais tu as fais une erreur ou si tu souhaites apporter des modifications par la suite pas de panique, tu pourras toujours ajuster les paramètres !",
+              components: [ActionButtons],
+              ephemeral: true
+          });
       }
   
-      let replyContent = "__𝐋iste des rôles configurés__ :\n\n";
+      const embed = new EmbedBuilder()
+          .setTitle("丨__𝐋iste des rôles configurés__")
+          .setColor("#0099ff")
+          .setThumbnail("https://cdn-icons-png.flaticon.com/512/5151/5151145.png");
+  
       serverRoleMenus.menus.forEach(menu => {
-          replyContent += `**\`${menu.menuName}\`**\n`;
-          menu.roles.forEach(role => {
-              const roleObject = interaction.guild.roles.cache.get(role.roleId);
-              replyContent += `◟${roleObject ? roleObject.toString() : 'Rôle non trouvé'}\n`;
+          embed.addFields({ 
+              name: menu.menuName !== 'DefaultMenu' ? menu.menuName : '\u200B',
+              value: menu.roles.map(role => {
+                  const roleObject = interaction.guild.roles.cache.get(role.roleId);
+                  const displayName = role.displayName || role.roleName || 'INCONNU';
+                  return `**◟** ${roleObject ? `${displayName} - ${roleObject.toString()}` : '𝐑ôle non trouvé.'}`;
+              }).join('\n\n') || '𝐀ucun rôle configuré.'
           });
-          replyContent += '\n';
       });
-      const ModifyButton = new ButtonBuilder()
-        .setCustomId('ROLECHANNEL_ROLE')
-        .setEmoji("🖌️")
-        .setLabel('Modifier rôles')
-        .setStyle(ButtonStyle.Primary);
+  
+      await interaction.reply({
+          embeds: [embed],
+          components: [ActionButtons],
+          ephemeral: true
+      });
+    }
+    if (interaction.customId === 'ROLECHANNEL_ADD') {
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans un serveur.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans le serveur.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre le rôle et de fournir un nom pour le menu. (**exemple : @MONROLE NomDeMonRôle**). ~~Possibilité de mettre un emoji devant le nom.~~";
+  
+      const initialReply = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let messageDeleted = false;
 
-      const ModifyRole = new ActionRowBuilder().addComponents(ModifyButton);
-      await interaction.reply({ content: replyContent, components: [ModifyRole], ephemeral: true });
-    }
-    if (interaction.customId === "ROLECHANNEL_ROLE") { 
-      const message = await interaction.reply({
-        content: "Merci de **répondre** (clique droit ◟**Répondre**) avec les noms des menus et un tag de rôle pour chacun, séparés par des virgules (exemple: Apex Legends @Apex, Minecraft @survie). Maximum 10 éléments à la suite __séparé__ par les virgules.",
-        fetchReply: true
-      });
-    
+    const interval = setInterval(async () => {
+        if (secondsRemaining > 0) {
+            secondsRemaining--;
+            if (initialReply && initialReply.editable) {
+                await initialReply.edit(`${originalContent} ***${secondsRemaining}s***`).catch((error) => {
+                    if (error.code === 10008) {
+                        clearInterval(interval);
+                        messageDeleted = true;
+                    } else {
+                        console.error('Erreur lors de l’édition du message:', error);
+                    }
+                });
+            } else {
+                clearInterval(interval);
+                messageDeleted = true;
+            }
+        } else {
+            clearInterval(interval);
+        }
+    }, 1000);
+  
       const collector = interaction.channel.createMessageCollector({
-        filter: (m) => m.author.id === interaction.user.id,
-        time: 60000,
-        max: 1 
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
       });
-    
+  
       collector.on("collect", async (m) => {
-        const entries = m.content.split(',').map(entry => entry.trim()).filter(entry => entry);
-        if (entries.length === 0 || entries.length > 10) {
-            return interaction.followUp("Format invalide ou trop d'éléments. Assurez-vous de fournir entre 1 et 10 paires nom/tag de rôle _.");
-        }
-    
-        for (const entry of entries) {
-            const match = entry.match(/^(.*?)\s*<@\s*(\S+)$/);
-            if (!match) {
-                await interaction.followUp(`Format invalide pour "${entry}". Assurez-vous d'utiliser le format "NomDuMenu @TagDuRôle".`);
-                continue;
-            }
-    
-            const menuName = match[1].trim();
-            const roleTag = match[2].trim();
-            const role = m.mentions.roles.find(role => role.id === roleTag.replace(/[<@&>]/g, '') || role.name === roleTag);
-    
-            if (!role) {
-                await interaction.followUp(`Le rôle pour "${menuName}" n'a pas été trouvé ou mal tagué. Vérifiez et réessayez.`);
-                continue;
-            }
-    
-            await ServerRoleMenu.findOneAndUpdate(
-                { serverID: interaction.guild.id },
-                {
-                    serverName: interaction.guild.name,
-                    $push: { menus: { menuName: menuName, roles: [{ roleName: role.name, roleId: role.id }] } }
-                },
-                { upsert: true, new: true }
-            );
-        }
-    
-        interaction.followUp("Tous les menus et rôles ont été enregistrés avec succès.");
+          clearInterval(interval);
+          await deleteMessage(m)
+  
+          const role = m.mentions.roles.first();
+          const displayName = m.content.replace(`<@&${role.id}>`, "").trim();
+  
+          if (!role) {
+              await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐍'oublie pas l'arobase (*@*).", ephemeral: true });
+              return deleteMessage(initialReply);
+          }
+  
+          if (role.position >= botMember.roles.highest.position) {
+              await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              return deleteMessage(initialReply);
+          }
+  
+          const serverRoleMenu = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+  
+          if (!serverRoleMenu) {
+              await ServerRoleMenu.create({
+                  serverID: interaction.guild.id,
+                  serverName: interaction.guild.name,
+                  menus: [{
+                      menuName: 'DefaultMenu',
+                      roles: [{
+                          roleName: role.name,
+                          roleId: role.id,
+                          displayName: displayName || role.name
+                      }]
+                  }]
+              });
+              await interaction.followUp({ content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`, ephemeral: true });
+              return deleteMessage(initialReply);
+          }
+  
+          const menu = serverRoleMenu.menus.find(m => m.menuName === 'DefaultMenu');
+          if (!menu) {
+              await interaction.followUp({ content: "🚫丨𝐀ucun menu de rôles trouvé.", ephemeral: true });
+              return deleteMessage(initialReply);
+          }
+  
+          const roleExists = menu.roles.find(r => r.roleId === role.id);
+          if (roleExists) {
+              await interaction.followUp({ content: "⚠️丨𝐂e rôle est déjà ajouté.", ephemeral: true });
+              return deleteMessage(initialReply);
+          }
+  
+          menu.roles.push({
+              roleName: role.name,
+              roleId: role.id,
+              displayName: displayName || role.name
+          });
+  
+          await serverRoleMenu.save();
+  
+          await interaction.followUp({ content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`, ephemeral: true });
+          await deleteMessage(initialReply);
       });
-    
-      collector.on("end", (collected, reason) => {
-        if (reason === "time") {
-          interaction.followUp("𝐓emps écoulé pour la réponse.");
+  
+      collector.on("end", async (collected, reason) => {
+        clearInterval(interval);
+        if (reason === "time" && !messageDeleted) {
+            await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse. 𝐌ême la confiture prend moins de temps à se figer.", ephemeral: true });
         }
+        await deleteMessage(initialReply);
       });
     }
-    //Ajouté rôle du menu déroulant ROLE
+    // FONCTION ERROR DELETE MESSAGE
+    async function deleteMessage(message) {
+      if (message && message.deletable) {
+          try {
+              await message.delete();
+          } catch (error) {
+              if (error.code !== 10008) {
+                  return
+              }
+          }
+      }
+    }
+    if (interaction.customId === 'ROLECHANNEL_REMOVE') {
+      const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+  
+      // Vérifiez si serverRoleMenus existe avant d'accéder à ses propriétés
+      if (!serverRoleMenus || !serverRoleMenus.menus || serverRoleMenus.menus.length === 0) {
+          return interaction.reply({ content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.", ephemeral: true });
+      }
+  
+      const roleOptions = serverRoleMenus.menus.flatMap(menu => 
+          menu.roles.map(role => {
+              const roleObject = interaction.guild.roles.cache.get(role.roleId);
+              return roleObject ? { label: roleObject.name, value: roleObject.id } : null;
+          }).filter(option => option)
+      );
+  
+      if (roleOptions.length === 0) {
+          return interaction.reply({ content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.", ephemeral: true });
+      }
+  
+      const roleSelectMenu = new StringSelectMenuBuilder()
+          .setCustomId('ROLECHANNEL_SELECT_REMOVE')
+          .setPlaceholder('丨𝐐uel rôle supprimer ?')
+          .addOptions(roleOptions);
+  
+      const roleSelectRow = new ActionRowBuilder().addComponents(roleSelectMenu);
+  
+      await interaction.reply({ content: "丨𝐋'heure est grave ! 𝐐uel rôle va se faire éjecter du club des rôles ? 𝐀 toi de jouer !", components: [roleSelectRow], ephemeral: true });
+    }
+    if (interaction.customId === 'ROLECHANNEL_SELECT_REMOVE') {
+        const selectedRoleId = interaction.values[0];
+        const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+    
+        if (!serverRoleMenus || !serverRoleMenus.menus) {
+            return interaction.reply({ content: "🚫丨Aucun menu de rôles trouvé.", ephemeral: true });
+        }
+    
+        await ServerRoleMenu.updateOne(
+            { serverID: interaction.guild.id, "menus.roles.roleId": selectedRoleId },
+            { $pull: { "menus.$.roles": { roleId: selectedRoleId } } }
+        );
+    
+        await ServerRoleMenu.updateOne(
+            { serverID: interaction.guild.id },
+            { $pull: { menus: { roles: { $size: 0 } } } }
+        );
+    
+        const updatedServerRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+        if (!updatedServerRoleMenus || updatedServerRoleMenus.menus.length === 0) {
+            await ServerRoleMenu.deleteOne({ serverID: interaction.guild.id });
+        }
+    
+        await interaction.update({
+            content: `丨𝐋e rôle et son nom ont été complètement supprimés de la base de données. 💾`,
+            components: [],
+            embeds: [],
+            ephemeral: true
+        });
+    }
     if (interaction.customId === "Role_Menu") { 
       const roleId = interaction.values[0];
       const role = interaction.guild.roles.cache.get(roleId);
-
-      if (!role) {
-          return interaction.reply({ content: "Le rôle sélectionné est introuvable.", ephemeral: true });
+      const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
+  
+      if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
+          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", ephemeral: true });
       }
-
+  
+      if (!role) {
+          return interaction.reply({ content: "𝐋e rôle sélectionné est introuvable.", ephemeral: true });
+      }
+  
       const member = interaction.member;
-
-      if (member.roles.cache.has(roleId)) {
-          try {
+  
+      try {
+          if (member.roles.cache.has(roleId)) {
               await member.roles.remove(roleId);
-              await interaction.reply({ content: `Votre rôle \`${role.name}\` a été supprimé.`, ephemeral: true });
-          } catch (error) {
-              console.error("[ROLE MENU] Erreur lors du retrait du rôle :", error);
-              await interaction.reply({ content: "Une erreur est survenue lors de l'attribution du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
-          }
-      } else {
-          try {
+              await interaction.reply({ content: `丨𝐓on rôle **\`${role.name}\`** a été **supprimé**.`, ephemeral: true });
+          } else {
               await member.roles.add(roleId);
-              await interaction.reply({ content: `Vous avez récupéré votre rôle \`${role.name}\`.`, ephemeral: true });
-          } catch (error) {
-              console.error("[ROLE MENU] Erreur lors de l'ajout du rôle :", error);
-              await interaction.reply({ content: "Une erreur est survenue lors de l'attribution du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
+              await interaction.reply({ content: `丨𝐓u viens de **récupéré** le rôle **\`${role.name}\`**.`, ephemeral: true });
           }
+
+          const menuOptions = serverRoleMenus.menus.flatMap(menu => {
+            if (!menu.menuName || !Array.isArray(menu.roles) || menu.roles.length === 0) {
+                console.warn(`Menu invalide trouvé : ${menu.menuName}`);
+                return [];
+            }
+    
+            return menu.roles.map(role => {
+                const emojiMatch = role.displayName.match(/<:\w+:\d+>/);
+                const emoji = emojiMatch ? {
+                    name: emojiMatch[0].slice(2, -1).split(':')[0],
+                    id: emojiMatch[0].slice(2, -1).split(':')[1]
+                } : undefined;
+    
+                const label = emojiMatch ? role.displayName.replace(emojiMatch[0], '').trim() : role.displayName;
+    
+                return {
+                    label: label,
+                    value: role.roleId,
+                    emoji: emoji || undefined,
+                };
+            });
+        });
+  
+          const newMenu = new StringSelectMenuBuilder()
+              .setCustomId('Role_Menu')
+              .setPlaceholder('𝐂hoisis tes rôles.')
+              .addOptions(menuOptions);
+  
+          const newRow = new ActionRowBuilder().addComponents(newMenu);
+  
+          await interaction.message.edit({ components: [newRow] });
+  
+      } catch (error) {
+          console.error("[ROLE MENU] Erreur lors de la gestion du rôle :", error);
+          await interaction.reply({ content: "Une erreur est survenue lors de la gestion du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
       }
     }
     if (interaction.customId === "BINGO_PUSH") {
@@ -2135,13 +2643,23 @@ module.exports = {
       });
   
       let followUpMessages = [];
+      let messageDeleted = false;
   
       const interval = setInterval(() => {
+          if (messageDeleted) {
+              clearInterval(interval);
+              return;
+          }
+  
           secondsRemaining--;
           if (secondsRemaining > 0) {
               replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  clearInterval(interval);
-                  console.error('Erreur lors de la mise à jour du message :', error);
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
               });
           } else {
               clearInterval(interval);
@@ -2178,12 +2696,13 @@ module.exports = {
       });
   
       collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, les continents ont eu le temps de dériver.", ephemeral: true });
+          if (reason === "time" && !messageDeleted) {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, *Game of Thrones* aurait eu le temps de refaire sa dernière saison.", ephemeral: true });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
               if (error.code === 10008) {
+                  messageDeleted = true;
               } else {
                   console.error('Erreur lors de la suppression du message initial :', error);
               }
@@ -2191,8 +2710,7 @@ module.exports = {
           setTimeout(() => {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
-                      if (error.code === 10008) {
-                      } else {
+                      if (error.code !== 10008) {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });
@@ -2200,9 +2718,409 @@ module.exports = {
           }, 1000);
       });
     }
+    if (interaction.customId === "TWITCH_BUTTON") { //OK
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon `𝐓witch` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
     
-
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+      let messageDeleted = false; 
+  
+      const interval = setInterval(() => {
+          if (messageDeleted) { 
+              clearInterval(interval);
+              return;
+          }
+  
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  if (error.code === 10008) { 
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  TwitchChannelID: channelId,
+                  TwitchChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon \`𝐓witch\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time" && !messageDeleted) { 
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai lu une bibliothèque entière en t'attendant.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+                  messageDeleted = true; 
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code !== 10008) {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "TWITCH_ROLE") { // A FINIR
+      
+    }
+    if (interaction.customId === "TWITCH_LISTE") {
+      const streamersList = await TwitchStreamers.find({ serverID: interaction.guild.id });
+  
+      let embedDescription;
+      
+      if (streamersList.length === 0) {
+          embedDescription = "👻丨𝐀ucun streamer n'est actuellement enregistré.\n\n𝐍'aie pas peur, enregistre ton premier streamer en cliquant ci-dessous !";
+      } else {
+          embedDescription = streamersList.map((streamer, index) => 
+              `**${index + 1}.** 𝐓witch: [${streamer.twitchUsername}](https://www.twitch.tv/${streamer.twitchUsername})\n𝐃iscord: <@${streamer.discordUserID}>`
+          ).join("\n\n");
+      }
+  
+      const embed = new EmbedBuilder()
+          .setColor('#9146FF')
+          .setTitle("🎥丨𝐋iste des Streamers enregistrés")
+          .setDescription(embedDescription)
+          .setFooter({ text: "Utilise les boutons ci-dessous pour ajouter ou supprimer un streamer." });
+  
+      const row = new ActionRowBuilder()
+          .addComponents(
+              new ButtonBuilder()
+                  .setCustomId("TWITCH_ADD_STREAMER")
+                  .setLabel("+1")
+                  .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                  .setCustomId("TWITCH_REMOVE_STREAMER")
+                  .setLabel("-1")
+                  .setStyle(ButtonStyle.Danger)
+          );
+  
+      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    }
+    if (interaction.customId === "TWITCH_ADD_STREAMER") {
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre avec le **`pseudo 𝐓witch et l'ID Discord`** du streamer *(séparés par un espace TABITEADURCY 123456789)*.";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const [twitchUsername, discordUserID] = m.content.split(" ");
+          if (!twitchUsername || !discordUserID) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐌auvaise syntaxe. Veuillez entrer un nom Twitch et un ID Discord.", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          // Enregistre le streamer dans la base de données pour ce serveur
+          await TwitchStreamers.create({
+              twitchUsername,
+              discordUserID,
+              serverID: interaction.guild.id,  // Ajout de l'ID du serveur
+              serverName: interaction.guild.name,  // Ajout du nom du serveur
+          });
+  
+          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été ajouté avec succès pour le serveur **${interaction.guild.name}** !`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code !== 10008) {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code !== 10008) {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "TWITCH_REMOVE_STREAMER") {
+      const streamersList = await TwitchStreamers.find({ serverID: interaction.guild.id });
+  
+      if (streamersList.length === 0) {
+          return interaction.reply({ content: "❌丨𝐀ucun streamer enregistré sur ce serveur à supprimer.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre avec le `nom 𝐓witch` du streamer que tu souhaites supprimer.";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const twitchUsername = m.content.trim();
+          // Recherche du streamer spécifiquement pour le serveur actuel
+          const streamer = await TwitchStreamers.findOne({ 
+              twitchUsername, 
+              serverID: interaction.guild.id  // On filtre par serverID
+          });
+  
+          if (!streamer) {
+              const errorMsg = await interaction.followUp({ content: `😵丨𝐋e streamer **${twitchUsername}** n'existe pas dans la base de données pour ce serveur.`, ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          await TwitchStreamers.deleteOne({ 
+              twitchUsername,
+              serverID: interaction.guild.id  // Assure que l'on supprime uniquement pour le serveur actuel
+          });
+  
+          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été supprimé avec succès !`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code !== 10008) {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code !== 10008) {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "ANNONCE_BUTTON") { 
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon des `𝐀nnonces` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
+    
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+      let messageDeleted = false;
+  
+      const interval = setInterval(() => {
+          if (messageDeleted) {
+              clearInterval(interval);
+              return;
+          }
+  
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  if (error.code === 10008) {
+                      messageDeleted = true;
+                      clearInterval(interval);
+                  } else {
+                      console.error('Erreur lors de la mise à jour du message :', error);
+                  }
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          followUpMessages.push(m);
+  
+          const channelId = m.content.trim();
+          const channel = interaction.guild.channels.cache.get(channelId);
+          if (!channel) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              {
+                  AnnoucementChannelID: channelId,
+                  AnnoucementChannelName: channel.name
+              },
+              { upsert: true, new: true }
+          );
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐀nnonces\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time" && !messageDeleted) {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même *Pythagore* a eu le temps de remettre en question son théorème.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+                  messageDeleted = true;
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code !== 10008) {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+  
     //Bouton suppresion de données dans la bdd pour la réinitialisé
+    if (interaction.customId === "ANNONCE_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+  
+      if (!serverConfig) {
+          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", ephemeral: true });
+      }
+  
+      serverConfig.AnnoucementChannelID = null;
+      serverConfig.AnnoucementChannelName = null;
+  
+      try {
+          await serverConfig.save();
+          await interaction.reply({ content: "Le __salon__ pour les 𝐀nnonces a été réinitialisé avec succès !", ephemeral: true });
+      } catch (error) {
+          console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
+          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du salon Annonces.", ephemeral: true });
+      }
+    }
+    if (interaction.customId === "TWITCH_DESAC") {
+      const serverID = interaction.guild.id;
+      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
+  
+      if (!serverConfig) {
+          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", ephemeral: true });
+      }
+  
+      serverConfig.TwitchRoleID = null;
+      serverConfig.TwitchRoleName = null;
+      serverConfig.TwitchChannelID = null;
+      serverConfig.TwitchChannelName = null;
+  
+      try {
+          await serverConfig.save();
+          await interaction.reply({ content: "Le __salon__ et le __rôle__ pour 𝐓witch a été réinitialisé avec succès !", ephemeral: true });
+      } catch (error) {
+          console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
+          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du rôle et du salon Twitch.", ephemeral: true });
+      }
+    }
     if (interaction.customId === "LOG_DESAC") {
       const serverID = interaction.guild.id;
       const serverConfig = await ServerConfig.findOne({ serverID: serverID });
@@ -2390,89 +3308,107 @@ module.exports = {
       });
     }
 
-    //Bouton supprimé suggestion
-    if (interaction.customId === "SUPPSUGG") {
-      const serverConfig = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
-      });
-
-      if (!serverConfig || !serverConfig.ticketAdminRoleID) {
-        return interaction.reply({
-          content:
-            "**Action impossible car la configuration du rôle administrateur n'a pas été défini dans le `/setconfig`.**",
-          ephemeral: true,
-        });
-      }
-
-      const member = interaction.guild.members.cache.get(interaction.user.id);
-      const adminRole = interaction.guild.roles.cache.get(
-        serverConfig.ticketAdminRoleID
-      );
-
-      if (!adminRole || !member.roles.cache.has(adminRole.id)) {
-        return interaction.reply({
-          content:
-            "Désolé, mais tu n'as pas la permission d'utiliser ce bouton.",
-          ephemeral: true,
-        });
-      }
-      const thread = channel.threads.cache.find((x) => x.name === "food-talk");
-
-      if (interaction.channel.thread) {
-        await thread.delete();
-      } else {
-        await interaction.message.delete();
-      }
-
-      return interaction.reply({
-        content: "La suggestion et le thread associé ont été supprimés.",
-        ephemeral: true,
-      });
-    }
-
     // Bouton Classement Général
     if (interaction.customId === "LADDER_BUTTON") {
       const guild = interaction.guild;
+  
+      const topUsers = await User.find({ serverID: guild.id })
+          .sort({ prestige: -1, xp: -1 })
+          .limit(5);
+  
+      if (topUsers.length === 0) {
+          return interaction.reply({ content: ":hand_splayed:丨𝐇alt ! 𝐀ucun utilisateur n'a de l'expérience sur ce serveur.", ephemeral: true });
+      }
+  
+      const leaderboardEmbed = new EmbedBuilder()
+          .setColor("Gold")
+          .setTitle(`📊丨𝐂lassement du serveur ${guild.name}`)
+          .setDescription(
+              topUsers.map((user, index) => {
+                  let positionSuffix = "ᵉᵐᵉ";
+                  let medalEmoji = "";
+                  const prestigeStars = user.prestige > 0 ? " ⭐".repeat(user.prestige) : "";
+  
+                  switch (index) {
+                      case 0:
+                          positionSuffix = "ᵉʳ";
+                          medalEmoji = "🥇";
+                          break;
+                      case 1:
+                          medalEmoji = "🥈";
+                          break;
+                      case 2:
+                          medalEmoji = "🥉";
+                          break;
+                  }
+  
+                  const username = bot.users.cache.get(user.userID)?.username || "Utilisateur Mystère";
+  
+                  return `**${medalEmoji} ${index + 1}${positionSuffix}** ◟ **${username}**\n🔹 **𝐍iveau** : \`${user.level}${prestigeStars}\`\n💠 **𝐗P** : \`${user.xp.toLocaleString()}\``;
+              }).join("\n────────────────────────\n")
+          )
+          .setThumbnail(guild.iconURL({ dynamic: true }))
+          .setFooter({ text: `𝐂ordialement l'équipe ${guild.name}`, iconURL: guild.iconURL() })
+          .setTimestamp();
+  
+      const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+              .setCustomId("SHOW_MORE_BUTTON")
+              .setLabel("Voir plus")
+              .setStyle(ButtonStyle.Primary)
+      );
+  
+      const replyMessage = await interaction.reply({
+          embeds: [leaderboardEmbed],
+          components: [row],
+          fetchReply: true
+      });
+  
+      setTimeout(async () => {
+          try {
+              await replyMessage.delete();
+          } catch (error) {
+              if (error.code !== 10008) { // Ignorer l'erreur "Unknown Message" si le message est déjà supprimé
+                  console.error("[LADDER] Erreur lors de la suppression du message : ", error);
+              }
+          }
+      }, 15000);
+    }
+    if (interaction.customId === "SHOW_MORE_BUTTON") {
+      const guild = interaction.guild;
+      const totalUsers = await User.countDocuments({ serverID: guild.id });
+    
       const topUsers = await User.find({ serverID: guild.id })
         .sort({ prestige: -1, xp: -1 })
-        .limit(10);
-
+        .skip(5)
+        .limit(5);
+    
+      if (topUsers.length === 0) {
+        return interaction.reply({ content: "丨𝐕ous êtes que 5 sur le serveur my bad. :joy:", ephemeral: true });
+      }
+    
       const leaderboardEmbed = new EmbedBuilder()
         .setColor("Gold")
-        .setTitle(`𝐂lassement du serveur ${guild.name}`)
+        .setTitle(`📊丨𝐂lassement du serveur ${guild.name}`)
         .setDescription(
           topUsers
             .map((user, index) => {
-              let positionSuffix = "ᵉᵐᵉ";
-              let medalEmoji = "";
-
-              switch (index) {
-                case 0:
-                  positionSuffix = "ᵉʳ";
-                  medalEmoji = "🥇";
-                  break;
-                case 1:
-                  medalEmoji = "🥈";
-                  break;
-                case 2:
-                  medalEmoji = "🥉";
-                  break;
-              }
-
-              return `\n**${index + 1}${positionSuffix} ${medalEmoji}** __**${
-                bot.users.cache.get(user.userID)?.username ||
-                "Utilisateur inconnu"
-              }**__丨𝐍iveau: **\`${user.level}\`** - 𝐗P: **\`${user.xp.toLocaleString()}\`**`;
+              const position = index + 6;
+              const username = bot.users.cache.get(user.userID)?.username || "Utilisateur mystère";
+              const prestigeStars = user.prestige > 0 ? " ⭐".repeat(user.prestige) : "";
+    
+              return `**${position}ᵉᵐᵉ** ◟ **${username}**\n🔹 **𝐍iveau** : \`${user.level}${prestigeStars}\`\n💠 **𝐗P** : \`${user.xp.toLocaleString()}\``;
             })
-            .join("\n")
+            .join("\n────────────────────────\n")
         )
-        .setThumbnail(guild.iconURL({ dynamic: true }));
-
-      await interaction.reply({ embeds: [leaderboardEmbed] });
-      setTimeout(async () => {
-        const message = await interaction.fetchReply();
-        message.delete();
-      }, 15000);
+        .setThumbnail(guild.iconURL({ dynamic: true }))
+        .setFooter({ text: `𝐂ordialement l'équipe ${guild.name}`, iconURL: guild.iconURL() })
+        .setTimestamp();
+    
+      await interaction.reply({
+        embeds: [leaderboardEmbed],
+        ephemeral: true,
+      });
     }
     function padNumber(number) {
       return number < 10 ? `0${number}` : number;
@@ -2888,7 +3824,6 @@ module.exports = {
     if (interaction.customId === 'STATS_COD_BUTTON') {
       await interaction.reply({ content: "Ceci n'est malheuresement pas encore disponible.", ephemeral: true });
     }
-    
 
     if (interaction.channel === null) return;
     if (!interaction.isCommand()) return;
@@ -2934,5 +3869,6 @@ module.exports = {
         ephemeral: true,
       });
     }
+  }
   },
 };

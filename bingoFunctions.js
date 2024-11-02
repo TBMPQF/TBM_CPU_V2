@@ -75,7 +75,7 @@ async function lancerJeuBingo(guildId, bot) {
     .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **500** dans les prochaines \`5 minutes\` pour gagner!\n@here')
     .setTimestamp()
     .setFooter({
-      text: `Cordialement, l'équipe ${bot.guilds.cache.get(guildId).name}`,
+      text: `𝐂ordialement, l'équipe ${bot.guilds.cache.get(guildId).name}`,
       iconURL: bot.guilds.cache.get(guildId).iconURL(),
     });
 

@@ -8,10 +8,52 @@ const User = require("../models/experience");
 const levelUp = require("../models/levelUp");
 const ServerConfig = require("../models/serverConfig");
 const { filterMessage } = require('../automod');
+const Suggestion = require('../models/suggestion');
+const messagesRandom = require('../models/messageRandom');
 
 module.exports = {
   name: "messageCreate",
   async execute(message, bot) {
+
+    // Récompense message Bump (+25 XP)
+    function getRandomBumpMessage(userID) {
+      const bumpMessages = messagesRandom.bump;
+      const randomMessage = bumpMessages[Math.floor(Math.random() * bumpMessages.length)];
+      return randomMessage.replace('<USER_MENTION>', `<@${userID}>`);
+    }
+    if (message.embeds.length > 0 && message.embeds[0].description && message.embeds[0].description.includes('Bump effectué !')) {
+      await message.delete();
+
+      const userID = message.interaction?.user?.id || message.author.id;
+      const serverID = message.guild.id;
+
+      try {
+        let user = await User.findOne({ userID, serverID });
+        if (!user) {
+          user = new User({
+            userID,
+            serverID,
+            username: message.author.username,
+            serverName: message.guild.name,
+          });
+        }
+
+        user.xp += 25;
+        await user.save();
+
+        const serverConfig = await ServerConfig.findOne({ serverID });
+        if (serverConfig && serverConfig.implicationsChannelID) {
+          const implicationsChannel = message.guild.channels.cache.get(serverConfig.implicationsChannelID);
+          if (implicationsChannel) {
+            const bumpMessage = getRandomBumpMessage(userID);
+            await implicationsChannel.send(bumpMessage);
+          }
+        }
+      } catch (error) {
+        console.error("[XP BUMP] Erreur lors de l'ajout de l'XP ou de l'envoi du message :", error);
+      }
+    }
+
     if (message.author.bot) return;
     await filterMessage(message);
 
@@ -93,10 +135,11 @@ module.exports = {
 
     await user.save();
 
-    //Gestion des suggestions
+    // Gestion des suggestions
     const serverConfig = await ServerConfig.findOne({
       serverID: message.guild.id,
     });
+
     if (!serverConfig || !serverConfig.suggestionsChannelID) {
       return;
     }
@@ -120,33 +163,37 @@ module.exports = {
         { name: "𝐂ontre", value: "0", inline: true },
       ]);
 
+    const suggestionMessage = await bot.channels.cache
+      .get(serverConfig.suggestionsChannelID)
+      .send({ embeds: [suggEmbed] });
+
+    // Création de la suggestion avec l'ajout du serverID et serverName
+    await Suggestion.create({
+      messageID: suggestionMessage.id,
+      userID: message.author.id,
+      suggestionText: message.content,
+      channelID: message.channel.id,
+      serverID: message.guild.id,
+      serverName: message.guild.name,
+    });
+
     const buttonY = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId("ACCEPTSUGG")
+          .setCustomId(`SUGG_ACCEPTSUGG_${suggestionMessage.id}`)
           .setEmoji("✔️")
-          .setStyle(ButtonStyle.Success)
-      )
-      .addComponents(
+          .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
-          .setCustomId("NOPSUGG")
+          .setCustomId(`SUGG_NOPSUGG_${suggestionMessage.id}`)
           .setEmoji("✖️")
-          .setStyle(ButtonStyle.Danger)
-      )
-      .addComponents(
+          .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
-          .setCustomId("SUPPSUGG")
-          .setEmoji("♻")
+          .setCustomId(`SUGG_CONFIGSUGG_${suggestionMessage.id}`) 
+          .setEmoji("⚙️")
           .setStyle(ButtonStyle.Secondary)
       );
 
-    bot.channels.cache
-      .get(serverConfig.suggestionsChannelID)
-      .send({ embeds: [suggEmbed], components: [buttonY] })
-      .then((msg) => {
-        msg.startThread({ name: `𝐒uggestion de ${message.author.username}` });
-      });
-
+    await suggestionMessage.edit({ embeds: [suggEmbed], components: [buttonY] });
     await message.delete();
   },
 };

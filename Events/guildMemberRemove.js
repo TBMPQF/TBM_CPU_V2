@@ -58,7 +58,7 @@ if (user && user.joinedAt) {
       .setTitle(
         `丨𝐕ient de nous quitté ! :sob:`
       )
-      .setDescription(`Il a résisté pendant \`${timeOnServer}\` !`)
+      .setDescription(`𝐈l a résisté pendant \`${timeOnServer}\` !`)
       .setColor("Red")
       .setTimestamp()
 

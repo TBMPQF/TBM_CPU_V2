@@ -34,21 +34,64 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("LOG_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("LOG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({ embeds: [logEmbed], components: [rowLog] });
 
           break;
 
-          case "ROLECHANNEL":
+        case "TWITCH":
+            const twitchEmbed = new EmbedBuilder()
+              .setTitle("`丨𝐂onfiguration 𝐓witch丨`")
+              .setDescription(
+                `Configuration de twitch, permets à tes streamers d'augmenter leurs viewers en quelque seconde!\nConfigure le rôle donner lors de son live, ainsi que le salon ou le message apparaitra.\n\nModifie le salon ou carrément désactive les messages pour les Streamers de ton serveur.\n\n𝐒alon actuel : \`${serverConfig.TwitchChannelName}\`\n𝐑ole __Streamer__ actuel : \`${serverConfig.TwitchRoleName}\``
+              )
+              .setThumbnail(
+                "https://cdn.pixabay.com/photo/2021/12/10/16/38/twitch-6860918_1280.png"
+              )
+              .setColor("#b3c7ff");
+            const rowTwitch = new ActionRowBuilder()
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("TWITCH_BUTTON")
+                  .setEmoji("📝")
+                  .setLabel("𝐌odifier 𝐒alons")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("TWITCH_LISTE")
+                  .setEmoji("📅")
+                  .setLabel("𝐋iste 𝐒treamers")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("TWITCH_ROLE")
+                  .setEmoji("👮‍♂️")
+                  .setLabel("𝐒treamer 𝐑ôle")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("TWITCH_DESAC")
+                  .setEmoji("❌")
+                  .setLabel("𝐑éinitialiser")
+                  .setStyle(ButtonStyle.Danger)
+              );
+            await interaction.reply({ embeds: [twitchEmbed], components: [rowTwitch] });
+  
+            break;
+
+        case "ROLECHANNEL":
             const roleChannelEmbed = new EmbedBuilder()
               .setTitle("`丨𝐂onfiguration du salon 𝐑ôles丨`")
               .setDescription(
@@ -63,28 +106,28 @@ module.exports = {
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_PUSH")
                   .setEmoji("✔️")
-                  .setLabel("Envoyer")
+                  .setLabel("𝐄nvoyer")
                   .setStyle(ButtonStyle.Success)
               )
               .addComponents(
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_BUTTON")
                   .setEmoji("📝")
-                  .setLabel("Modifier Salons")
+                  .setLabel("𝐌odifier 𝐒alons")
                   .setStyle(ButtonStyle.Primary)
               )
               .addComponents(
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_LISTE")
                   .setEmoji("🕵")
-                  .setLabel("Afficher Rôles")
+                  .setLabel("𝐀fficher 𝐑ôles")
                   .setStyle(ButtonStyle.Primary)
               )
               .addComponents(
                 new ButtonBuilder()
                   .setCustomId("ROLECHANNEL_DESAC")
                   .setEmoji("❌")
-                  .setLabel("Réinitialiser")
+                  .setLabel("𝐑éinitialiser")
                   .setStyle(ButtonStyle.Danger)
               );
             await interaction.reply({ embeds: [roleChannelEmbed], components: [rowroleChannel] });
@@ -106,28 +149,28 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("REGL_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyer")
+                .setLabel("𝐄nvoyer")
                 .setStyle(ButtonStyle.Success)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_ROLE")
                 .setEmoji("🕵")
-                .setLabel("Modifier Rôles")
+                .setLabel("𝐌odifier 𝐑ôles")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("REGL_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -152,20 +195,20 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("WELCOME_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("WELCOME_ROLE")
                 .setEmoji("🕵")
-                .setLabel("Modifier Rôles")
+                .setLabel("𝐌odifier 𝐑ôles")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("WELCOME_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -189,14 +232,14 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier Salons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("IMPLICATION_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -218,16 +261,16 @@ module.exports = {
           const rowSugg = new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
-                .setCustomId("SUGG_BUTTON")
+                .setCustomId("IDEE_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("SUGG_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -251,21 +294,21 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("DAILY_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyer")
+                .setLabel("𝐄nvoyer")
                 .setStyle(ButtonStyle.Success)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("DAILY_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("DAILY_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -273,6 +316,37 @@ module.exports = {
             components: [rowDaily],
           });
           break;
+
+        case "ANNONCES":
+            const ANNONCEmbed = new EmbedBuilder()
+              .setTitle("`丨𝐂onfiguration 𝐀nnonces丨`")
+              .setDescription(
+                `Permet à toute ta communautée d'être à jour avec les dernières mises a jour du bot!`
+              )
+              .setThumbnail(
+                "https://papycha.fr/wp-content/uploads/2019/08/84863418061.png"
+              )
+              .setColor("#b3c7ff");
+            const rowAnnonce = new ActionRowBuilder()
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("ANNONCE_BUTTON")
+                  .setEmoji("📝")
+                  .setLabel("𝐌odifier 𝐒alons")
+                  .setStyle(ButtonStyle.Primary)
+              )
+              .addComponents(
+                new ButtonBuilder()
+                  .setCustomId("ANNONCE_DESAC")
+                  .setEmoji("❌")
+                  .setLabel("𝐑éinitialiser")
+                  .setStyle(ButtonStyle.Danger)
+              );
+            await interaction.reply({
+              embeds: [ANNONCEmbed],
+              components: [rowAnnonce],
+            });
+            break;
 
         case "ROLES":
           const ROLESEmbed = new EmbedBuilder()
@@ -288,14 +362,14 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("ROLE_LISTE")
                 .setEmoji("📅")
-                .setLabel("Liste")
+                .setLabel("𝐋iste")
                 .setStyle(ButtonStyle.Secondary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("ROLES_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -304,10 +378,10 @@ module.exports = {
           });
           break;
 
-          case "TICKET":
+        case "TICKET": 
           const TICKETEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐓icket丨`")
-            .setDescription(`Système de 𝐓icket qui permettra à tous tes utilisateurs lors d'un problème d'ouvrir un salon disponible uniquement pour les modérateurs. Ainsi il pourra exposer son problème.\n\nModifie le salon ou carrément désactive les 𝐓ickets de ton serveur.\n\n✔️ pour envoyé le message initial des 𝐓ickets dans ton salon !\n\nSalon actuel : \`${serverConfig.ticketChannelName}\`\nRole actuel : \`${serverConfig.ticketAdminRoleName}\``)
+            .setDescription(`𝐒ystème de 𝐓icket qui permettra à tous tes utilisateurs lors d'un problème d'ouvrir un salon disponible uniquement pour les modérateurs. 𝐀insi il pourra exposer son problème.\n\n𝐌odifie le salon ou carrément désactive les 𝐓ickets de ton serveur.\n\n✔️ pour envoyé le message initial des 𝐓ickets dans ton salon !\n\n𝐒alon actuel : \`${serverConfig.ticketChannelName}\`\n𝐑ole d'__admin__ actuel : \`${serverConfig.ticketAdminRoleName}\``)
             .setThumbnail(
               "https://www.pngall.com/wp-content/uploads/12/Ticket-PNG-Free-Image.png"
             )
@@ -318,26 +392,26 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("TICKET_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Envoyer")
+                .setLabel("𝐄nvoyer")
                 .setStyle(ButtonStyle.Secondary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_ROLE")
                 .setEmoji("👮‍♂️")
-                .setLabel("Administrateur Rôle")
+                .setLabel("𝐀dministrateur 𝐑ôle")
                 .setStyle(ButtonStyle.Primary)
             )
             .addComponents(
               new ButtonBuilder()
                 .setCustomId("TICKET_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({
@@ -346,7 +420,7 @@ module.exports = {
           });
           break;
 
-          case "BINGO":
+        case "BINGO":
           const BINGOEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
             .setDescription(`Gestion du bingo, tu peux modifier le salon ou le bingo apparaîtra aléatoirement dans une fourchette de \`2\` à \`5\` jours.\n**Appuie** sur __Valider__ pour l'activer et sur __Réinitialiser__ pour le désactiver et réinitialiser le salon choisis.\n\nSalon actuel : \`${serverConfig.bingoChannelName}\`\n**${bingoState ? bingoState.etat : 'INACTIF'}**`)
@@ -360,19 +434,19 @@ module.exports = {
               new ButtonBuilder()
                 .setCustomId("BINGO_PUSH")
                 .setEmoji("✔️")
-                .setLabel("Valider")
+                .setLabel("𝐕alider")
                 .setStyle(ButtonStyle.Secondary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("BINGO_BUTTON")
                 .setEmoji("📝")
-                .setLabel("Modifier Salons")
+                .setLabel("𝐌odifier 𝐒alons")
                 .setStyle(ButtonStyle.Primary)
             ).addComponents(
               new ButtonBuilder()
                 .setCustomId("BINGO_DESAC")
                 .setEmoji("❌")
-                .setLabel("Réinitialiser")
+                .setLabel("𝐑éinitialiser")
                 .setStyle(ButtonStyle.Danger)
             );
           await interaction.reply({

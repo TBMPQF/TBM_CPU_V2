@@ -57,7 +57,7 @@ async function levelUp(obj, user, newXP) {
       user.xp = newXP;
       if (levelUpChannel) {
         levelUpChannel.send(
-          `**${author}丨** 𝐓u viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
+          `**${author}丨**𝐓u viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
         );
       }
       handleRole(obj, newLevel, levelUpChannel, "up", user.prestige);
@@ -66,7 +66,7 @@ async function levelUp(obj, user, newXP) {
       user.xp = newXP;
       if (levelDownChannel) {
         levelDownChannel.send(
-          `**${author}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**... 𝐋a prochaine fois tu feras attention !`
+          `**${author}丨**𝐓u viens de descendre au niveau **\`${newLevel}\`**... 𝐋a prochaine fois tu feras attention !`
         );
       }
       handleRole(obj, newLevel, levelDownChannel, "down", user.prestige);
@@ -89,7 +89,7 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
           await obj.member.roles.add(newRole);
           if (newLevel !== 1) {
             channel.send(
-              `**        丨** 𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`
+              `**        丨**𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`
             );
           }
         }
@@ -117,7 +117,7 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
         if (newRole) {
           await obj.member.roles.add(newRole);
           channel.send(
-            `**        丨** 𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
+            `**        丨**𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
           );
         }
       }

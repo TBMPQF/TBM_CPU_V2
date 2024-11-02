@@ -229,7 +229,7 @@ module.exports = (bot) => {
                     .setTitle(`Paroles de ${firstSong.fullTitle}${hasMultipleParts ? " - Partie 1" : ""}`)
                     .setDescription(lyricsParts[0])
                     .setFooter({
-                        text: `Cordialement, l'équipe${interaction.guild.name}`,
+                        text: `𝐂ordialement, l'équipe${interaction.guild.name}`,
                         iconURL: interaction.guild.iconURL(),
                     })
                 ]
@@ -242,7 +242,7 @@ module.exports = (bot) => {
                         .setTitle(`Paroles de ${firstSong.fullTitle} - Partie ${i + 1}`)
                         .setDescription(lyricsParts[i])
                         .setFooter({
-                            text: `Cordialement, l'équipe${interaction.guild.name}`,
+                            text: `𝐂ordialement, l'équipe${interaction.guild.name}`,
                             iconURL: interaction.guild.iconURL(),
                         })
                     ],
@@ -275,7 +275,8 @@ module.exports = (bot) => {
                 .replace(/\b(official|video|4k|hd|lyrics|ft\.|feat\.|remastered|audio)\b/gi, '')
                 .replace(/\s{2,}/g, ' ')
                 .trim(),
-            duration: `\`${formatDuration(videos[0].duration.timestamp)}\``
+            duration: `\`${formatDuration(videos[0].duration.timestamp)}\``,
+            addedBy: message.author.id
         };
     
         const voiceChannel = message.member.voice.channel;
@@ -287,7 +288,6 @@ module.exports = (bot) => {
                     member: message.member,
                     textChannel: message.channel,
                 });
-                console.log(`[MUSIC] Added to queue: ${song.title}`);
                 await updateMusicEmbed(message.channel, message.guild.id);
             } catch (error) {
                 console.error(`[MUSIC] Error playing song: ${error.message}`);
@@ -309,59 +309,78 @@ module.exports = (bot) => {
         songQueues.get(guildId).push(song);
         await updateMusicEmbed(textChannel, guildId);
     }
+    const MAX_PLAYLIST_SIZE = 50;
+    const MAX_CHAR_LIMIT = 5000;
     async function updateMusicEmbed(channel, guildId) {
-        try {
-            let guild = channel.guild || await bot.guilds.fetch(guildId);
-            if (!guild) {
-                throw new Error(`[MUSIC] Impossible de récupérer la guilde avec l'ID : ${guildId}`);
+            try {
+                let guild = channel.guild || await bot.guilds.fetch(guildId);
+                if (!guild) {
+                    throw new Error(`[MUSIC] Impossible de récupérer la guilde avec l'ID : ${guildId}`);
+                }
+
+                const queue = distube.getQueue(guildId);
+                let playlistText = "";
+                let characterCount = 0;
+                let songCount = 0;
+
+                if (queue && queue.songs.length > 0) {
+                    for (const [index, song] of queue.songs.entries()) {
+                        const isPaused = queue.paused && index === 0;
+                        const songText = `${index + 1}丨${song.name} - \`${isPaused ? pauseIcon : song.formattedDuration}\``;
+
+                        if (characterCount + songText.length > MAX_CHAR_LIMIT || songCount >= MAX_PLAYLIST_SIZE) {
+                            break;
+                        }
+
+                        playlistText += (index === 0 ? `**${songText}**\n` : `${songText}\n`);
+                        characterCount += songText.length;
+                        songCount++;
+                    }
+                } else if (songQueues.has(guildId) && songQueues.get(guildId).length > 0) {
+                    const tempQueue = songQueues.get(guildId);
+                    for (const [index, song] of tempQueue.entries()) {
+                        const songText = `${index + 1}丨${song.title} - ${song.duration}`;
+
+                        if (characterCount + songText.length > MAX_CHAR_LIMIT || songCount >= MAX_PLAYLIST_SIZE) {
+                            break;
+                        }
+
+                        playlistText += (index === 0 ? `**${songText}**\n` : `${songText}\n`);
+                        characterCount += songText.length;
+                        songCount++;
+                    }
+                } else {
+                    playlistText = "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.";
+                }
+
+                const guildName = guild.name;
+                const guildIcon = guild.iconURL() ?? null;
+
+                const newEmbed = new EmbedBuilder()
+                    .setColor("Purple")
+                    .setTitle("――――――――∈ MUSIQUES ∋――――――――")
+                    .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
+                    .setDescription(playlistText)
+                    .setFooter({
+                        text: `𝐂ordialement, l'équipe${guildName}`,
+                        iconURL: guildIcon,
+                    });
+
+                const musicEntry = await Music.findOne({ guildId });
+                if (musicEntry) {
+                    const message = await channel.messages.fetch(musicEntry.messageId);
+                    await message.edit({ embeds: [newEmbed] });
+                } else {
+                    const msg = await channel.send({ embeds: [newEmbed] });
+                    await Music.create({
+                        guildId: guildId,
+                        channelId: channel.id,
+                        messageId: msg.id,
+                    });
+                }
+            } catch (error) {
+                console.error("[MUSIC] Erreur lors de la mise à jour de l'embed :", error.message);
             }
-            const queue = distube.getQueue(guildId);
-            let playlistText = "";
-    
-            if (queue && queue.songs.length > 0) {
-                playlistText = queue.songs.map((song, index) => {
-                    const isPaused = queue.paused && index === 0;
-                    const songText = `${index + 1}丨${song.name} - \`${isPaused ? pauseIcon : song.formattedDuration}\``;
-                    return index === 0 ? `**${songText}**` : songText;
-                }).join('\n');
-            } else if (songQueues.has(guildId) && songQueues.get(guildId).length > 0) {
-                const tempQueue = songQueues.get(guildId);
-                playlistText = tempQueue.map((song, index) => {
-                    const songText = `${index + 1}丨${song.title} - ${song.duration}`;
-                    return index === 0 ? `**${songText}**` : songText;
-                }).join('\n');
-            } else {
-                playlistText = "**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.";
-            }
-    
-            const guildName = guild.name;
-            const guildIcon = guild.iconURL() ?? null;
-    
-            const newEmbed = new EmbedBuilder()
-                .setColor("Purple")
-                .setTitle("――――――――∈ MUSIQUES ∋――――――――")
-                .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-                .setDescription(playlistText)
-                .setFooter({
-                    text: `Cordialement, l'équipe${guildName}`,
-                    iconURL: guildIcon,
-                });
-    
-            const musicEntry = await Music.findOne({ guildId });
-            if (musicEntry) {
-                const message = await channel.messages.fetch(musicEntry.messageId);
-                await message.edit({ embeds: [newEmbed] });
-            } else {
-                const msg = await channel.send({ embeds: [newEmbed] });
-                await Music.create({
-                    guildId: guildId,
-                    channelId: channel.id,
-                    messageId: msg.id,
-                });
-            }
-        } catch (error) {
-            console.error("[MUSIC] Erreur lors de la mise à jour de l'embed :", error.message);
-        }
     }
     async function disconnectIfEmpty(queue) {
         try {
@@ -398,7 +417,7 @@ module.exports = (bot) => {
                 .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
                 .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.")
                 .setFooter({
-                    text: `Cordialement, l'équipe ${guildName}`,
+                    text: `𝐂ordialement, l'équipe ${guildName}`,
                     iconURL: guildIcon,
                 });
     
@@ -422,22 +441,67 @@ module.exports = (bot) => {
     async function playStoredSongs(guildId, voiceChannel, member, textChannel) {
         const queue = songQueues.get(guildId);
         if (queue && queue.length > 0) {
-            console.log(`[MUSIC] Playing stored songs for guild ${guildId}.`);
             for (const song of queue) {
                 try {
-                    console.log(`[MUSIC] Attempting to play: ${song.title} (${song.url})`);
                     await distube.play(voiceChannel, song.url, {
                         member: member,
                         textChannel: textChannel,
                     });
-                    console.log(`[MUSIC] Started playing: ${song.title}`);
                 } catch (error) {
                     console.error(`[MUSIC] Error playing stored song (${song.title}):`, error);
                 }
             }
             songQueues.delete(guildId);
-        } else {
-            console.log("[MUSIC] No songs stored to play.");
+        }
+    }
+
+    bot.on('voiceStateUpdate', async (oldState, newState) => {
+        if (!newState.channelId && oldState.channelId) {
+            console.log(`[MUSIC] ${oldState.member.id} a quitté le salon vocal.`);
+            const userId = oldState.member.id;
+            const guildId = oldState.guild.id;
+            await removeSongsFromUser(userId, guildId);
+        }
+    });
+    async function removeSongsFromUser(userId, guildId) {
+        const queue = distube.getQueue(guildId);
+    
+        if (queue && queue.songs.length > 0) {
+            console.log(`[MUSIC] Suppression des chansons ajoutées par ${userId} dans la guilde ${guildId}`);
+    
+            const initialLength = queue.songs.length;
+            const songsToKeep = [];
+            
+            // Garder la première chanson (celle en cours de lecture) même si elle appartient à l'utilisateur
+            const currentSong = queue.songs[0];
+            songsToKeep.push(currentSong);
+    
+            // Conserver toutes les chansons sauf celles de l'utilisateur et la première chanson
+            for (let i = 1; i < queue.songs.length; i++) {
+                const song = queue.songs[i];
+                if (song.member.id !== userId) {
+                    songsToKeep.push(song);
+                }
+            }
+    
+            // Si des chansons ont été supprimées
+            if (songsToKeep.length < initialLength) {
+                console.log(`[MUSIC] ${initialLength - songsToKeep.length} chansons supprimées.`);
+    
+                // Mise à jour de la playlist sans les chansons de l'utilisateur, sauf celle en cours
+                queue.songs = songsToKeep;
+    
+                // Mettre à jour l'embed pour refléter les changements dans la playlist
+                await updateMusicEmbed(queue.textChannel, guildId);
+            } else {
+                console.log(`[MUSIC] Aucune chanson à supprimer pour l'utilisateur ${userId}.`);
+            }
+    
+            // Si la queue est vide après suppression, arrêter la musique
+            if (queue.songs.length === 1 && queue.songs[0] === currentSong) {
+                console.log(`[MUSIC] Plus de chansons dans la file après la chanson actuelle.`);
+                distube.stop(guildId);
+            }
         }
     }
 };

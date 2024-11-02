@@ -75,7 +75,7 @@ module.exports = {
 
     const WelcomeEmbed = new EmbedBuilder()
       .setTitle(`\`Oh! Un nouveau membre\` :warning:`)
-      .setColor("#ffc394")
+      .setColor("#b3c7ff")
       .setDescription(description)
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
       .setTimestamp()

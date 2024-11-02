@@ -10,7 +10,8 @@ const images = {
 
 module.exports = {
   name: "chifoumi",
-  description: "丨Jeux pierre, feuille, ciseaux.",
+  description: "丨𝐉eux pierre, feuille, ciseaux.",
+  longDescription: ` 𝐓u penses pouvoir battre le bot à un jeu aussi simple que pierre, feuille, ciseaux ? 𝐂'est mignon...\n𝐀vec cette commande, tu peux non seulement tester ta chance, mais aussi parier ton précieux XP. 𝐎ui, tu as bien lu, de l'XP ! 💸\n\n𝐂omment ça marche ? 𝐓u choisis entre **pierre**, **feuille** ou **ciseaux**, puis tu mises entre **5** et **1000 XP**. \n𝐌ais attention, le bot est rusé (et un peu tricheur parfois). 𝐈l a 60% de chances de te battre. 𝐃onc si tu perds, ne dis pas que tu n'as pas été prévenu ! 🤷‍♂️\n\n𝐒i tu gagnes, c'est jackpot ! 𝐒i tu perds… eh bien, tu seras allégé d'un peu d'XP. 𝐌ais, au moins, tu auras tenté ta chance comme un(e) vrai(e) guerrier(e). 💪\n\n𝐀h, et si tu es à court d'XP, inutile de tricher avec des mises impossibles, le bot le saura (parce qu'il est omniscient, évidemment). 𝐀lors, prêt(e) à tenter le tout pour le tout ? 🏆`,
   dm: false,
   permission: 'Aucune',
   options: [
@@ -23,7 +24,7 @@ module.exports = {
     {
       type: 4,
       name: "mise",
-      description: "Combien d'XP voulez-vous parier ?",
+      description: "𝐂ombien d'XP veux-tu parier ?",
       required: true,
     },
   ],
@@ -33,11 +34,17 @@ module.exports = {
     let mise = interaction.options.getInteger("mise");
 
     if (!["pierre", "feuille", "ciseaux"].includes(joueursH)) {
-      return await interaction.reply("Veuillez entrer une option valide (pierre, feuille, ciseaux).");
+      return await interaction.reply({
+        content: "𝐓u as cru pouvoir gagner comme ça.. ? 𝐉oue uniquement : **pierre**, **feuille** ou **ciseaux**.",
+        ephemeral: true
+      });
     }
 
     if (mise < 5 || mise > 1000) {
-      return await interaction.reply("La mise doit être entre \`5\` et \`1000\` XP.");
+      return await interaction.reply({
+        content: "𝐋a mise doit être entre \`5\` et \`1000\` XP.",
+        ephemeral: true
+      });
     }
 
     let joueursB;
@@ -69,7 +76,7 @@ module.exports = {
     }
 
     if (user.xp < mise) {
-      return await interaction.editReply(`:no_entry_sign: **Tu n'as pas assez d'__XP__ pour cette mise.**\nTu as seulement ${user.xp.toLocaleString()} XP disponible.`);
+      return await interaction.editReply(`:no_entry_sign: **𝐓u n'as pas assez d'__XP__ pour cette mise.**\n𝐓u as seulement ${user.xp.toLocaleString()} XP disponible.`);
     }
 
     let Embed = new Discord.EmbedBuilder();
@@ -86,11 +93,11 @@ module.exports = {
       (joueursH === "feuille" && joueursB === "pierre") ||
       (joueursH === "ciseaux" && joueursB === "feuille")
     ) {
-      gameResult = "GAGNÉ";
+      gameResult = "𝐆AGNÉ";
       color = "Green";
       xpChange = mise;
     } else {
-      gameResult = "PERDU";
+      gameResult = "𝐏ERDU";
       color = "Red";
       xpChange = -mise;
     }
@@ -100,11 +107,11 @@ module.exports = {
 
     Embed.setColor(color)
       .setDescription(
-        `${gameResult === "É-GA-LI-TÉ" ? "Arf, on est connecté" : gameResult === "GAGNÉ" ? "Bien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\nTu as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}\`.`
+        `${gameResult === "É-GA-LI-TÉ" ? "𝐀rf, on est connecté" : gameResult === "GAGNÉ" ? "𝐁ien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\n𝐓u as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}\`.`
       )
       .setThumbnail(thumbUrl)
       .setFooter({
-        text: `Tu as maintenant : ${user.xp.toLocaleString()} XP.`,
+        text: `𝐓u as maintenant : ${user.xp.toLocaleString()} XP.`,
         iconURL: interaction.user.displayAvatarURL({
           dynamic: true,
           size: 512,

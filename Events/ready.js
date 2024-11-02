@@ -11,13 +11,13 @@ const Music = require("../models/music")
 const SearchMateMessage = require('../models/searchMate');
 const userChannels = require('../models/userChannels');
 const VocalChannel = require('../models/vocalGames');
-const ApexStreamer = require('../models/Streamers');
 const InVocal = require("../models/inVocal")
 const { voiceUsers, initializeXpDistributionInterval } = require('../models/shared');
 const moment = require('moment-timezone');
 const { verifierEtLancerJeuxBingo } = require('../bingoFunctions');
 const fs = require('fs');
 const { startTwitchCheck } = require('../twitch');
+const { networkInterfaces, hostname } = require("os");
 
 module.exports = {
   name: "ready",
@@ -236,7 +236,7 @@ module.exports = {
             .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
             .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.")
             .setFooter({
-              text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
+              text: `𝐂ordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
               iconURL: bot.guilds.cache.get(serverId).iconURL(),
             });
           message.edit({ embeds: [newEmbed] });
@@ -327,6 +327,12 @@ module.exports = {
           roleReglementName: null,
           ticketAdminRoleID: null,
           ticketAdminRoleName: null,
+          TwitchChannelID : null,
+          TwitchChannelName : null,
+          TwitchRoleName : null,
+          TwitchRoleID : null,
+          AnnoucementChannelID : null,
+          AnnoucementChannelName : null,
         });
         await serverConfig.save();
 
@@ -334,12 +340,12 @@ module.exports = {
           .setTitle(`\`𝐇ey! 𝐔n grand 𝐌𝐄𝐑𝐂𝐈\` 🙏`)
           .setColor("#ffc394")
           .setDescription(
-            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\` mon créateur.\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement, mute.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive.\n◟𝐒ystème de menu déroulant pour les rôles.\n◟𝐄t bien plus !!`
+            `𝐏our commencer à utiliser toutes mes fonctionnalités, tu peux à présent me configurer en utilisant la commande \`/setConfig\` si tu es __administrateur__ du serveur (au minimum).\n\`𝐍'oublie pas de me mettre tout en haut de ta liste de rôle ainsi qu'administrateur du serveur.\`\n 𝐎u tout simplement rajouté le rôle __le plus haut__ de ton serveur au **bot**.\n\n𝐏our toute autre question, n'hésite surtout pas à contacter \`tbmpqf\` mon créateur.\n\n\n__𝐀vec moi, ta communauté à accès__ :\n\n◟𝐒ystème d'expérience complet. (message + vocal)\n◟𝐒ystème d'avertissement, mute.\n◟𝐍otifications des lives **𝐓witch**.\n◟𝐒ystème de ticket.\n◟𝐒ystème de suggestion.\n◟𝐁ingo avec des récompenses exclusive.\n◟𝐒ystème de menu déroulant pour les rôles.\n◟𝐄t bien plus !!`
           )
           .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }))
           .setTimestamp()
           .setFooter({
-            text: `Cordialement, l'équipe de 𝐓𝐁𝐌_𝐂𝐏𝐔_𝐕𝟐`,
+            text: `𝐂ordialement, l'équipe de 𝐓𝐁𝐌_𝐂𝐏𝐔_𝐕𝟐`,
             iconURL: "https://i.postimg.cc/L8B87btv/faucon-fond.png",
           });
           try {
@@ -382,54 +388,68 @@ module.exports = {
     });
 
     // Message de connexion du bot
+    function getBotOrigin() {
+      const nets = networkInterfaces();
+      let isLocal = true;
+      
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+          if (!net.internal && net.family === "IPv4") {
+            isLocal = false;
+            break;
+          }
+        }
+        if (!isLocal) break;
+      }
+
+      const host = hostname();
+      return isLocal ? `Local (${host})` : `Serveur (${host})`;
+    }
     const myServerID = '716810235985133568';
     bot.guilds.cache.forEach((server) => {
       if (server.id === myServerID) {
-      ServerConfig.findOne({ serverID: server.id })
-        .then((serverConfig) => {
-          if (serverConfig) {
-            const logChannelID = serverConfig.logChannelID;
-            const logChannel = bot.channels.cache.get(logChannelID);
+        ServerConfig.findOne({ serverID: server.id })
+          .then((serverConfig) => {
+            if (serverConfig) {
+              const logChannelID = serverConfig.logChannelID;
+              const logChannel = bot.channels.cache.get(logChannelID);
 
-            if (logChannel && logChannel instanceof Discord.TextChannel) {
-              logChannel.messages.fetch({ limit: 100 }).then((messages) => {
-                const connectMessages = messages.filter(
-                  (msg) =>
-                    msg.author.id === bot.user.id &&
-                    msg.embeds.length > 0 &&
-                    msg.embeds[0].description ===
-                      "**Je viens tout juste de me connecter. :warning:**"
-                );
-
-                if (connectMessages.size > 0) {
-                  logChannel.bulkDelete(connectMessages).then(() => {
-                    const ConnectOK = new EmbedBuilder()
-                      .setDescription(
+              if (logChannel && logChannel instanceof Discord.TextChannel) {
+                logChannel.messages.fetch({ limit: 100 }).then((messages) => {
+                  const connectMessages = messages.filter(
+                    (msg) =>
+                      msg.author.id === bot.user.id &&
+                      msg.embeds.length > 0 &&
+                      msg.embeds[0].description ===
                         "**Je viens tout juste de me connecter. :warning:**"
-                      )
-                      .setColor("White")
-                      .setTimestamp();
-                    logChannel.send({ embeds: [ConnectOK] });
-                  });
-                } else {
-                  const ConnectOK = new EmbedBuilder()
+                  );
+
+                  const origin = getBotOrigin();
+                  const connectEmbed = new EmbedBuilder()
                     .setDescription(
                       "**Je viens tout juste de me connecter. :warning:**"
                     )
                     .setColor("White")
+                    .setFooter({ text: `丨${origin}` })
                     .setTimestamp();
-                  logChannel.send({ embeds: [ConnectOK] });
-                }
-              });
+
+                  if (connectMessages.size > 0) {
+                    logChannel.bulkDelete(connectMessages).then(() => {
+                      logChannel.send({ embeds: [connectEmbed] });
+                    });
+                  } else {
+                    logChannel.send({ embeds: [connectEmbed] });
+                  }
+                });
+              }
             }
-          }
-        })
-        .catch((error) => {
-          console.error(
-            "Erreur lors de la récupération du salon de journalisation depuis la base de données :",
-            error
-          );
-        });
+          })
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la récupération du salon de journalisation depuis la base de données :",
+              error
+            );
+          });
       }
     });
 
@@ -444,7 +464,7 @@ module.exports = {
         .setDescription(`@here. 𝐍'oubliez pas de récupérer votre \`𝐃aily\` ! `)
         .setColor("Red")
         .setFooter({
-            text: `Cordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
+            text: `𝐂ordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
             iconURL: bot.guilds.cache.get(serverId).iconURL(),
           })
         .setTimestamp();
@@ -505,8 +525,7 @@ module.exports = {
         console.error('Erreur lors de la réaction automatique :', error);
       }
     });
-    console.log("Lancement de la vérification Twitch...");
-    startTwitchCheck(bot); // Lancer la vérification Twitch quand le bot est prêt
+    startTwitchCheck(bot);
   },
 };
 

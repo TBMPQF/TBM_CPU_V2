@@ -8,7 +8,8 @@ const serverRoleMenuSchema = new mongoose.Schema({
     emoji: { type: String },
     roles: [{
       roleName: { type: String, required: true },
-      roleId: { type: String, required: true }
+      roleId: { type: String, required: true },
+      displayName: { type: String, required: true }
     }]
   }]
 }, { versionKey: false, strict: true });
