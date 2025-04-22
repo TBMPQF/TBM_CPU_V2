@@ -17,6 +17,7 @@ const serverConfigSchema = new mongoose.Schema({
   roleWelcomeName: { type: String, default: null },
   implicationsChannelID: { type: String, default: null },
   implicationsChannelName: { type: String, default: null },
+  lastBumpMessageID: { type: String,  default: null },
   suggestionsChannelID: { type: String, default: null },
   suggestionsChannelName: { type: String, default: null },
   ticketChannelID: { type: String, default: null },

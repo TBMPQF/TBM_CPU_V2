@@ -31,6 +31,7 @@ const { unmuteRequests } = require('../models/shared');
 const { intervalleAleatoire, lancerJeuBingo } = require('../bingoFunctions');
 const Suggestion = require('../models/suggestion');
 const TwitchStreamers = require("../models/TwitchStreamers")
+const messagesRandom = require('../models/messageRandom');
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -432,9 +433,9 @@ module.exports = {
           timeRemainingMessage += `\`${secondsRemaining.toString().padStart(2, "0")} seconde${secondsRemaining > 1 ? 's' : ''}\``;
       
           return interaction.reply({
-            content: `丨𝐓u dois attendre encore ${timeRemainingMessage} avant de pouvoir récupérer ton __𝐃aily__ !`,
-            ephemeral: true,
-          });
+            content: `丨𝐓u dois attendre encore **${timeRemainingMessage}** avant de pouvoir récupérer ton \`𝐃aily\` !`,
+            ephemeral: true
+        });
         }
 
         user.consecutiveDaily += 1;
@@ -449,16 +450,9 @@ module.exports = {
       }
 
       const SPECIAL_DAILY_STREAK = 50;
-      const randomMessages = [
-        `𝐀ttention, **${interaction.user.username}** vient d'atteindre \`${user.consecutiveDaily}\` jours consécutifs de bonus quotidien ! 💥 Peut-on l'arrêter ?!`,
-        `**${interaction.user.username}** a enchaîné \`${user.consecutiveDaily}\` jours d'affilée ! On dirait qu'il ou elle ne dort jamais ! 🛌`,
-        `𝐀vec \`${user.consecutiveDaily}\` jours consécutifs, **${interaction.user.username}** est devenu un maître du daily bonus ! 🏆`,
-        `𝐎h là là ! **${interaction.user.username}** a survécu \`${user.consecutiveDaily}\` jours sans oublier son bonus quotidien ! Respect ! 🙌`,
-        `𝐄st-ce un robot ? 𝐍on, c'est juste **${interaction.user.username}** qui a atteint \`${user.consecutiveDaily}\` jours de streak !`,
-        `\`${user.consecutiveDaily}\` jours consécutifs de daily bonus pour **${interaction.user.username}** ! 𝐁ientôt une statue à son effigie dans le serveur ! 🗿`
-      ];
-
-      const selectedMessage = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+      const selectedMessage = messagesRandom.DailyStreak[Math.floor(Math.random() * messagesRandom.DailyStreak.length)]
+          .replace('<USER_NAME>', interaction.user.username)
+          .replace('<STREAK>', user.consecutiveDaily);
 
       if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
           const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
@@ -642,81 +636,50 @@ module.exports = {
         serverID: interaction.guild.id,
         userID: interaction.user.id,
       });
+    
       if (user.lostConsecutiveDaily === 0) {
         return interaction.reply({
-          content: "丨𝐀h, voilà que le vent de l'indécision souffle plus fort qu'une mouette après un festin de frites ! 𝐃ésolé mais.. c'est trop tard !",
+          content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.",
           ephemeral: true,
         });
       }
-      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
-      const implicationsChannelID = serverConfig ? serverConfig.implicationsChannelID : null;
-
-      const storedConsecutiveDaily = user.lostConsecutiveDaily || 0;
-      const costXP = calculateCostXP(storedConsecutiveDaily);
-      const malus = calculateMalus(storedConsecutiveDaily);
-      const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
-      const levelBeforeLoss = user.level;
-
-      if (user.xp >= costXP) {
-        user.xp -= costXP;
-        user.consecutiveDaily = user.lostConsecutiveDaily;
-        user.lostConsecutiveDaily = 0;
-        user.malusDaily = malus;
-        user.malusDuration = malusDuration;
-        user.lastDaily = new Date(Date.now());
-        const newLevel = Math.floor(0.1 * Math.sqrt(user.xp));
-        user.level = newLevel;
-        await user.save();
-
-        const levelDownMessages = [
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme trouver un parking en plein **Paris**, rare et un peu décevant. 𝐀llez, un petit daily et on oublie tout ça !`,
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐓u es comme le WiFi gratuit : tout le monde s'excite, mais personne ne s'attend à de la rapidité. 𝐀llez, ton daily t'attend ! -`,
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐁ravo ! 𝐓u progresses à la vitesse d'un escargot en pause café. 𝐍'oublie pas ton daily, ça pourrait peut-être accélérer les choses ! -`,
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐓u évolues comme un dinosaure en 2024. Extinction imminente, fais vite ton daily ! -`,
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme perdre à un concours de pierre-papier-ciseaux contre un poisson rouge. 𝐍'oublie pas ton daily, champion ! -`,
-          `**${interaction.user}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**. 𝐂'est comme fêter un anniversaire de plus à l'âge de 90 ans : surprenant, un peu triste, mais on applaudit quand même. 𝐂ourage pour ton daily, ça ne peut que s'améliorer... en théorie ! -`,
-        ];
-        const randomMessage = levelDownMessages[Math.floor(Math.random() * levelDownMessages.length)];
-
-        if (newLevel < levelBeforeLoss && implicationsChannelID) {
-          const levelDownChannel = interaction.guild.channels.cache.get(implicationsChannelID);
-          if (levelDownChannel) {
-            levelDownChannel.send(randomMessage);
-          }
-        }
-
-        await interaction.reply({
-          content: `丨𝐓u as rattrapé ton __𝐃aily__ pour seulement \`${costXP.toLocaleString()}\` 𝐗p. 𝐓es copains ne diront plus que tu es un rat ! 𝐏ar contre.. __𝐔n malus__ de \`${malus}\` a été appliqué pour \`${malusDuration} jour(s)\`.`,
-          ephemeral: true,
-        });
-
-        const recoveredDailyLog = new EmbedBuilder()
-          .setColor("Orange")
-          .setAuthor({
-            name: interaction.user.username,
-            iconURL: interaction.user.displayAvatarURL({ dynamic: true })
-          })
-          .setTitle(`丨𝐕ient de récupéré son Daily manqué !`)
-          .setDescription(`\n_Série recupérée_ : \`${user.consecutiveDaily}\`.\n\n_XP dépensé_ : \`${costXP.toLocaleString()}\` XP.\n\n_Malus appliqué_ : \`${malus}\` XP pour \`${malusDuration}\` jours.`)
-          .setFooter({
-            text: `XP restant : ${user.xp.toLocaleString()}`,
-            iconURL: interaction.user.displayAvatarURL({ dynamic: true, size: 64 })
-          })
-          .setTimestamp();
-
-      const serverInfo = await ServerConfig.findOne({ serverID: interaction.guild.id });
-        if (serverInfo && serverInfo.logChannelID) {
-          const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
-          if (logChannel) {
-            logChannel.send({ embeds: [recoveredDailyLog] });
-          }
-        }
+    
+      const costXP = calculateCostXP(user.lostConsecutiveDaily);
+      const malus = calculateMalus(user.lostConsecutiveDaily);
+      const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
+  
+      let remainingCost = costXP;
+      if (user.xp >= remainingCost) {
+        user.xp -= remainingCost;
+        remainingCost = 0;
       } else {
-        return interaction.reply({
-          content: `丨**L'application met trop de temps à répondre -> contact mon créateur \`tbmpqf\`.**`,
-          ephemeral: true,
-        });
+        remainingCost -= user.xp;
+        user.xp = 0;
+    
+        for (let i = user.prestige; i > 0 && remainingCost > 0; i--) {
+          for (let lvl = 50; lvl > 0 && remainingCost > 0; lvl--) {
+            const xpForLevel = xpPerLevel(lvl);
+            if (remainingCost >= xpForLevel) {
+              remainingCost -= xpForLevel;
+            } else {
+              break;
+            }
+          }
+        }
       }
+    
+      user.consecutiveDaily = user.lostConsecutiveDaily;
+      user.lostConsecutiveDaily = 0;
+      user.malusDaily = malus;
+      user.malusDuration = malusDuration;
+      user.lastDaily = new Date();
+    
+      await user.save();
+    
+      await interaction.reply({
+        content: `𝐓u as récupéré ton Daily avec succès !\n\n🔸 **𝐂oût** : \`${costXP.toLocaleString()} 𝐗P\`\n🔸 **Malus** : \`${malus}\` 𝐗P pour \`${malusDuration}\` jour(s).\n🔸 **𝐗P restant** : \`${user.xp.toLocaleString()} 𝐗P\``,
+        ephemeral: true,
+      });
     }
     // Bouton cancel récupération de daily
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
@@ -1131,7 +1094,7 @@ module.exports = {
           }, 1000);
       });
     }
-    if (interaction.customId === "ROLE_LISTE") { //OK
+    if (interaction.customId === "ROLE_LISTE") { 
       const serverRoles = await ServerRole.findOne({
         serverID: interaction.guild.id,
       });
@@ -1153,33 +1116,27 @@ module.exports = {
 
       const levels = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
-      const prestige0Roles = serverRoles.prestige0Roles
-        .map(
-          (id, index) =>
-            `𝐍iveau **${levels[index]}** | ${
-              interaction.guild.roles.cache.get(id)?.toString() ||
-              "Rôle inconnu"
-            }`
-        )
-        .join("\n");
-      const prestige1Roles = serverRoles.prestige1Roles
-        .map(
-          (id, index) =>
-            `𝐍iveau **${levels[index]}** | ${
-              interaction.guild.roles.cache.get(id)?.toString() ||
-              "Rôle inconnu"
-            }`
-        )
-        .join("\n");
+      const prestigeRolesList = Object.entries(serverRoles.prestiges || {})
+      .map(([prestige, levels]) => {
+        const levelRoles = Object.entries(levels)
+          .map(([level, roleIds]) => {
+            const rolesText = roleIds
+              .map(id => interaction.guild.roles.cache.get(id)?.toString() || "Rôle inconnu")
+              .join(", ");
+            return `𝐍iveau **${level}** | ${rolesText}`;
+          })
+          .join("\n");
 
-      const roleEmbed = new EmbedBuilder()
-        .setTitle("__𝐋iste des Rôles__")
-        .setColor("#b3c7ff")
-        .setDescription(
-          `__**𝐑ôles Prestige 0 :**__\n\n ${prestige0Roles}\n\n\n__**𝐑ôles Prestige 1 :**__\n\n ${prestige1Roles}`
-        );
+        return `__**𝐑ôles Prestige ${prestige} :**__\n\n${levelRoles}`;
+      })
+      .join("\n\n");
 
-      interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
+    const roleEmbed = new EmbedBuilder()
+      .setTitle("__𝐋iste des Rôles__")
+      .setColor("#b3c7ff")
+      .setDescription(prestigeRolesList || "Aucun rôle enregistré.");
+
+    interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
     }
     if (interaction.customId === "ROLES_PERSOLISTE") {
       if (!interaction.guild) {
@@ -1818,40 +1775,47 @@ module.exports = {
     }
     if (interaction.customId === "DAILY_PUSH") { 
       let serverConfig = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
+          serverID: interaction.guild.id,
       });
+  
       if (!serverConfig || !serverConfig.dailyChannelID) {
-        return interaction.reply({
-          content:
-            "Aucun salon pour le 𝐃aily n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
-          ephemeral: true,
-        });
+          return interaction.reply({
+              content: "Aucun salon pour le 𝐃aily n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
+              ephemeral: true,
+          });
       }
-      const DailyEmbed = new EmbedBuilder()
-        .setColor("Orange")
-        .setTitle(`――――――∈ 𝐆ain d'𝐗𝐏 journalier ! ∋――――――`)
-        .setDescription(
-          `\n𝐂'est ici que tu peux récupérer ton \`𝐃aily\`. 𝐈l sera disponible à nouveau après \`23H\`. 𝐍e l'oublie pas, lui en tout cas ne t'oublieras pas haha.`
-        )
-        .setThumbnail(interaction.guild.iconURL())
-        .setFooter({
-          text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
-          iconURL: interaction.guild.iconURL(),
-        });
 
+      const randomDescriptionDailyEmbed = messagesRandom.DailyEmbed[Math.floor(Math.random() * messagesRandom.DailyEmbed.length)];
+  
+      const DailyEmbed = new EmbedBuilder()
+          .setColor("Orange")
+          .setTitle(`――――――∈ 𝐑écompense journalière ! ∋――――――`)
+          .setDescription(randomDescriptionDailyEmbed)
+          .setThumbnail(interaction.guild.iconURL())
+          .setFooter({
+              text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
+              iconURL: interaction.guild.iconURL(),
+          });
+  
       const rowPushDaily = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("DAILYXP")
-          .setLabel("💸丨𝐑écupérer l'𝐗𝐏丨💸")
-          .setStyle(ButtonStyle.Success)
+          new ButtonBuilder()
+              .setCustomId("DAILYXP")
+              .setLabel("💸丨𝐑écupérer l'𝐗𝐏.")
+              .setStyle(ButtonStyle.Success)
       );
+  
       const dailyChannel = bot.channels.cache.get(serverConfig.dailyChannelID);
       if (dailyChannel) {
-        dailyChannel.send({
-          embeds: [DailyEmbed],
-          components: [rowPushDaily],
-        });
+          dailyChannel.send({
+              embeds: [DailyEmbed],
+              components: [rowPushDaily],
+          }).catch(console.error);
       }
+  
+      await interaction.reply({
+          content: "丨𝐋e message pour récupérer l'𝐗𝐏 journalier a été envoyé dans le salon configuré.",
+          ephemeral: true,
+      });
     }
     if (interaction.customId === "IDEE_BUTTON") { //OK
       let secondsRemaining = 60;
@@ -2268,43 +2232,26 @@ module.exports = {
           });
       });
   
-      const row = new ActionRowBuilder().addComponents(
+      const MenuRoleSelect = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
               .setCustomId('Role_Menu')
               .setPlaceholder('丨𝐒éléctionne un rôle. 🎭')
               .addOptions(menuOptions)
       );
   
-      const descriptions = [
-          `🌟 ◟𝐂hoisis tes rôles et débloque l’accès aux salons réservés pour papoter avec la communauté passionnée de ton jeu préféré ! 🎮\n\n🔥 ◟𝐐ue tu sois là pour échanger des stratégies, partager tes exploits ou simplement pour rigoler avec d'autres gamers, cet endroit est fait pour toi ! 𝐄t si l'envie de changer de jeu te prend, pas de souci : tu peux modifier tes rôles à tout moment.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de fun et d’amitié ! 𝐏rêt à faire partie de cette légende ? 𝐂’est parti, à toi de jouer ! ✨`,
-          `🎊 ◟𝐓u es à un clic de l'aventure ! Choisis tes rôles et ouvre les portes des salons où les passionnés de ton jeu se réunissent ! 🎮\n\n🔥 ◟𝐓u peux discuter de stratégies, partager tes réussites, ou juste t’amuser avec d’autres gamers ! 𝐄t si un autre jeu t’appelle, change tes rôles sans hésiter !\n\n **𝐑ejoins-nous**, amuse-toi, et fais partie de cette communauté incroyable ! 𝐏rêt à te lancer ? 𝐂’est à toi de jouer ! ✨`,
-          `🎮 ◟𝐂'est le moment de briller ! Choisis tes rôles et accède aux salons réservés où les fans de ton jeu se retrouvent ! 🌟\n\n🔥 ◟𝐔ne multitude de discussions t'attendent, que ce soit pour échanger des conseils ou juste pour passer un bon moment ! 𝐄t si l'envie d'explorer un autre jeu te prend, adapte tes rôles à ta guise.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans l'univers du gaming ! 𝐏rêt à écrire ta propre légende ? 𝐂’est parti, à toi de jouer ! ✨`,
-          `✨ ◟𝐍e manque plus qu'une chose : tes rôles ! Choisis-les pour accéder aux salons où se trouve la communauté de ton jeu préféré ! 🎮\n\n🔥 ◟𝐂e lieu est parfait pour échanger des stratégies, partager tes exploits, ou juste rigoler avec d'autres gamers ! 𝐄t si un nouveau défi te tente, change tes rôles à tout moment.\n\n **𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de fun ! 𝐏rêt à faire partie de cette grande aventure ? 𝐂’est le moment de te lancer ! 💥`,
-          `💬 ◟𝐒électionne tes rôles et débloque des salons exclusifs pour discuter avec d'autres passionnés de ton jeu ! 🎮\n\n🔥 ◟𝐓u peux échanger des astuces, partager tes victoires ou juste profiter d'un bon moment ensemble ! 𝐄t si tu veux changer d’univers, modifie tes rôles comme bon te semble.\n\n **𝐑ejoins-nous**, éclate-toi, et fais partie de cette communauté dynamique ! 𝐏rêt à vivre cette aventure ? 𝐂’est à toi de jouer ! ✨`,
-          `🚀 ◟**𝐄mbarque pour une nouvelle quête !** 𝐂hoisis tes rôles pour accéder aux salons exclusifs et connecter avec la communauté de ton jeu adoré ! 🎮\n\n🌟 ◟Que tu sois ici pour partager des astuces, célébrer tes victoires ou juste t'amuser, cet endroit est fait pour toi ! 𝐄t si l’appel d’un autre jeu se fait sentir, pas de souci : change tes rôles quand tu veux.\n\n**𝐑ejoins-nous**, éclate-toi, et plonges dans un océan de fun et d’amitié ! 𝐏rêt à faire partie de cette aventure incroyable ? 𝐂’est le moment de briller ! ✨`,
-          `🎉 ◟**𝐋a fête commence ici !** 𝐂hoisis tes rôles pour accéder aux salons réservés et te connecter avec les fans de ton jeu préféré ! 🎮\n\n🎊 ◟Que tu sois là pour échanger des conseils, partager tes succès ou juste pour rire, cet endroit est fait pour toi ! 𝐄t si l’envie d’un autre jeu te prend, pas de problème : modifie tes rôles à ta guise.\n\n**𝐑ejoins-nous**, amuse-toi, et plonge dans un océan de bonne humeur et d’amitié ! 𝐏rêt à rejoindre la légende ? 𝐂’est parti, à toi de jouer ! ✨`,
-          `🌈 ◟**𝐋’aventure t’attend !** 𝐂hoisis tes rôles pour débloquer l’accès aux salons dédiés et interagir avec la communauté de ton jeu favori ! 🎮\n\n💪 ◟Que tu souhaites échanger des stratégies, partager tes succès ou simplement t’amuser, cet espace est pour toi ! 𝐄t si tu veux changer de jeu, aucun souci : adapte tes rôles à tout moment.\n\n**𝐑ejoins-nous**, amuse-toi, et plonge dans un monde de fun et d’amitié ! 𝐏rêt à faire partie de cette grande aventure ? 𝐂’est le moment de briller ! 💥`,
-      ];
-  
-      const randomDescription = descriptions[Math.floor(Math.random() * descriptions.length)];
-  
-      if (menuOptions.length === 0) {
-          console.error('[ROLEMENU] Aucune option de menu disponible. Vérifiez les noms des menus et les rôles associés.');
-          await interaction.reply({ content: "Aucune option de rôle valide à afficher. -> contact mon créateur `tbmpqf`", ephemeral: true });
-          return;
-      } else {
-          const RoleEmbed = new EmbedBuilder()
-              .setColor("#b3c7ff")
-              .setTitle(`丨𝐂hoisis tes rôles 🏷️`)
-              .setDescription(randomDescription)
-              .setFooter({
-                  text: `𝐂ordialement, l'équipe ${interaction.guild.name}`,
-                  iconURL: interaction.guild.iconURL(),
-              });
-  
-          await roleChannel.send({ embeds: [RoleEmbed], components: [row] });
-          await interaction.reply({ content: "丨𝐋e menu des rôles a été envoyé dans le salon de rôles configuré.", ephemeral: true });
-      }
+      const randomDescriptionRoleMenu = messagesRandom.rolesMenu[Math.floor(Math.random() * messagesRandom.rolesMenu.length)];
+
+      const RoleEmbed = new EmbedBuilder()
+          .setColor("#b3c7ff")
+          .setTitle(`丨𝐂hoisis tes rôles 🏷️`)
+          .setDescription(randomDescriptionRoleMenu)
+          .setFooter({
+              text: `𝐂ordialement, l'équipe ${interaction.guild.name}`,
+              iconURL: interaction.guild.iconURL(),
+          });
+
+      await roleChannel.send({ embeds: [RoleEmbed], components: [MenuRoleSelect] });
+      await interaction.reply({ content: "丨𝐋e menu des rôles a été envoyé dans le salon de rôles configuré.", ephemeral: true });
     }
     if (interaction.customId === "ROLECHANNEL_LISTE") { 
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
@@ -2987,6 +2934,97 @@ module.exports = {
               followUpMessages.forEach(msg => {
                   msg.delete().catch(error => {
                       if (error.code !== 10008) {
+                          console.error('Erreur lors de la suppression du message de suivi :', error);
+                      }
+                  });
+              });
+          }, 1000);
+      });
+    }
+    if (interaction.customId === "TWITCH_ROLE") {
+      if (!interaction.guild) {
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      }
+  
+      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+      if (!botMember) {
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+      }
+  
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐌erci de répondre en faisant un tag (@votre_rôle) pour le rôle `𝐓witch` de ton serveur.";
+  
+      const replyMessage = await interaction.reply({
+          content: `${originalContent} ***${secondsRemaining}s***`,
+          fetchReply: true
+      });
+  
+      let followUpMessages = [];
+  
+      const interval = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
+                  clearInterval(interval);
+                  console.error('Erreur lors de la mise à jour du message :', error);
+              });
+          } else {
+              clearInterval(interval);
+          }
+      }, 1000);
+  
+      const collector = interaction.channel.createMessageCollector({
+          filter: (m) => m.author.id === interaction.user.id,
+          time: 60000,
+          max: 1
+      });
+  
+      collector.on("collect", async (m) => {
+          clearInterval(interval);
+          await deleteMessage(m);
+          followUpMessages.push(m);
+  
+          const role = m.mentions.roles.first();
+          if (!role) {
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          if (role.position >= botMember.roles.highest.position) {
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              followUpMessages.push(errorMsg);
+              return;
+          }
+  
+          await ServerConfig.findOneAndUpdate(
+              { serverID: interaction.guild.id },
+              { TwitchRoleID: role.id, TwitchRoleName: role.name },
+              { upsert: true, new: true }
+          );
+  
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour \`𝐓witch\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          followUpMessages.push(successMsg);
+      });
+  
+      collector.on("end", async (collected, reason) => {
+          if (reason === "time") {
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps de changer de carrière et d'avoir une promotion.", ephemeral: true });
+              followUpMessages.push(timeoutMsg);
+          }
+          replyMessage.delete().catch(error => {
+              if (error.code === 10008) {
+                  // Ignorer si le message a déjà été supprimé
+              } else {
+                  console.error('Erreur lors de la suppression du message initial :', error);
+              }
+          });
+          setTimeout(() => {
+              followUpMessages.forEach(msg => {
+                  msg.delete().catch(error => {
+                      if (error.code === 10008) {
+                          // Ignorer si le message a déjà été supprimé
+                      } else {
                           console.error('Erreur lors de la suppression du message de suivi :', error);
                       }
                   });

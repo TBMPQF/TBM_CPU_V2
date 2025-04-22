@@ -62,11 +62,6 @@ module.exports = {
             value: "DAILY",
           },
           {
-            label: "丨𝐀nnonces",
-            emoji: "📢",
-            value: "ANNONCES",
-          },
-          {
             label: "丨𝐑ôles des 𝐍iveaux",
             emoji: "🧪",
             value: "ROLES",

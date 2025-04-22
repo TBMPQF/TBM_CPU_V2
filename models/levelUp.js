@@ -38,7 +38,7 @@ async function levelUp(obj, user, newXP) {
     user.falconix = (user.falconix || 0) + 1;
     if (levelUpChannel) {
       levelUpChannel.send(
-        `**${author}丨**𝐈𝐍-𝐂𝐑𝐎-𝐘𝐀-𝐁𝐋𝐄丨𝐓u viens de passer au 𝐏restige **\`${user.prestige}\`** ! - :star: !`
+        `**${author}丨**𝐈𝐍-𝐂𝐑𝐎-𝐘𝐀-𝐁𝐋𝐄**丨**𝐓u viens de passer au 𝐏restige **\`${user.prestige}\`** ! - :star: !`
       );
     }
     const previousPrestigeRoleRewards = roleRewards[oldPrestige];
@@ -57,7 +57,7 @@ async function levelUp(obj, user, newXP) {
       user.xp = newXP;
       if (levelUpChannel) {
         levelUpChannel.send(
-          `**${author}丨**𝐓u viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
+          `**${author}丨** 𝐓u viens de passer au niveau **\`${newLevel}\`** ! - :worm: !`
         );
       }
       handleRole(obj, newLevel, levelUpChannel, "up", user.prestige);
@@ -66,7 +66,7 @@ async function levelUp(obj, user, newXP) {
       user.xp = newXP;
       if (levelDownChannel) {
         levelDownChannel.send(
-          `**${author}丨**𝐓u viens de descendre au niveau **\`${newLevel}\`**... 𝐋a prochaine fois tu feras attention !`
+          `**${author}丨** 𝐓u viens de descendre au niveau **\`${newLevel}\`**... 𝐋a prochaine fois tu feras attention !`
         );
       }
       handleRole(obj, newLevel, levelDownChannel, "down", user.prestige);
@@ -79,7 +79,7 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
   const roleRewards = await getRoleRewards(obj.guild.id);
   const currentPrestigeRoleRewards = roleRewards[prestige] || [];
   const roleIndex = LEVELS.indexOf(newLevel);
-  
+
   if (roleIndex !== -1) {
     if (direction === "up") {
       const newRoleReward = currentPrestigeRoleRewards[roleIndex];
@@ -89,7 +89,7 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
           await obj.member.roles.add(newRole);
           if (newLevel !== 1) {
             channel.send(
-              `**        丨**𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`
+              `**        丨** 𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`
             );
           }
         }
@@ -117,7 +117,7 @@ async function handleRole(obj, newLevel, channel, direction, prestige) {
         if (newRole) {
           await obj.member.roles.add(newRole);
           channel.send(
-            `**        丨**𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
+            `**        丨** 𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
           );
         }
       }

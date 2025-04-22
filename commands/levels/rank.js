@@ -9,7 +9,7 @@ const User = require("../../models/experience");
 module.exports = {
   name: "rank",
   description: "丨𝐀ffiche ton niveau d'expérience.",
-  longDescription: ` 𝐀lors, tu veux savoir où tu te situes dans l'arène du XP ? 𝐁ienvenue dans la bataille de prestige où chaque message compte. 𝐂ette commande est là pour flatter ton ego (ou te donner un petit coup de réalité si tu n'as pas encore atteint le sommet 😜).\n\n𝐃isons-le franchement : avec **rank**, tu peux voir ton niveau actuel, ton prestigieux (ou non) classement, et combien de messages tu as envoyés. 𝐄n gros, plus tu envoies de messages, plus tu grimpes dans la hiérarchie. 🔥\n𝐅élicitations si tu as assez d'XP ! 𝐆arde en tête que tu vas peut-être bientôt passer au niveau supérieur et débloquer... bah, juste le droit de te vanter, mais c'est déjà pas mal, non ? 🤷‍♂️\n\n𝐇onnêtement, si tu n'as pas encore assez d'XP, pas de panique ! 𝐈l suffit de continuer de spammer (euh... discuter) et tu pourras admirer ta progression dans cette magnifique barre de progression. 𝐉uste à quel point tu es proche de devenir **le maître du serveur** ! 😎\n\n𝐊omment dire, tu peux soit afficher fièrement tes stats, soit pleurer en silence dans ton coin. 𝐋e choix t'appartient ! 💪`,
+  longDescription: ` 𝐀lors, tu veux savoir où tu te situes dans l'arène de l'XP ? 𝐁ienvenue dans la bataille de prestige où chaque message compte. 𝐂ette commande est là pour flatter ton ego (ou te donner un petit coup de réalité si tu n'as pas encore atteint le sommet 😜).\n\n𝐃isons-le franchement : avec **rank**, tu peux voir ton niveau actuel, ton prestigieux (ou non) classement, et combien de messages tu as envoyés. 𝐄n gros, plus tu envoies de messages, plus tu grimpes dans la hiérarchie. 🔥\n𝐅élicitations si tu as assez d'XP ! 𝐆arde en tête que tu vas peut-être bientôt passer au niveau supérieur et débloquer... bah, juste le droit de te vanter, mais c'est déjà pas mal, non ? 🤷‍♂️\n\n𝐇onnêtement, si tu n'as pas encore assez d'XP, pas de panique ! 𝐈l suffit de continuer de spammer (euh... discuter) et tu pourras admirer ta progression dans cette magnifique barre de progression. 𝐉uste à quel point tu es proche de devenir **le maître du serveur** ! 😎\n\n𝐊omment dire, tu peux soit afficher fièrement tes stats, soit pleurer en silence dans ton coin. 𝐋e choix t'appartient ! 💪`,
   dm: false,
   permission: "Aucune",
   async execute(interaction) {
@@ -49,6 +49,23 @@ module.exports = {
       100
     ).toFixed(0);
 
+    const xpPerLevel = (level) => Math.pow(level / 0.1, 2);
+
+    const calculateTotalXP = (level, xp, prestige) => {
+      let totalXP = xp;
+      for (let i = 0; i < prestige; i++) {
+        for (let lvl = 1; lvl <= 50; lvl++) {
+          totalXP += xpPerLevel(lvl);
+        }
+      }
+      for (let lvl = 1; lvl < level; lvl++) {
+        totalXP += xpPerLevel(lvl);
+      }
+
+      return Math.round(totalXP);
+    };
+    const totalXP = calculateTotalXP(user.level, user.xp, user.prestige);
+
     const rowLadder = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("LADDER_BUTTON")
@@ -78,7 +95,7 @@ module.exports = {
       .setColor("Random")
       .setTitle(`丨${position}${positionEmoji}`)
       .setDescription(
-        `\n\n🔹 𝐍iveau : \*\*${user.level.toString()}\*\*.\n:large_blue_diamond: 𝐏restige : \*\*${user.prestige}\*\*.\n💠 𝐗P : \*\*${user.xp.toLocaleString()} / ${xpRequiredForNextLevel.toLocaleString()}\*\*.\n\n𝐓u as envoyé : \*\*${user.messageCount}\*\* messages.\n\n𝐏rogression : ${progressBar} \*\*\`${percentage}%\`\*\*`
+        `\n\n🔹 𝐍iveau : **${user.level}**.\n:large_blue_diamond: 𝐏restige : **${user.prestige}**.\n💠 𝐗P : **${user.xp.toLocaleString()} / ${xpRequiredForNextLevel.toLocaleString()}**.\n\n✨ **𝐗P Total : ${totalXP.toLocaleString()}**.\n\n𝐓u as envoyé : **${user.messageCount}** messages.\n\n𝐏rogression : ${progressBar} **\`${percentage}%\`**`
       );
 
     const reply = await interaction.reply({

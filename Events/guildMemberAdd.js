@@ -17,12 +17,12 @@ module.exports = {
     const welcomeRole = member.guild.roles.cache.find(
       (role) => role.name === welcomeRoleName
     );
-    let welcomeRoleNoName = 'PAS DÉFINI';
-    let footerText = `${member.user.username} nouvelle recrue`;
+    let welcomeRoleNoName = "PAS DÉFINI";
+    let footerText = `${member.user.username} nouvelle jeune étoile montante :)`;
     if (welcomeRole) {
       member.roles.add(welcomeRole);
       welcomeRoleNoName = welcomeRole.name;
-      footerText = `${member.user.username} nouvelle recrue au rang de ${welcomeRoleNoName}`;
+      footerText = `${member.user.username} nouvelle jeune étoile montante (:`;
     }
 
     const existingUser = await User.findOne({
@@ -50,7 +50,7 @@ module.exports = {
       serverConfig.reglementChannelID
     );
     const rolesChannel = member.guild.channels.cache.get(
-      serverConfig.roleChannelID    
+      serverConfig.roleChannelID
     );
 
     let reglementChannelString = reglementChannel
@@ -60,21 +60,30 @@ module.exports = {
       ? rolesChannel.toString()
       : "PAS DÉFINI";
 
-    let description = `Bienvenue <@${member.user.id}>, \nTu viens de rejoindre **${member.guild.name}**. \nPrend ton fusil et rend toi directement sur le champ de tir !`;
-
-    if (reglementChannelString !== "PAS DÉFINI" && rolesChannelString !== "PAS DÉFINI") {
-        description += `\nN'oublie pas de \`lire/valider\` le ${reglementChannelString} et de prendre tes rôles ${rolesChannelString}.`;
-    } else {
+      let description = `𝐎n dirait qu'une nouvelle recrue a infiltré les rangs : **<@${member.user.id}>** !\n`;
+      description += `**𝐁ienvenue** dans **${member.guild.name}**, la seule armée où tu peux te permettre d'oublier ton casque mais pas ton humour.`;
+      
+      description += `\n\n__**𝐏remière mission, soldat :**__\n`;
+      
+      if (reglementChannelString !== "PAS DÉFINI" && rolesChannelString !== "PAS DÉFINI") {
+        description += `◟ 𝐋is le ${reglementChannelString} et fais comme si tu comprenais tout.\n`;
+        description += `◟ 𝐅ile dans ${rolesChannelString} et choisis tes passions bizarres, on ne juge pas.`;
+      } else {
         if (reglementChannelString !== "PAS DÉFINI") {
-            description += `\nN'oublie pas de \`lire/valider\` le ${reglementChannelString}.`;
+          description += `◟ 𝐋is le ${reglementChannelString}, on t'assure que c'est *presque* intéressant.`;
         }
         if (rolesChannelString !== "PAS DÉFINI") {
-            description += `\nN'oublie pas de prendre tes rôles ${rolesChannelString}.`;
+          description += `◟ 𝐕a dans ${rolesChannelString} et choisis un rôle... ou deux, personne ne t'arrêtera.`;
         }
-    }
+      }
+      
+      description += `\n\n💡 ***𝐏etit conseil*** **: évite de trop briller, tu risquerais d'aveugler les autres.**`;
+      description += `\n\n🚀 **\`𝐏rêt à devenir une légende ? 𝐍ous, on espère juste que tu ne seras pas un gros noob.\`**`;
+      
+      
 
     const WelcomeEmbed = new EmbedBuilder()
-      .setTitle(`\`Oh! Un nouveau membre\` :warning:`)
+      .setTitle("\`𝐎h! 𝐔ne nouvelle étoile s'est allumée!\` 🌠")
       .setColor("#b3c7ff")
       .setDescription(description)
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
@@ -93,13 +102,14 @@ module.exports = {
     if (welcomeChannel) {
       welcomeChannel.send({ embeds: [WelcomeEmbed] });
     }
+
     setTimeout(async () => {
       if (member.guild.id !== TBMServerId) {
         return;
       }
       try {
         const memberUpdated = await member.guild.members.fetch(member.id);
-        const hasRole = memberUpdated.roles.cache.some(role => role.name === "――――丨🐦ゲーム🐦丨――――");
+        const hasRole = memberUpdated.roles.cache.some(role => role.name === "‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ 丨🐦ゲーム🐦丨‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎");
         const user = await User.findOne({ userID: member.id });
         if (!user.reminderSent && !hasRole) {
           await member.send("丨𝐒alutation camarade\n𝐉e ne veux pas te déranger très longtemps mais.. pour continuer l'aventure tu dois venir __accepter le règlement__ puis __prendres tes rôles__ pour avoir accès aux salons de discussions dédiés.\n 𝐌erci.");
@@ -117,8 +127,8 @@ module.exports = {
       }
       try {
         const memberUpdated = await member.guild.members.fetch(member.id);
-        const hasReglementRole = memberUpdated.roles.cache.some(role => role.name === "――――丨🐦ゲーム🐦丨――――");
-        const gameRoles = ["Apex Legends", "Rocket League", "Sons Of the Forest", "Minecraft", "Call of Duty", "New World", "Discord JS"];
+        const hasReglementRole = memberUpdated.roles.cache.some(role => role.name === "‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ 丨🐦ゲーム🐦丨‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎");
+        const gameRoles = ["Apex Legends", "Rocket League", "Palworld", "Minecraft", "Call of Duty", "New World", "Discord JS"];
         const hasGameRole = gameRoles.some(gameRole => memberUpdated.roles.cache.some(role => role.name === gameRole));
         if (!hasReglementRole || !hasGameRole) {
           await memberUpdated.kick("丨𝐍'a pas pris le rôle de règlement et au moins un rôle de jeu après trois jours.");

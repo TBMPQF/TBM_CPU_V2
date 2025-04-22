@@ -23,7 +23,13 @@ module.exports = {
           const logEmbed = new EmbedBuilder()
             .setTitle("`丨𝐂onfiguration 𝐋og丨`")
             .setDescription(
-              `Salon qui te permettra de suivre l'actualité du serveur (Quand quelqu'un récupère son daily, quand quelqu'un quitte ton serveur, suivre les suggestions ... )\n\nModifie le salon ou carrément désactive les 𝐋ogs de ton serveur.\n\nSalon actuel : \`${serverConfig.logChannelName}\``
+              `📜 **𝐁ienvenue dans le journal des secrets bien gardés !**\n
+              - **𝐃aily ?** 𝐂'est ici qu'on les note ! 𝐑ien ne nous échappe, pas même les chasseurs d'𝐗𝐏 les plus fidèles !\n
+              - **𝐃éparts du serveur ?** 𝐎h, on s'en souvient bien ! 𝐋es log sont là pour leur dire au revoir… enfin, façon de parler ! 👋\n
+              - **𝐒uggestions ?** 𝐂e salon est comme un tableau de post-it : les idées fusent et les réponses aussi ! 💡\n
+              - **𝐒ilences forcés ?** 𝐐uand quelqu'un passe en mode "silence radio" (coucou les mutes), ce journal le note aussi. 𝐂huuut ! 🤫\n
+              ⚙️ **𝐓u veux changer tout ça ?** 𝐌odifie le salon ou désactive-le si tu préfères que ces secrets restent dans l'ombre.\n\n
+              📌 **𝐒alon actuel** : \`${serverConfig.logChannelName}\``
             )
             .setThumbnail(
               "https://images.emojiterra.com/google/android-12l/512px/1f4dd.png"
@@ -281,9 +287,9 @@ module.exports = {
 
         case "DAILY":
           const DAILYEmbed = new EmbedBuilder()
-            .setTitle("`丨𝐂onfiguration 𝐃aily丨`")
+            .setTitle("`丨𝐂onfiguration du 𝐃aily丨`")
             .setDescription(
-              `Permet à toute ta communautée de récupérer un bonus quotidien d'expérience de **200 XP**, récupérable une fois __toute les 23H__. Un bonus cumulable de 2% sera appliqué au bout de 7 jours consécutifs.\n\nModifie le salon ou carrément désactive le 𝐃aily de ton serveur.\n\n✔️ pour envoyé le message de récupération de 𝐃aily dans ton salon !\n\nSalon actuel : \`${serverConfig.dailyChannelName}\``
+              `𝐏ermets à toute ta communauté de récupérer un bonus quotidien de **200 XP**, disponible une fois toutes les 23 heures. 𝐄n prime, un bonus cumulatif de **2%** s'applique après 7 jours consécutifs… de quoi booster la motivation ! 💪\n 𝐁esoin de changement ? 𝐌odifie le salon, désactive carrément le 𝐃aily, ou ajuste le message pour qu'il corresponde mieux à ton style. 𝐒i le message actuel ne te plaît pas, renvoie simplement pour le modifier ! 🎨\n\n✔️ 𝐂lique pour envoyer le message de récupération de 𝐃aily dans le salon configuré.\n\n◟𝐒alon actuel : \`${serverConfig.dailyChannelName}\``
             )
             .setThumbnail(
               "https://papycha.fr/wp-content/uploads/2019/08/84863418061.png"

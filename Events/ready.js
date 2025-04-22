@@ -333,6 +333,7 @@ module.exports = {
           TwitchRoleID : null,
           AnnoucementChannelID : null,
           AnnoucementChannelName : null,
+          lastBumpMessageID: null,
         });
         await serverConfig.save();
 
@@ -531,55 +532,57 @@ module.exports = {
 
 // Mise a jour du nombre de joueurs sur le serveur Minecraft
 let consecutiveFailures = 0;
-async function updateCategoryMinecraft(server) {
+const MAX_RETRIES = 5;
+const BASE_DELAY = 180000;
+
+async function updateCategoryMinecraft(server, retryCount = 0) {
   try {
     const category = server.channels.cache.find(channel =>
       channel.type === ChannelType.GuildCategory && channel.name.startsWith("丨MINECRAFT丨")
     );
 
     if (!category) {
-      console.error("[MINECRAFT] Catégorie non trouvée pour mettre à jour le nombre d'utilisateurs connecté.");
+      console.error("[MINECRAFT] Catégorie non trouvée.");
       return;
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout de 10 secondes
+    setTimeout(() => controller.abort(), 10000); // Timeout de 10 secondes
 
     const response = await fetch(`https://api.mcsrvstat.us/3/${MINECRAFT_SERVER_DOMAIN}`, { signal: controller.signal });
-    clearTimeout(timeoutId); // Annule le timeout si la requête réussit
 
     if (!response.ok) {
-      throw new Error(`[MINECRAFT] Erreur HTTP ! statut : ${response.status}`);
+      throw new Error(`[MINECRAFT] Erreur HTTP ${response.status}`);
     }
 
     const data = await response.json();
     if (data.online) {
-      const newCategoryName = `丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`;
-      await category.setName(newCategoryName);
-      consecutiveFailures = 0;
+      await category.setName(`丨MINECRAFT丨 ${data.players.online} / ${data.players.max}`);
+      consecutiveFailures = 0; // Reset en cas de succès
     }
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error("[MINECRAFT] Requête annulée après timeout.");
-    } else {
-      console.error("[MINECRAFT] Erreur lors de la récupération des données du serveur Minecraft :", error);
-    }
-    handleFailure(server);
+    handleFailure(server, retryCount, error);
   }
 }
-function handleFailure(server) {
+function handleFailure(server, retryCount, error) {
+  if (error.name === "AbortError") {
+    console.error("[MINECRAFT] Requête annulée après timeout.");
+  } else if (error.code === "ETIMEDOUT") {
+    console.warn("[MINECRAFT] Timeout lors de la récupération des données.");
+  } else {
+    console.error("[MINECRAFT] Erreur réseau :", error);
+  }
+
   consecutiveFailures++;
   console.error(`[MINECRAFT] Tentative échouée n°${consecutiveFailures}.`);
-  if (consecutiveFailures >= 2) {
-    console.error("[MINECRAFT] Plusieurs échecs consécutifs. J'essaye une nouvelle tentative après un délai...");
-    setTimeout(() => {
-      updateCategoryMinecraft(server);
-    }, calculateExponentialBackoff(consecutiveFailures));
+
+  if (retryCount >= MAX_RETRIES) {
+    console.error("[MINECRAFT] Trop d'échecs. Nouvelle tentative dans 03 heures...");
+    setTimeout(() => updateCategoryMinecraft(server, 0), 3 * 60 * 60 * 1000);
+  } else {
+    console.error("[MINECRAFT] Trop d'échecs consécutifs, abandon des mises à jour.");
   }
-}
-function calculateExponentialBackoff(failureCount) {
-  const baseDelay = 60000;
-  return Math.min(baseDelay * 2 ** (failureCount - 1), 3600000); //Max 1h de délai
+  
 }
 
 // Mise à jour du nombre de personnes connectées sur le serveur

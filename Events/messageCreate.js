@@ -23,36 +23,48 @@ module.exports = {
     }
     if (message.embeds.length > 0 && message.embeds[0].description && message.embeds[0].description.includes('Bump effectué !')) {
       await message.delete();
-
+    
       const userID = message.interaction?.user?.id || message.author.id;
       const serverID = message.guild.id;
-
+    
       try {
-        let user = await User.findOne({ userID, serverID });
-        if (!user) {
-          user = new User({
-            userID,
-            serverID,
-            username: message.author.username,
-            serverName: message.guild.name,
-          });
-        }
-
-        user.xp += 25;
-        await user.save();
-
+        const user = await User.findOneAndUpdate(
+          { userID, serverID },
+          {
+            $inc: { xp: 25 },
+          },
+          { upsert: true, new: true }
+        );
+    
         const serverConfig = await ServerConfig.findOne({ serverID });
         if (serverConfig && serverConfig.implicationsChannelID) {
           const implicationsChannel = message.guild.channels.cache.get(serverConfig.implicationsChannelID);
           if (implicationsChannel) {
+            if (serverConfig.lastBumpMessageID) {
+              try {
+                const lastMessage = await implicationsChannel.messages.fetch(serverConfig.lastBumpMessageID);
+                if (lastMessage) await lastMessage.delete();
+              } catch (error) {
+                console.error("[BUMP] Impossible de supprimer le dernier message de remerciement :", error);
+              }
+            }
+    
             const bumpMessage = getRandomBumpMessage(userID);
-            await implicationsChannel.send(bumpMessage);
+            const sentMessage = await implicationsChannel.send(bumpMessage);
+    
+            serverConfig.lastBumpMessageID = sentMessage.id;
+            await serverConfig.save();
+          } else {
+            console.error("[BUMP] Salon d'implications introuvable !");
           }
+        } else {
+          console.error("[BUMP] Configuration du serveur introuvable ou salon non configuré !");
         }
       } catch (error) {
         console.error("[XP BUMP] Erreur lors de l'ajout de l'XP ou de l'envoi du message :", error);
       }
     }
+    
 
     if (message.author.bot) return;
     await filterMessage(message);
