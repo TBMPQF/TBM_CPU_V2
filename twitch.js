@@ -10,6 +10,10 @@ const CHECK_INTERVAL = 1 * 60 * 1000; // Temps entre mise à jour de l'embed
 let twitchHeaders;
 let bootUpCheck = true;
 
+const SPECIAL_STREAMERS = {
+  "tbmpqf": "717117472355909693"
+};
+
 async function getTwitchAccessToken() {
   try {
     const response = await axios.post(`${TWITCH_TOKEN_URL}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`);
@@ -248,13 +252,15 @@ async function checkMultipleStreamers(bot, serverID) {
     return;
   }
 
-  const channel = guild.channels.cache.get(serverConfig.TwitchChannelID);
-  if (!channel) {
-    return;
-  }
-
   for (const streamerData of streamers) {
     const twitchUsername = streamerData.twitchUsername;
+
+  const targetChannelId = SPECIAL_STREAMERS[twitchUsername.toLowerCase()] || serverConfig.TwitchChannelID;
+  const channel = guild.channels.cache.get(targetChannelId);
+
+  if (!channel) {
+    console.error(`[TWITCH] Salon non trouvé pour ${twitchUsername}`);
+  }
 
     try {
       const response = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${twitchUsername}`, twitchHeaders);

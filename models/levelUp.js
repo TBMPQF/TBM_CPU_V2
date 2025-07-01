@@ -5,18 +5,26 @@ const ServerRole = require("../models/serverRole");
 const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
 async function getRoleRewards(serverID) {
-  const serverRole = await ServerRole.findOne({ serverID: serverID });
-  let roleRewards = [[], []];
+  const serverRole = await ServerRole.findOne({ serverID });
+  const roleRewards = {};
+
   if (serverRole) {
-    roleRewards[0] = serverRole.prestige0Roles.map((roleId, i) => ({
-      level: i + 1,
-      roleId: roleId,
-    }));
-    roleRewards[1] = serverRole.prestige1Roles.map((roleId, i) => ({
-      level: i + 1,
-      roleId: roleId,
-    }));
+    for (let i = 0; i <= 10; i++) {
+      const key = `prestige${i}Roles`;
+      const prestigeData = serverRole[key];
+
+      if (prestigeData && typeof prestigeData === 'object') {
+        const entries = Object.entries(prestigeData);
+        roleRewards[i] = entries.map(([level, roles]) => ({
+          level: parseInt(level),
+          roleIds: roles,
+        }));
+      } else {
+        roleRewards[i] = [];
+      }
+    }
   }
+
   return roleRewards;
 }
 async function levelUp(obj, user, newXP) {
@@ -78,54 +86,51 @@ async function levelUp(obj, user, newXP) {
 async function handleRole(obj, newLevel, channel, direction, prestige) {
   const roleRewards = await getRoleRewards(obj.guild.id);
   const currentPrestigeRoleRewards = roleRewards[prestige] || [];
-  const roleIndex = LEVELS.indexOf(newLevel);
 
-  if (roleIndex !== -1) {
-    if (direction === "up") {
-      const newRoleReward = currentPrestigeRoleRewards[roleIndex];
-      if (newRoleReward) {
-        const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
-        if (newRole) {
-          await obj.member.roles.add(newRole);
-          if (newLevel !== 1) {
-            channel.send(
-              `**        丨** 𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`
-            );
-          }
-        }
-      }
-      if (roleIndex > 0) {
-        const oldRoleReward = currentPrestigeRoleRewards[roleIndex - 1];
-        if (oldRoleReward) {
-          const oldRole = obj.guild.roles.cache.get(oldRoleReward.roleId);
-          if (oldRole) {
-            await obj.member.roles.remove(oldRole);
-          }
-        }
-      }
-    } else if (direction === "down") {
-      const oldRoleReward = currentPrestigeRoleRewards[roleIndex + 1];
-      if (oldRoleReward) {
-        const oldRole = obj.guild.roles.cache.get(oldRoleReward.roleId);
-        if (oldRole) {
-          await obj.member.roles.remove(oldRole);
-        }
-      }
-      const newRoleReward = currentPrestigeRoleRewards[roleIndex];
-      if (newRoleReward) {
-        const newRole = obj.guild.roles.cache.get(newRoleReward.roleId);
-        if (newRole) {
-          await obj.member.roles.add(newRole);
-          channel.send(
-            `**        丨** 𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`
-          );
+  const levelReward = currentPrestigeRoleRewards.find(r => r.level === newLevel);
+  const prevReward = currentPrestigeRoleRewards.find(r => r.level === newLevel - 1);
+  const nextReward = currentPrestigeRoleRewards.find(r => r.level === newLevel + 1);
+
+  if (direction === "up") {
+    if (levelReward?.roleIds?.length > 0) {
+      const newRole = obj.guild.roles.cache.get(levelReward.roleIds[0]);
+      if (newRole) {
+        await obj.member.roles.add(newRole);
+        if (newLevel !== 1) {
+          channel.send(`**        丨** 𝐓u débloques le grade ${newRole}. 𝐅élicitation ! - :tada:`);
         }
       }
     }
+
+    if (prevReward?.roleIds?.length > 0) {
+      const oldRole = obj.guild.roles.cache.get(prevReward.roleIds[0]);
+      if (oldRole) {
+        await obj.member.roles.remove(oldRole);
+      }
+    }
   }
+
+  else if (direction === "down") {
+    if (nextReward?.roleIds?.length > 0) {
+      const oldRole = obj.guild.roles.cache.get(nextReward.roleIds[0]);
+      if (oldRole) {
+        await obj.member.roles.remove(oldRole);
+      }
+    }
+
+    if (levelReward?.roleIds?.length > 0) {
+      const newRole = obj.guild.roles.cache.get(levelReward.roleIds[0]);
+      if (newRole) {
+        await obj.member.roles.add(newRole);
+        channel.send(`**        丨** 𝐓u es rétrogradé au grade ${newRole}. Courage ! - :muscle:`);
+      }
+    }
+  }
+
   if (newLevel === 1) {
     return;
   }
 }
+
 
 module.exports = levelUp;

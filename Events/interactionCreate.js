@@ -386,7 +386,260 @@ module.exports = {
             });
         }
       }
-    } else {
+    }
+    // GESTION ROLES DES NIVEAUX
+    if (
+        interaction.isStringSelectMenu() &&
+        interaction.customId.startsWith("ROLE_MODIFY_SELECT_")
+      ) {
+        const selectedPrestige = interaction.customId.replace("ROLE_MODIFY_SELECT_", "");
+        const selectedValue = interaction.values[0];
+
+        const levelMatch = selectedValue.match(/^LEVEL_(\d+)$/);
+        const isBulk = selectedValue === "ADD_BULK";
+
+        const server = await ServerRole.findOne({ serverID: interaction.guild.id });
+        if (!server) {
+          return interaction.reply({
+            content: "❌丨Aucun serveur trouvé en base de données.",
+            ephemeral: true,
+          });
+        }
+
+        if (!server[selectedPrestige] || typeof server[selectedPrestige] !== "object") {
+          server[selectedPrestige] = {};
+        }
+
+        const prestigeRoles = server[selectedPrestige];
+        const botMember = await interaction.guild.members.fetch(interaction.client.user.id);
+
+        const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+        if (isBulk) {
+          await interaction.update({
+            content: "📝丨Mentionne maintenant les rôles à assigner aux niveaux suivants :\n`1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50`\nFormat : `@Rôle1 @Rôle2...` (max 12 rôles)",
+            components: [],
+            ephemeral: true,
+          });
+
+          const collector = interaction.channel.createMessageCollector({
+            filter: m => m.author.id === interaction.user.id,
+            max: 1,
+            time: 60000
+          });
+
+          collector.on("collect", async (msg) => {
+            const roles = msg.mentions.roles;
+            if (roles.size === 0 || roles.size > 12) {
+              return interaction.followUp({
+                content: "❌丨Mentionne entre 1 et 12 rôles maximum.",
+                ephemeral: true,
+              });
+            }
+
+            const invalid = roles.some(role => role.position >= botMember.roles.highest.position);
+            if (invalid) {
+              return interaction.followUp({
+                content: "🚫丨Certains rôles sont au-dessus de mes permissions.",
+                ephemeral: true,
+              });
+            }
+
+            roles.forEach((role, index) => {
+              const level = LEVELS[index];
+              if (level) {
+                prestigeRoles[level] = [role.id];
+              }
+            });
+
+            server.markModified(selectedPrestige);
+            await server.save();
+
+            await interaction.followUp({
+              content: "✅丨Les rôles ont été mis à jour avec succès !",
+              ephemeral: true,
+            });
+
+            msg.delete().catch(() => {});
+          });
+
+          collector.on("end", (_, reason) => {
+            if (reason === "time") {
+              interaction.followUp({
+                content: "⏳丨Temps écoulé. Recommence la commande.",
+                ephemeral: true,
+              });
+            }
+          });
+
+          return;
+        }
+
+        if (levelMatch) {
+          const level = levelMatch[1];
+
+          await interaction.update({
+            content: `📝丨Mentionne maintenant le rôle que tu veux assigner au niveau **${level}**.`,
+            components: [],
+            ephemeral: true,
+          });
+
+          const collector = interaction.channel.createMessageCollector({
+            filter: m => m.author.id === interaction.user.id,
+            max: 1,
+            time: 60000,
+          });
+
+          collector.on("collect", async (msg) => {
+            const role = msg.mentions.roles.first();
+            if (!role) {
+              return interaction.followUp({
+                content: "❌丨Tu dois mentionner un rôle valide.",
+                ephemeral: true,
+              });
+            }
+
+            if (role.position >= botMember.roles.highest.position) {
+              return interaction.followUp({
+                content: "🚫丨Ce rôle est au-dessus de mes permissions.",
+                ephemeral: true,
+              });
+            }
+
+            prestigeRoles[level] = [role.id];
+            server.markModified(selectedPrestige);
+            await server.save();
+
+            await interaction.followUp({
+              content: `✅丨Le rôle pour le niveau **${level}** a été mis à jour !`,
+              ephemeral: true,
+            });
+
+            msg.delete().catch(() => {});
+          });
+
+          collector.on("end", (_, reason) => {
+            if (reason === "time") {
+              interaction.followUp({
+                content: "⏳丨Temps écoulé. Recommence la commande.",
+                ephemeral: true,
+              });
+            }
+          });
+        }
+      }
+
+    if (interaction.isButton() && interaction.customId.startsWith("MODIFY_")) {
+        const selectedPrestige = interaction.customId.replace("MODIFY_", "");
+        const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+        let server = await ServerRole.findOne({ serverID: interaction.guild.id });
+        if (!server) {
+          server = new ServerRole({
+            serverID: interaction.guild.id,
+            serverName: interaction.guild.name,
+          });
+        }
+
+        if (!server[selectedPrestige] || typeof server[selectedPrestige] !== "object") {
+          server[selectedPrestige] = {};
+          await server.save();
+        }
+
+        const prestigeRoles = server[selectedPrestige];
+        const hasAnyRole = LEVELS.some(
+          level => Array.isArray(prestigeRoles[level]) && prestigeRoles[level].length > 0
+        );
+
+        if (!hasAnyRole) {
+          await interaction.reply({
+            content: `🆕丨Aucun rôle enregistré pour ce prestige. Mentionne les rôles à assigner aux niveaux suivants (max 12) :\n\`${LEVELS.join(", ")}\`\nFormat : \`@Rôle1 niveau 1, @Rôle2 niveau 2...\``,
+            ephemeral: true,
+          });
+
+          const filter = (m) => m.author.id === interaction.user.id;
+          const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 60000 });
+
+          collector.on("collect", async (msg) => {
+            const roles = msg.mentions.roles;
+            if (roles.size === 0 || roles.size > 12) {
+              return interaction.followUp({
+                content: "❌丨Mentionne entre 1 et 12 rôles maximum.",
+                ephemeral: true,
+              });
+            }
+
+            const botMember = await interaction.guild.members.fetch(interaction.client.user.id);
+            const invalid = roles.some(role => role.position >= botMember.roles.highest.position);
+
+            if (invalid) {
+              return interaction.followUp({
+                content: "🚫丨Certains rôles sont au-dessus de mes permissions.",
+                ephemeral: true,
+              });
+            }
+
+            roles.forEach((role, index) => {
+              const level = LEVELS[index];
+              if (level) {
+                prestigeRoles[level] = [role.id];
+              }
+            });
+
+            server.markModified(selectedPrestige);
+            await server.save();
+
+            await interaction.followUp({
+              content: "✅丨Les rôles ont été enregistrés avec succès !",
+              ephemeral: true,
+            });
+
+            msg.delete().catch(() => {});
+          });
+
+          collector.on("end", (_, reason) => {
+            if (reason === "time") {
+              interaction.followUp({
+                content: "⏳丨Temps écoulé. Recommence la commande pour enregistrer les rôles.",
+                ephemeral: true,
+              });
+            }
+          });
+
+          return;
+        }
+
+        const roleOptions = LEVELS.map(level => {
+          const roleId = prestigeRoles[level]?.[0];
+          const role = roleId ? interaction.guild.roles.cache.get(roleId) : null;
+          return {
+            label: `Niveau ${level}`,
+            value: `LEVEL_${level}`,
+            description: role ? role.name : "Aucun rôle défini",
+          };
+        });
+
+        roleOptions.push({
+          label: "➕ Ajouter ou modifier plusieurs rôles",
+          value: "ADD_BULK",
+          description: "Configurer plusieurs niveaux à la fois",
+        });
+
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId(`ROLE_MODIFY_SELECT_${selectedPrestige}`)
+          .setPlaceholder("Sélectionne un niveau à modifier")
+          .addOptions(roleOptions);
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+
+        await interaction.reply({
+          content: "🛠️丨Sélectionne un niveau pour modifier son rôle ou en ajouter d'autres :",
+          components: [row],
+          ephemeral: true,
+        });
+      }
+
+      else {
       
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
@@ -488,28 +741,35 @@ module.exports = {
       user.xp += totalXP;
       levelUp(interaction, user, user.xp);
 
-      let dailyMessage = "";
+      let messageText = "";
+      let footerText = "";
 
       if (lastClaim == null) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
+        messageText = `✨丨𝐁onus quotidien activé ! Tu gagnes \`+${totalXP} 𝐗P\` 🎉`;
       } else if (resetConsecutiveDaily) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\` - :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
+        messageText = `🎁丨𝐁onus récupéré ! Tu gagnes \`+${totalXP} 𝐗P\` 🧩\n𝐌ais tu as __perdu__ ta série de flammes.. 🧯`;
+        footerText = `🔥 𝐀ncien record : ${user.maxDaily} jour${user.maxDaily > 1 ? "s" : ""}`;
       } else if (user.consecutiveDaily === 1) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
+        messageText = `🎉丨𝐁onus quotidien du jour : \`+${totalXP} 𝐗P\` 🧩`;
       } else {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\` - :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
+        messageText = `丨𝐁onus récupéré ! 𝐓u gagnes \`+${totalXP} 𝐗P\` 🧩\n𝐒érie actuelle : \`${user.consecutiveDaily}\` jour${user.consecutiveDaily > 1 ? "s" : ""} 🔥`;
+        footerText = `🏆 𝐑ecord : ${user.maxDaily} jour${user.maxDaily > 1 ? "s" : ""}`;
       }
 
       user.lastDaily = now;
 
       const dailyEmbed = new EmbedBuilder()
         .setColor("Gold")
-        .setTitle(dailyMessage)
+        .setTitle(messageText)
         .setAuthor({
           name: interaction.user.username,
           iconURL: interaction.user.displayAvatarURL({ dynamic: true })
         })
         .setTimestamp();
+
+      if (footerText) {
+        dailyEmbed.setFooter({ text: footerText });
+      }
 
       let components = [];
 
@@ -531,7 +791,7 @@ module.exports = {
         ephemeral: true,
       });
 
-      //LOG Pour Daily.
+      // 📋 LOG DAILY
       const serverInfo = await ServerConfig.findOne({
         serverID: interaction.guild.id,
       });
@@ -543,13 +803,18 @@ module.exports = {
             name: interaction.user.username,
             iconURL: interaction.user.displayAvatarURL({ dynamic: true })
           })
-          .setTitle(
-            `丨𝐕ient de récuperer son bonus quotidien. 💸`
-          )
-          .setTimestamp()
-          .setFooter({
-            text: `𝐒érie en cours : ${user.consecutiveDaily}`
+          .setTitle("丨𝐕ient de récupérer son bonus quotidien. 💸")
+          .setTimestamp();
+
+        if (resetConsecutiveDaily && lastClaim) {
+          XPLOG.setFooter({
+            text: `⚠️ 𝐏𝐄𝐑𝐓𝐄 𝐃𝐄 𝐒𝐄𝐑𝐈𝐄 ◟𝐀ncien record : ${user.lostConsecutiveDaily} jour${user.lostConsecutiveDaily > 1 ? "s" : ""}`
           });
+        } else {
+          XPLOG.setFooter({
+            text: `🔥 𝐒érie actuelle : ${user.consecutiveDaily} jour${user.consecutiveDaily > 1 ? "s" : ""}`
+          });
+        }
 
         if (serverInfo && serverInfo.logChannelID) {
           const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
@@ -572,7 +837,7 @@ module.exports = {
       const costXP = calculateCostXP(storedConsecutiveDaily);
       const malus = calculateMalus(storedConsecutiveDaily);
       const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
-      const xpLoss = costXP; // Supposons que la perte d'XP est égale au coût
+      const xpLoss = costXP;
       const lostLevels = calculateLostLevels(currentXP, xpLoss);
 
       if (user.xp >= costXP) {
@@ -767,7 +1032,7 @@ module.exports = {
             if (error.code === 10008) {
               clearInterval(interval);
             } else {
-              console.error('Erreur lors de la mise à jour du message :', error);
+              console.error('[UNMUTE] Erreur lors de la mise à jour du message :', error);
             }
           });
         } else {
@@ -830,12 +1095,12 @@ module.exports = {
       if (member.roles.cache.some((role) => role.id == roleID)) {
         await member.roles.remove(roleID);
         interaction.editReply({
-          content: `Votre rôle \`${roleName}\` a été supprimé.`,
+          content: `丨𝐓on rôle \`${roleName}\` a été supprimé.`,
         });
       } else {
         await member.roles.add(roleID);
         interaction.editReply({
-          content: `Vous avez récupéré votre rôle \`${roleName}\`.`,
+          content: `丨𝐓u as récupéré le rôle \`${roleName}\`.`,
         });
       }
     }
@@ -1094,127 +1359,140 @@ module.exports = {
           }, 1000);
       });
     }
-    if (interaction.customId === "ROLE_LISTE") { 
-      const serverRoles = await ServerRole.findOne({
-        serverID: interaction.guild.id,
+
+    if (interaction.customId === "ROLE_LISTE") {
+      const badgeMap = {
+        1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️",
+        6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠"
+      };
+
+      const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+        label: i === 0 ? "🎓丨𝐍iveau 𝐒tandard" : `${badgeMap[i]}丨𝐏restige ${i}`,
+        value: `prestige${i}Roles`,
+        description: i === 0
+          ? "𝐂onfigurer les rôles standard"
+          : `𝐂onfigurer les rôles pour le Prestige ${i}`,
+      }));
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("SELECT_PRESTIGE_ROLE")
+        .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+        .addOptions(prestigeOptions);
+
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.reply({
+        content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
+        components: [selectRow],
+        ephemeral: true,
       });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === "SELECT_PRESTIGE_ROLE") {
+      const selectedPrestige = interaction.values[0];
+      const prestigeNumber = parseInt(selectedPrestige.replace("prestige", "").replace("Roles", ""));
 
-      const rowRolesListe = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("ROLES_PERSOLISTE")
-          .setEmoji("🖌️")
-          .setLabel("Modifier les rôles")
-          .setStyle(ButtonStyle.Secondary)
-      );
+      const badgeMap = {
+        1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️",
+        6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠"
+      };
 
-      if (!serverRoles) {
+      const prestigeLabel = prestigeNumber === 0
+        ? "🎓 Niveau Standard"
+        : `${badgeMap[prestigeNumber] || "🏆"} Prestige ${prestigeNumber}`;
+
+      const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+      const server = await ServerRole.findOne({ serverID: interaction.guild.id });
+
+      if (!server) {
         return interaction.reply({
-          content: "👁️‍🗨️丨𝐈l n'y a pas de rôles stockés pour ce serveur.",
-          components: [rowRolesListe],
+          content: "❌丨Impossible de trouver les données du serveur.",
+          ephemeral: true,
         });
       }
 
-      const levels = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-
-      const prestigeRolesList = Object.entries(serverRoles.prestiges || {})
-      .map(([prestige, levels]) => {
-        const levelRoles = Object.entries(levels)
-          .map(([level, roleIds]) => {
-            const rolesText = roleIds
-              .map(id => interaction.guild.roles.cache.get(id)?.toString() || "Rôle inconnu")
-              .join(", ");
-            return `𝐍iveau **${level}** | ${rolesText}`;
-          })
-          .join("\n");
-
-        return `__**𝐑ôles Prestige ${prestige} :**__\n\n${levelRoles}`;
-      })
-      .join("\n\n");
-
-    const roleEmbed = new EmbedBuilder()
-      .setTitle("__𝐋iste des Rôles__")
-      .setColor("#b3c7ff")
-      .setDescription(prestigeRolesList || "Aucun rôle enregistré.");
-
-    interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
-    }
-    if (interaction.customId === "ROLES_PERSOLISTE") {
-      if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+      // conversion automatique si ancien format
+      if (Array.isArray(server[selectedPrestige])) {
+        const converted = new Map();
+        server[selectedPrestige].forEach((roleId, index) => {
+          const level = LEVELS[index];
+          if (level) converted.set(level, [roleId]);
+        });
+        server[selectedPrestige] = converted;
+        await server.save();
       }
-  
-      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
-      if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
-      }
-  
-      let currentPrestige = "prestige0Roles";
-      let secondsRemaining = 180;
-      let originalContent = `🙏🏻丨Merci de répondre en mentionnant les rôles personnalisés. Tu peux mentionner jusqu'à 12 rôles. *(Exemple: @Role1, @Role2, etc.)*`;
-  
-      const replyMessage = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
+
+      const prestigeRoles = server[selectedPrestige] ?? new Map();
+
+      // Construction de la liste affichée
+      const roleListText = LEVELS.map(level => {
+        const roleIds = prestigeRoles.get(level) || [];
+        const roleText = roleIds
+          .map(id => interaction.guild.roles.cache.get(id)?.toString() || "`Rôle inconnu`")
+          .join(", ");
+        return `🔹 Niveau **${level}** : ${roleText || "*Aucun rôle défini*"}`;
+      }).join("\n");
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🧩丨𝐑ôles pour ${prestigeLabel}`)
+        .setDescription(roleListText || "*Aucun rôle enregistré pour ce prestige.*")
+        .setColor("#88c9f9");
+
+      const modifyButton = new ButtonBuilder()
+        .setCustomId(`MODIFY_${selectedPrestige}`)
+        .setLabel("Modifier les rôles")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🖌️");
+
+      const rowButton = new ActionRowBuilder().addComponents(modifyButton);
+
+      // Menu de retour des prestiges
+      const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+        label: i === 0 ? "🎓丨Niveau Standard" : `${badgeMap[i] || "🏆"}丨Prestige ${i}`,
+        value: `prestige${i}Roles`,
+        description: i === 0
+          ? "Configurer les rôles standard"
+          : `Configurer les rôles pour le Prestige ${i}`,
+      }));
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("SELECT_PRESTIGE_ROLE")
+        .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+        .addOptions(prestigeOptions);
+
+      const rowSelect = new ActionRowBuilder().addComponents(selectMenu);
+
+      // Menu des niveaux à modifier
+      const levelSelectOptions = LEVELS.map(level => {
+        const roleIds = prestigeRoles.get(level) || [];
+        const role = roleIds[0] ? interaction.guild.roles.cache.get(roleIds[0]) : null;
+        return {
+          label: `Niveau ${level}`,
+          value: `LEVEL_${level}`,
+          description: role ? role.name : "Aucun rôle défini",
+        };
       });
-  
-      const interval = setInterval(() => {
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(console.error);
-          } else {
-              clearInterval(interval);
-          }
-      }, 1000);
-  
-      const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 180000
+
+      levelSelectOptions.push({
+        label: "➕ Ajouter ou modifier plusieurs rôles",
+        value: "ADD_BULK",
+        description: "Configurer plusieurs niveaux à la fois",
       });
-  
-      collector.on("collect", async (m) => {
-          clearInterval(interval);
-  
-          const roles = m.mentions.roles.map(role => role.id);
-  
-          if (roles.length > 12) {
-              await interaction.followUp("😵 Vous avez mentionné trop de rôles, le maximum est de 12.");
-              return;
-          }
-  
-          if (roles.some(roleId => interaction.guild.roles.cache.get(roleId).position >= botMember.roles.highest.position)) {
-              await interaction.followUp("↘️ Un ou plusieurs des rôles mentionnés sont supérieurs à mon rôle le plus élevé.");
-              return;
-          }
-  
-          let server = await ServerRole.findOne({ serverID: interaction.guild.id }) || new ServerRole({
-              serverID: interaction.guild.id,
-              serverName: interaction.guild.name,
-              prestige0Roles: [],
-              prestige1Roles: [],
-          });
-  
-          server[currentPrestige] = roles;
-          await server.save();
-  
-          const successMessage = `🤘 Les rôles pour le prestige \`${currentPrestige.replace('prestige', '').replace('Roles', '')}\` ont été enregistrés avec succès !`;
-          await interaction.followUp({ content: successMessage, ephemeral: true });
-  
-          if (currentPrestige === "prestige0Roles") {
-              currentPrestige = "prestige1Roles";
-              originalContent = `🙏🏻 Entrez maintenant les rôles pour le prestige \`1\`. N'oubliez pas, vous pouvez mentionner jusqu'à 12 rôles pour chaque prestige.`;
-              await interaction.followUp({ content: originalContent, ephemeral: false });
-              secondsRemaining = 180; // Reset timer for next collection
-          } else {
-              collector.stop();
-          }
-      });
-  
-      collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
-              await interaction.followUp({ content: "⏳ Temps écoulé pour la réponse. Veuillez réessayer.", ephemeral: true });
-          }
+
+      const levelSelectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`ROLE_MODIFY_SELECT_${selectedPrestige}`)
+        .setPlaceholder("Sélectionne un niveau à modifier")
+        .addOptions(levelSelectOptions);
+
+      const rowLevels = new ActionRowBuilder().addComponents(levelSelectMenu);
+
+      await interaction.update({
+        content: "🎯丨Sélectionne un prestige pour voir ou modifier ses rôles :",
+        embeds: [embed],
+        components: [rowSelect, rowButton, rowLevels],
+        ephemeral: true,
       });
     }
+
     if (interaction.customId === "WELCOME_BUTTON") { // OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";

@@ -67,7 +67,8 @@ module.exports = {
     
 
     if (message.author.bot) return;
-    await filterMessage(message);
+    const wasFiltered = await filterMessage(message);
+    if (wasFiltered) return;
 
     // Expérience pour chaque message
     const now = new Date();
@@ -152,18 +153,28 @@ module.exports = {
       serverID: message.guild.id,
     });
 
-    if (!serverConfig || !serverConfig.suggestionsChannelID) {
-      return;
-    }
+    if (!serverConfig || !serverConfig.suggestionsChannelID) return;
+    if (message.channel.id !== serverConfig.suggestionsChannelID) return;
+    if (!message.content.trim()) return;
 
-    if (message.channel.id !== serverConfig.suggestionsChannelID) {
-      return;
+    const suggestionText = message.content.slice(0, 1024);
+
+    const alreadySuggested = await Suggestion.findOne({
+      suggestionText,
+      serverID: message.guild.id,
+    });
+
+    if (alreadySuggested) {
+      return message.reply({
+        content: "💡丨𝐂ette suggestion a déjà été proposée, noob !",
+        ephemeral: true,
+      });
     }
 
     let suggEmbed = new EmbedBuilder()
       .setColor("DarkVividPink")
       .setTitle("丨𝐒uggestion")
-      .setDescription(`${message.content}`)
+      .setDescription(suggestionText)
       .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
       .addFields([
         {
@@ -179,33 +190,32 @@ module.exports = {
       .get(serverConfig.suggestionsChannelID)
       .send({ embeds: [suggEmbed] });
 
-    // Création de la suggestion avec l'ajout du serverID et serverName
+    // Enregistre la suggestion
     await Suggestion.create({
       messageID: suggestionMessage.id,
       userID: message.author.id,
-      suggestionText: message.content,
+      suggestionText,
       channelID: message.channel.id,
       serverID: message.guild.id,
       serverName: message.guild.name,
     });
 
-    const buttonY = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`SUGG_ACCEPTSUGG_${suggestionMessage.id}`)
-          .setEmoji("✔️")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId(`SUGG_NOPSUGG_${suggestionMessage.id}`)
-          .setEmoji("✖️")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`SUGG_CONFIGSUGG_${suggestionMessage.id}`) 
-          .setEmoji("⚙️")
-          .setStyle(ButtonStyle.Secondary)
-      );
+    const buttonRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`SUGG_ACCEPTSUGG_${suggestionMessage.id}`)
+        .setEmoji("✔️")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`SUGG_NOPSUGG_${suggestionMessage.id}`)
+        .setEmoji("✖️")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`SUGG_CONFIGSUGG_${suggestionMessage.id}`)
+        .setEmoji("⚙️")
+        .setStyle(ButtonStyle.Secondary)
+    );
 
-    await suggestionMessage.edit({ embeds: [suggEmbed], components: [buttonY] });
-    await message.delete();
+    await suggestionMessage.edit({ embeds: [suggEmbed], components: [buttonRow] });
+    await message.delete().catch(console.error);
   },
 };
