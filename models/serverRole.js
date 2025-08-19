@@ -4,7 +4,7 @@ const dynamicPrestigeFields = Array.from({ length: 11 }).reduce((acc, _, i) => {
   acc[`prestige${i}Roles`] = {
     type: Map,
     of: [String],
-    default: new Map()
+    default: () => new Map(),
   };
   return acc;
 }, {});

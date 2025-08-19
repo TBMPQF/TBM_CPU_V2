@@ -13,7 +13,44 @@ module.exports = {
   async execute(interaction) {
     const serverID = interaction.guild.id;
     const serverConfig = await ServerConfig.findOne({ serverID: serverID });
-    const bingoState = await Bingo.findOne({ serverID: interaction.guild.id });
+    
+    const ETAT_DB = {
+      ACTIF: '𝐀𝐂𝐓𝐈𝐅',
+      INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅',
+    };
+    function buildBingoConfigDescription(serverConfig, bingoDoc) {
+      const etatVisuel = ((bingoDoc?.etat || '').trim() === ETAT_DB.ACTIF) ? '𝐀𝐂𝐓𝐈𝐅' : '𝐈𝐍𝐀𝐂𝐓𝐈𝐅';
+      const salonName = serverConfig?.bingoChannelName || 'non défini';
+
+      return [
+        '🎲 𝐁ingo surprise : il pop au hasard tous les `2` à `5` jours.',
+        '**𝐀ctiver** pour démarrer, **𝐃ésactiver** pour faire une pause, **𝐌odifier salon** pour déménager le show. 𝐏romis, pas de triche… sauf pour les maths.',
+        '',
+        `𝐒alon actuel : \`${salonName}\``,
+        '',
+        etatVisuel,
+      ].join('\n');
+    }
+    function applyNextBingoFooter(embed, bingoDoc, guild) {
+      const actif = ((bingoDoc?.etat || '').trim() === ETAT_DB.ACTIF);
+
+      if (actif && bingoDoc?.nextBingoTime) {
+        const d = new Date(bingoDoc.nextBingoTime);
+
+        const when = new Intl.DateTimeFormat('fr-FR', {
+          weekday: 'short',
+          day: '2-digit',
+          month: 'long',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Paris',
+        }).format(d);
+
+        return embed
+          .setFooter({ text: `◟𝐏rochain bingo : ${when}`})
+      }
+      return embed
+    }
 
     if (interaction.isStringSelectMenu()) {
       const selectedOption = interaction.values[0];
@@ -426,40 +463,48 @@ module.exports = {
           });
           break;
 
-        case "BINGO":
-          const BINGOEmbed = new EmbedBuilder()
-            .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
-            .setDescription(`Gestion du bingo, tu peux modifier le salon ou le bingo apparaîtra aléatoirement dans une fourchette de \`2\` à \`5\` jours.\n**Appuie** sur __Valider__ pour l'activer et sur __Réinitialiser__ pour le désactiver et réinitialiser le salon choisis.\n\nSalon actuel : \`${serverConfig.bingoChannelName}\`\n**${bingoState ? bingoState.etat : 'INACTIF'}**`)
-            .setThumbnail(
-              "https://png.pngtree.com/png-clipart/20210311/original/pngtree-colorful-bingo-words-hand-drawing-png-image_6006005.png"
-            )
-            .setColor("#b3c7ff");
-            
-          const rowBingo = new ActionRowBuilder()
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId("BINGO_PUSH")
-                .setEmoji("✔️")
-                .setLabel("𝐕alider")
-                .setStyle(ButtonStyle.Secondary)
-            ).addComponents(
-              new ButtonBuilder()
-                .setCustomId("BINGO_BUTTON")
-                .setEmoji("📝")
-                .setLabel("𝐌odifier 𝐒alons")
-                .setStyle(ButtonStyle.Primary)
-            ).addComponents(
-              new ButtonBuilder()
-                .setCustomId("BINGO_DESAC")
-                .setEmoji("❌")
-                .setLabel("𝐑éinitialiser")
-                .setStyle(ButtonStyle.Danger)
-            );
-          await interaction.reply({
-            embeds: [BINGOEmbed],
-            components: [rowBingo],
-          });
-          break;
+        case "BINGO": {
+        const guild = interaction.guild;
+        const guildId = guild.id;
+        const bingoDoc = await Bingo.findOne({ serverID: guildId }).lean();
+
+        let BINGOEmbed = new EmbedBuilder()
+          .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
+          .setDescription(buildBingoConfigDescription(serverConfig, bingoDoc))
+          .setThumbnail("https://png.pngtree.com/png-clipart/20210311/original/pngtree-colorful-bingo-words-hand-drawing-png-image_6006005.png")
+          .setColor("#b3c7ff");
+
+        BINGOEmbed = applyNextBingoFooter(BINGOEmbed, bingoDoc, guild);
+
+        const isActive = ((bingoDoc?.etat || "").trim() === ETAT_DB.ACTIF);
+
+        const primaryBtn = new ButtonBuilder()
+          .setCustomId(isActive ? "BINGO_DISABLE" : "BINGO_PUSH")
+          .setLabel(isActive ? "𝐃ésactiver" : "𝐀ctiver")
+          .setStyle(isActive ? ButtonStyle.Danger : ButtonStyle.Primary);
+
+        if (!isActive) primaryBtn.setEmoji("✔️");
+
+        const rowBingo = new ActionRowBuilder().addComponents(
+          primaryBtn,
+          new ButtonBuilder()
+            .setCustomId("BINGO_BUTTON")
+            .setLabel("𝐌odifier 𝐒alon")
+            .setEmoji("📝")
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId("BINGO_DESAC")
+            .setLabel("𝐑éinitialiser")
+            .setEmoji("❌")
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        await interaction.reply({
+          embeds: [BINGOEmbed],
+          components: [rowBingo],
+        });
+        break;
+      }
         default:
           await interaction.reply("Option invalide");
           break;

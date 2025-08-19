@@ -7,8 +7,8 @@ const bingoSchema = new mongoose.Schema({
   nextBingoTime: { type: Date, default: null },
   etat: {
     type: String,
-    enum: ['ACTIF', 'INACTIF'],
-    default: 'INACTIF'
+    enum: ['𝐀𝐂𝐓𝐈𝐅', '𝐈𝐍𝐀𝐂𝐓𝐈𝐅'],
+    default: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅'
   },
   bingoChannelName: { type: String, default: null }
 }, { versionKey: false });

@@ -31,7 +31,7 @@ module.exports = {
         const user = await User.findOneAndUpdate(
           { userID, serverID },
           {
-            $inc: { xp: 25 },
+            $inc: { xp: 25, careerXP: 25 },
           },
           { upsert: true, new: true }
         );
@@ -117,6 +117,7 @@ module.exports = {
       initialXP *= weekendPercentage;
       initialXP = Math.round(initialXP);
       user.xp = initialXP;
+      user.careerXP = initialXP;
       
       await levelUp(message, user, user.xp);
     } else {
@@ -137,6 +138,7 @@ module.exports = {
 
       randomXP = Math.round(randomXP);
       user.xp = (user.xp || 0) + randomXP;
+      user.careerXP = (user.careerXP || 0) + randomXP;
 
       await levelUp(message, user, user.xp);
     } else {

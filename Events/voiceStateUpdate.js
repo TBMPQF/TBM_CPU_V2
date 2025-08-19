@@ -42,7 +42,6 @@ async function updateInVocalEntry(newState) {
     console.error('[VOCAL XP] Erreur lors de la mise à jour de l\'entrée InVocal:', error);
   }
 }
-const joinTimestamp = moment().tz("Europe/Paris").toDate();
 
 async function createInVocalEntry(newState) {
   const newInVocal = new InVocal({
@@ -50,7 +49,7 @@ async function createInVocalEntry(newState) {
     serverId: newState.guild.id,
     username: newState.member.user.tag,
     vocalName: newState.channel.name,
-    joinTimestamp: joinTimestamp
+    joinTimestamp: moment().tz("Europe/Paris").toDate(),
   });
 
   try {
