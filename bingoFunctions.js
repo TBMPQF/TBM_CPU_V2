@@ -1,4 +1,3 @@
-// bingoFunctions.js — version robuste (résolution salon + resched + anti-doublon)
 const { EmbedBuilder, ChannelType } = require("discord.js");
 const Bingo = require("./models/bingo");
 const ServerConfig = require("./models/serverConfig");
@@ -105,6 +104,9 @@ async function resolveBingoChannel(bot, guildId) {
 
 const activeGuildRuns = new Set();
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const DELETE_GUESS_DELAY_MS = 500;
+
 async function lancerJeuBingo(guildId, bot) {
   if (!guildId) return;
 
@@ -162,10 +164,9 @@ async function lancerJeuBingo(guildId, bot) {
     `𝐎n éteint les espoirs pour cette fois : **\`${bingoNumber}\`**. 𝐍ouveau tour bientôt !`,
   ];
 
-
   const bingoEmbed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('🎉丨𝐁ingo 𝐓ime!丨🎉')
+    .setTitle('🎉◟𝐁ingo 𝐓ime!')
     .setDescription(':8ball:丨𝐓rouve le nombre mystère entre **1** et **500** dans les prochaines `5 minutes` pour gagner !')
     .setTimestamp();
 
@@ -173,52 +174,73 @@ async function lancerJeuBingo(guildId, bot) {
     await channel.setRateLimitPerUser(10).catch(() => {});
     await channel.send({ embeds: [bingoEmbed] });
 
+    const numericMsgIds = new Set();
+    let winnerMessageId = null;
+
     const participants = new Map();
     let closestGuess = null;
     let closestGuessUser = null;
     let closestGuessDifference = Infinity;
 
-    const collector = channel.createMessageCollector({ time: 300000 }); // 5 min
+    const collector = channel.createMessageCollector({ time: 300000 });
+
     collector.on('collect', async (message) => {
       if (message.author.bot) return;
+
+      const content = message.content.trim();
+      const isJustNumber = /^\d+$/.test(content);
+
       if (!participants.has(message.author.id)) {
         participants.set(message.author.id, { userId: message.author.id });
       }
 
-      const guess = parseInt(message.content, 10);
-      if (!Number.isFinite(guess) || guess < 1 || guess > 500) return;
+      if (!isJustNumber) return;
+      const guess = parseInt(content, 10);
+      if (!Number.isFinite(guess)) return;
+      numericMsgIds.add(message.id);
+
+      if (guess < 1 || guess > 500) {
+        setTimeout(() => message.delete().catch(() => {}), DELETE_GUESS_DELAY_MS);
+        return;
+      }
 
       const diff = Math.abs(guess - bingoNumber);
+
       if (guess === bingoNumber) {
         bingoWinner = message.author;
-        const falconix = await ajouterFalconixUtilisateur(bingoWinner.id, message.guild.id);
+        winnerMessageId = message.id;
+        numericMsgIds.delete(message.id);
 
+        const falconix = await ajouterFalconixUtilisateur(bingoWinner.id, message.guild.id);
         const line = messagesGagnant[Math.floor(Math.random() * messagesGagnant.length)]
           .replace('X Falconix!', `**\`${falconix ?? 0}\` Falconix**!`);
 
         const winEmbed = new EmbedBuilder()
           .setColor('#43b581')
-          .setAuthor({ name: `${bingoWinner.tag} ◟_𝐁ingo 𝐆agné_ !`, iconURL: getAvatar(bingoWinner) })
-          .setDescription(line)
+          .setAuthor({ name: `${bingoWinner.tag} ◟𝐁ingo 𝐆agné !`, iconURL: getAvatar(bingoWinner) })
+          .setDescription(line);
 
         await channel.send({ embeds: [winEmbed] }).catch(() => {});
         collector.stop('found');
-      } else if (diff < closestGuessDifference) {
-        closestGuess = guess;
-        closestGuessUser = message.author;
-        closestGuessDifference = diff;
+      } else {
+        setTimeout(() => message.delete().catch(() => {}), DELETE_GUESS_DELAY_MS);
+
+        if (diff < closestGuessDifference) {
+          closestGuess = guess;
+          closestGuessUser = message.author;
+          closestGuessDifference = diff;
+        }
       }
     });
 
     collector.on('end', async () => {
       try {
         if (!bingoWinner) {
-          let line = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
-
+          const line = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
           const loseEmbed = new EmbedBuilder()
             .setColor('#f04747')
-            .setTitle('⏳◟_𝐁ingo 𝐓erminé_')
-            .setDescription(line)
+            .setTitle('⏳◟𝐁ingo 𝐓erminé')
+            .setDescription(line);
 
           if (closestGuessUser) {
             loseEmbed.addFields({
@@ -226,10 +248,9 @@ async function lancerJeuBingo(guildId, bot) {
               value: `${closestGuessUser} avec **\`${closestGuess}\`**.`,
               inline: false,
             });
-
             const closestAvatar = getAvatar(closestGuessUser);
             if (closestAvatar) loseEmbed.setThumbnail(closestAvatar);
-            loseEmbed.setFooter({ text: `𝐃ommage ${closestGuessUser.tag}...`, iconURL: closestAvatar || undefined });
+            loseEmbed.setFooter({ text: `𝐃ommage ${closestGuessUser.tag}...` });
           }
 
           await channel.send({ embeds: [loseEmbed] }).catch(() => {});
@@ -241,6 +262,13 @@ async function lancerJeuBingo(guildId, bot) {
           await ajouterXPUtilisateur(p.userId, guildId, 250, bot).catch(() => {});
         }
 
+        const toDelete = [...numericMsgIds].filter(id => id !== winnerMessageId);
+        for (const id of toDelete) {
+          const m = await channel.messages.fetch(id).catch(() => null);
+          if (m) await m.delete().catch(() => {});
+          await sleep(120);
+        }
+
         const current = await Bingo.findOne({ serverID: guildId });
         if (current && (current.etat || '').trim() === ETAT_DB.ACTIF) {
           const nextTs = new Date(Date.now() + intervalleAleatoire(2, 5));
@@ -249,7 +277,6 @@ async function lancerJeuBingo(guildId, bot) {
             { $set: { lastBingoTime: new Date(), nextBingoTime: nextTs } },
             { upsert: true }
           );
-          console.log(`[BINGO] Manche finie, prochain bingo @ ${nextTs.toISOString()} (server ${guildId})`);
         } else {
           await Bingo.updateOne(
             { serverID: guildId },
@@ -268,6 +295,7 @@ async function lancerJeuBingo(guildId, bot) {
     activeGuildRuns.delete(guildId);
   }
 }
+
 
 let isCheckingBingoGames = false;
 

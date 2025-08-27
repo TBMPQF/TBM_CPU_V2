@@ -2,6 +2,7 @@ const path = require("path");
 const { AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
 const User = require("../../models/experience");
+const { longDescription } = require("../modération/setconfig");
 
 // Twemoji
 const MEDAL_GOLD_PNG   = "https://twemoji.maxcdn.com/v/latest/72x72/1f947.png";
@@ -55,6 +56,16 @@ const theme = {
 module.exports = {
   name: "rank",
   description: "丨𝐀ffiche ton niveau d'expérience.",
+  longDescription: ` 𝐋e panneau de contrôle de ton profil !
+    𝐀vec \`/rank\`, affiche une carte ultra-propre de tes stats : 
+    • 𝐍iveau actuel, barre de progression et 𝐗𝐏 requise pour le prochain palier.  
+    • 𝐏restige & badges (ça brille, oui).  
+    • 𝐂lassement sur le serveur, histoire de flex.  
+    • 𝐓emps passé en vocal, nombre de messages et ton solde 𝐅alconix.  
+    • 𝐒érie 𝐃aily maximale atteinte (🔥 record personnel).
+
+    𝐔tile pour suivre ta montée, comparer avec les autres et te fixer des objectifs.
+    𝐏romis : aucune publicité ciblée, juste ton égo bien placé. 🚀`,
   dm: false,
   permission: "Aucune",
   async execute(interaction) {

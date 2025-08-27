@@ -25,7 +25,7 @@ const axios = require('axios');
 const ServerConfig = require("../models/serverConfig");
 const SearchMateMessage = require('../models/searchMate');
 const VocalChannel = require('../models/vocalGames');
-const ApexStats = require('../models/apexStats');
+const ApexStats = require('../models/ApexStats')
 const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
 const { unmuteRequests } = require('../models/shared');
@@ -934,21 +934,44 @@ module.exports = {
       const level = levelFrom(rem, p);
       return { prestige: p, level, xp: Math.round(rem) };
     }
-
     function computeCareerFromUser(user) {
       const p = Math.max(0, Number(user.prestige) || 0);
       let career = Math.max(0, Number(user.xp) || 0);
       for (let i = 0; i < p; i++) career += pf(i) * XP_BLOCK;
       return Math.round(career);
     }
-
-    // Coût / malus (tes règles)
-    const DAILY_COST_PER_MISS = 600;
-    function costFromStreakMiss(n)      { return (Number(n) || 0) * DAILY_COST_PER_MISS; }
-    function malusFromStreakMiss(n)     { n = Number(n) || 0; return n < 7 ? 50 : 75; }
-    function malusDaysFromStreakMiss(n) { n = Number(n) || 0; return Math.max(1, Math.floor(n / 7)); }
-
-    // ---------- Helpers dessin ----------
+    const BASE_COST_PER_DAY = 400;
+    function softDaysEquivalent(streak) {
+      const n = Math.max(0, Number(streak) || 0);
+      const first = Math.min(n, 30);
+      const rest  = Math.max(0, n - 30);
+      return first + Math.sqrt(rest) * 5;
+    }
+    function costMultiplier(prestige = 0, level = 0) {
+      const p = Math.max(0, Number(prestige) || 0);
+      const L = Math.max(0, Number(level) || 0);
+      const pfactor = 1 + 0.15 * p;
+      const lfactor = 1 + Math.min(L, 50) / 50;
+      return pfactor * lfactor;
+    }
+    function xpToNextPrestige(prestige = 0) {
+      const pfac = 1 + 0.15 * Math.max(0, Number(prestige) || 0);
+      const XP_BLOCK = Math.pow(51 / 0.1, 2);
+      return XP_BLOCK * pfac;
+    }
+    function costFromStreakMiss(streak, prestige = 0, level = 0) {
+      const base = BASE_COST_PER_DAY * softDaysEquivalent(streak) * costMultiplier(prestige, level);
+      const cap  = 0.35 * xpToNextPrestige(prestige);
+      return Math.round(Math.min(base, cap));
+    }
+    function malusFromStreakMiss(n) {
+      const m = Math.max(0, Number(n) || 0);
+      return m < 7 ? 50 : 75;
+    }
+    function malusDaysFromStreakMiss(n) {
+      const m = Math.max(0, Number(n) || 0);
+      return Math.max(1, Math.floor(m / 7));
+    }
     function rrPath(ctx, x, y, w, h, r = 0) {
       const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
       ctx.beginPath();
@@ -961,7 +984,6 @@ module.exports = {
     }
     function fillRR(ctx, x, y, w, h, r, style) { rrPath(ctx, x, y, w, h, r); ctx.fillStyle = style; ctx.fill(); }
     function toFr(n) { return Number(n || 0).toLocaleString("fr-FR"); }
-
     function computeFlameSizeForValue(ctx, rawNum, {
       base = 36, step = 3, min = 45, max = 70, ratio = 0.70, fontScale = 0.38,
     } = {}) {
@@ -985,7 +1007,6 @@ module.exports = {
       }
       return { size, fontSize, label };
     }
-
     async function drawPill(ctx, { x, y, w, h, iconUrl = null, label, value, divider = true }) {
       fillRR(ctx, x, y, w, h, h / 2, "rgba(255,255,255,0.06)");
       const s = 20;
@@ -1017,7 +1038,6 @@ module.exports = {
       const vw = ctx.measureText(value).width;
       ctx.fillText(value, x + w - vw - 14, y + h / 2 + 5);
     }
-
     async function renderDailyRecoveryCardRankStyle({
       username,          // (non affiché)
       avatarURL,
@@ -1160,7 +1180,6 @@ module.exports = {
 
       return canvas.toBuffer("image/png");
     }
-
     function normalizeStored(val) {
       if (!val) return { id: undefined, name: undefined };
       if (Array.isArray(val)) return { id: val[0], name: val[1] };
@@ -1219,7 +1238,6 @@ module.exports = {
         console.warn("[daily-syncRoles] échec sync rôles:", e?.message);
       }
     }
-
     if (interaction.customId === "RECUPDAILY_BUTTON") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
       if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
@@ -1227,7 +1245,7 @@ module.exports = {
       const streakMiss = Number(user.lostConsecutiveDaily) || 0;
       if (streakMiss <= 0) return interaction.reply({ content: "𝐓u n'as aucun Daily manqué à récupérer.", ephemeral: true });
 
-      const costXP        = costFromStreakMiss(streakMiss);
+      const costXP = costFromStreakMiss(streakMiss, user.prestige, user.level);
       const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
       const canPayCareer  = currentCareer >= costXP;
       const canPayFalconix = (Number(user.falconix) || 0) >= 1;
@@ -1255,7 +1273,6 @@ module.exports = {
       const file = new AttachmentBuilder(buffer, { name: "recupdaily.png" });
       return interaction.editReply({ files: [file], components: [row] });
     }
-
     if (interaction.customId === "CONFIRM_RECUPDAILY_CAREER") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
       if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
@@ -1326,7 +1343,6 @@ module.exports = {
       });
       
     }
-
     if (interaction.customId === "CONFIRM_RECUPDAILY_FALCONIX") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
       if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
@@ -1382,7 +1398,6 @@ module.exports = {
         ephemeral: true,
       });
     }
-
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
       const filter = { userID: interaction.user.id, serverID: interaction.guild.id };
       const updated = await User.findOneAndUpdate(filter, { $set: { lostConsecutiveDaily: 0 } }, { new: true });
@@ -1393,134 +1408,6 @@ module.exports = {
       return interaction.reply({
         content: "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 😅",
         ephemeral: true,
-      });
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // Bouton confirmation récupération de daily
-    if (interaction.customId === "CONFIRM_RECUPDAILY_CAREER") {
-      const user = await User.findOne({
-        serverID: interaction.guild.id,
-        userID: interaction.user.id,
-      });
-      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
-
-      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
-      if (streakMiss <= 0) {
-        return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
-      }
-
-      const costXP = calculateCostXP(streakMiss);
-      const malus = calculateMalus(streakMiss);
-      const malusDuration = calculateMalusDuration(streakMiss);
-
-      const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
-      if (currentCareer < costXP) {
-        return interaction.reply({
-          content: `Solde insuffisant : il faut \`${costXP.toLocaleString("fr-FR")} careerXP\`. ` +
-                  `Solde actuel: \`${currentCareer.toLocaleString("fr-FR")}\`.`,
-          ephemeral: true,
-        });
-      }
-
-      // 1) Débit du careerXP
-      const newCareer = currentCareer - costXP;
-
-      // 2) Rebuild prestige/level/xp depuis le nouveau careerXP
-      const state = rebuildFromCareer(newCareer);
-
-      // 3) Persiste tout + applique le malus et la récup
-      user.careerXP = newCareer;
-      const prevPrestige = user.prestige || 0;
-      user.prestige = state.prestige;
-      user.level    = state.level;
-      user.xp       = state.xp;
-
-      user.consecutiveDaily   = streakMiss;
-      user.lostConsecutiveDaily = 0;
-      user.malusDaily         = malus;
-      user.malusDuration      = malusDuration;
-      user.lastDaily          = new Date();
-      await user.save();
-      await syncRolesAfterStateChange(interaction.guild, interaction.member, prevPrestige, state.prestige, state.level);
-
-      await interaction.reply({
-        content:
-          `✅ Daily récupéré en **careerXP** !\n` +
-          `• Débit: \`-${costXP.toLocaleString("fr-FR")} careerXP\` → Solde: \`${newCareer.toLocaleString("fr-FR")}\`\n` +
-          `• Nouveau statut: Prestige \`${state.prestige}\`, Niveau \`${state.level}\`\n` +
-          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
-        ephemeral: true,
-      });
-    }
-    if (interaction.customId === "CONFIRM_RECUPDAILY_FALCONIX") {
-      const user = await User.findOne({
-        serverID: interaction.guild.id,
-        userID: interaction.user.id,
-      });
-      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
-
-      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
-      if (streakMiss <= 0) {
-        return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
-      }
-
-      if ((Number(user.falconix) || 0) < 1) {
-        return interaction.reply({ content: "Il faut **1 Falconix** pour payer cette récupération.", ephemeral: true });
-      }
-
-      const malus = calculateMalus(streakMiss);
-      const malusDuration = calculateMalusDuration(streakMiss);
-
-      user.falconix = (Number(user.falconix) || 0) - 1;
-      user.consecutiveDaily = streakMiss;
-      user.lostConsecutiveDaily = 0;
-      user.malusDaily = malus;
-      user.malusDuration = malusDuration;
-      user.lastDaily = new Date();
-      await user.save();
-
-      await interaction.reply({
-        content:
-          `✅ Daily récupéré en dépensant **1 Falconix**.\n` +
-          `• Falconix restant: \`${user.falconix}\`\n` +
-          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
-        ephemeral: true,
-      });
-    }
-    // Bouton cancel récupération de daily
-    if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
-      const userId = interaction.user.id;
-      const serverId = interaction.guild.id;
-    
-      User.findOneAndUpdate(
-        { userID: userId, serverID: serverId },
-        { $set: { lostConsecutiveDaily: 0 } },
-        { new: true }
-      )
-      .then(updatedUser => {
-        if (!updatedUser) {
-          console.error(`Utilisateur non trouvé (userID: ${userId}, serverID: ${serverId})`);
-        } else {
-          interaction.reply({
-            content: "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 𝐍'oublie pas ➠ **ce qui ne te tue pas, te rend plus fort**... ou pas ! 😅",
-            ephemeral: true,
-          });
-        }
-      })
-      .catch(error => {
-        console.error("Erreur lors de la mise à jour de lostConsecutiveDaily", error);
       });
     }
 
@@ -1659,60 +1546,7 @@ module.exports = {
     }
 
     // Validation règlement avec rôle
-    if (interaction.customId === "VALID_REGL") {
-      const guild = await interaction.client.guilds.fetch(interaction.guildId);
-      const member = await guild.members.fetch(interaction.user.id);
-
-      const serverConfig = await ServerConfig.findOne({ serverID: guild.id });
-
-      if (serverConfig && serverConfig.roleReglementID) {
-        const roleId = serverConfig.roleReglementID;
-
-        if (!guild.roles.cache.has(roleId)) {
-          await interaction.reply({
-            content: `Le rôle ${roleId} n'existe pas sur ce serveur.`,
-            ephemeral: true,
-          });
-          return;
-        }
-
-        if (member.roles.cache.has(roleId)) {
-          await interaction.reply({
-            content:
-              "丨𝐓u as déjà validé le règlement, quelque chose à te reprocher peut-être ?? :thinking:",
-            ephemeral: true,
-          });
-          return;
-        }
-
-        try {
-          await member.roles.add(roleId);
-          await interaction.reply({
-            content:
-              "Merci d'avoir pris connaissance du règlement. :sunglasses:",
-            ephemeral: true,
-          });
-        } catch (error) {
-          if (error.code === 50013) {
-            if (!interaction.replied && !interaction.deferred) {
-              await interaction.reply({
-                content:
-                  "Contact un modérateur avec l'erreur suivante : Le bot doit être `tout en haut` dans la liste des rôles du serveur. N'oublie pas de me mettre `administrateur`.\nUne fois que c'est fait tu pourras validé le règlement !",
-                ephemeral: true,
-              });
-            } else if (interaction.deferred || interaction.replied) {
-              await interaction.followUp({
-                content:
-                  "Contact un modérateur avec l'erreur suivante : Le bot doit être `tout en haut` dans la liste des rôles du serveur. N'oublie pas de me mettre `administrateur`.\nUne fois que c'est fait tu pourras validé le règlement !",
-                ephemeral: true,
-              });
-            }
-          } else {
-            console.error(error);
-          }
-        }
-      }
-    }
+    
 
     //Bouton pour Ticket => Création salon avec fermeture une fois terminé.
     if (interaction.customId === "CREATE_CHANNEL") {
@@ -1912,28 +1746,27 @@ module.exports = {
           }, 1000);
       });
     }
-
     if (interaction.customId === "ROLE_LISTE") {
-  const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
+      const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
 
-  const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
-    label: i === 0 ? "🎓丨𝐍iveau 𝐒tandard" : `${badgeMap[i] || "🏆"}丨𝐏restige ${i}`,
-    value: `prestige${i}Roles`,
-    description: i === 0 ? "𝐂onfigurer les rôles standard" : `𝐂onfigurer les rôles pour le Prestige ${i}`,
-  }));
+      const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+        label: i === 0 ? "🎓丨𝐍iveau 𝐒tandard" : `${badgeMap[i] || "🏆"}丨𝐏restige ${i}`,
+        value: `prestige${i}Roles`,
+        description: i === 0 ? "𝐂onfigurer les rôles standard" : `𝐂onfigurer les rôles pour le Prestige ${i}`,
+      }));
 
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId("SELECT_PRESTIGE_ROLE")
-    .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
-    .addOptions(prestigeOptions);
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("SELECT_PRESTIGE_ROLE")
+        .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+        .addOptions(prestigeOptions);
 
-  const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
-  await interaction.reply({
-    content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
-    components: [selectRow],
-    ephemeral: true,
-  });
+      await interaction.reply({
+        content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
+        components: [selectRow],
+        ephemeral: true,
+      });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === "SELECT_PRESTIGE_ROLE") {
       const selectedPrestige = interaction.values[0]; // ex: prestige3Roles
@@ -2262,11 +2095,33 @@ module.exports = {
         });
       }
     }
-    if (interaction.customId === "REGL_ROLE") { //OK
-      if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+    if (interaction.customId === "VALID_REGL") {
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (!serverConfig?.roleReglementID) {
+        return interaction.reply({
+          content: "Aucun **rôle règlement** n’est configuré. Configure-le d’abord dans `Modifier Salons/Rôles`.",
+          ephemeral: true,
+        });
       }
-  
+
+      const member = interaction.member;
+      const role = interaction.guild.roles.cache.get(serverConfig.roleReglementID);
+      if (!role) {
+        return interaction.reply({ content: "Le rôle configuré n’existe plus.", ephemeral: true });
+      }
+
+      if (member.roles.cache.has(role.id)) {
+        return interaction.reply({ content: "Tu as déjà validé le règlement. Quelque chose à te reprocher ?", ephemeral: true });
+      }
+
+      await member.roles.add(role).catch(() => {});
+      await interaction.reply({ content: "✅ Règlement validé. Bienvenue !", ephemeral: true });
+    }
+    if (interaction.customId === "REGL_ROLE") { //OK
+    if (!interaction.guild) {
+        return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+    }
+
       const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
       if (!botMember) {
           return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
@@ -3488,7 +3343,7 @@ module.exports = {
       const now = Date.now();
       const nextTs = bingoDoc.nextBingoTime ? new Date(bingoDoc.nextBingoTime).getTime() : 0;
       if (!nextTs || nextTs <= now) {
-        const delay = intervalleAleatoire(2, 5); // 2–5 min en test (ou jours en prod)
+        const delay = intervalleAleatoire(2, 5);
         const next = new Date(now + delay);
         bingoDoc.nextBingoTime = next;
         await bingoDoc.save();
@@ -4221,294 +4076,119 @@ module.exports = {
       });
     }
 
-    // Bouton Classement Général
-    if (interaction.customId === "LADDER_BUTTON") {
-      const guild = interaction.guild;
-  
-      const topUsers = await User.find({ serverID: guild.id })
-          .sort({ prestige: -1, xp: -1 })
-          .limit(5);
-  
-      if (topUsers.length === 0) {
-          return interaction.reply({ content: ":hand_splayed:丨𝐇alt ! 𝐀ucun utilisateur n'a de l'expérience sur ce serveur.", ephemeral: true });
+    // Gestion de la recherche de mate
+    const SEARCH_DURATION_MS = 30 * 60 * 1000;
+    const CANCEL_PREFIX = 'CANCEL_SEARCH_';
+    async function getOrCleanExisting(interaction) {
+      const existing = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
+      if (!existing) return null;
+
+      const expired = existing.createdAt && (Date.now() - new Date(existing.createdAt).getTime() > SEARCH_DURATION_MS);
+      if (expired) {
+        await SearchMateMessage.deleteOne({ _id: existing._id }).catch(() => {});
+        return null;
       }
-  
-      const leaderboardEmbed = new EmbedBuilder()
-          .setColor("Gold")
-          .setTitle(`📊丨𝐂lassement du serveur ${guild.name}`)
-          .setDescription(
-              topUsers.map((user, index) => {
-                  let positionSuffix = "ᵉᵐᵉ";
-                  let medalEmoji = "";
-                  const prestigeStars = user.prestige > 0 ? " ⭐".repeat(user.prestige) : "";
-  
-                  switch (index) {
-                      case 0:
-                          positionSuffix = "ᵉʳ";
-                          medalEmoji = "🥇";
-                          break;
-                      case 1:
-                          medalEmoji = "🥈";
-                          break;
-                      case 2:
-                          medalEmoji = "🥉";
-                          break;
-                  }
-  
-                  const username = bot.users.cache.get(user.userID)?.username || "Utilisateur Mystère";
-  
-                  return `**${medalEmoji} ${index + 1}${positionSuffix}** ◟ **${username}**\n🔹 **𝐍iveau** : \`${user.level}${prestigeStars}\`\n💠 **𝐗P** : \`${user.xp.toLocaleString()}\``;
-              }).join("\n────────────────────────\n")
-          )
-          .setThumbnail(guild.iconURL({ dynamic: true }))
-          .setFooter({ text: `𝐂ordialement l'équipe ${guild.name}`, iconURL: guild.iconURL() })
-          .setTimestamp();
-  
-      const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-              .setCustomId("SHOW_MORE_BUTTON")
-              .setLabel("Voir plus")
-              .setStyle(ButtonStyle.Primary)
-      );
-  
-      const replyMessage = await interaction.reply({
-          embeds: [leaderboardEmbed],
-          components: [row],
-          fetchReply: true
-      });
-  
-      setTimeout(async () => {
-          try {
-              await replyMessage.delete();
-          } catch (error) {
-              if (error.code !== 10008) { // Ignorer l'erreur "Unknown Message" si le message est déjà supprimé
-                  console.error("[LADDER] Erreur lors de la suppression du message : ", error);
-              }
-          }
-      }, 15000);
+
+      try {
+        const ch = await interaction.client.channels.fetch(existing.channelId).catch(() => null);
+        const msg = ch ? await ch.messages.fetch(existing.messageId).catch(() => null) : null;
+        if (!msg) {
+          await SearchMateMessage.deleteOne({ _id: existing._id }).catch(() => {});
+          return null;
+        }
+      } catch {
+        await SearchMateMessage.deleteOne({ _id: existing._id }).catch(() => {});
+        return null;
+      }
+      return existing;
     }
-    if (interaction.customId === "SHOW_MORE_BUTTON") {
-      const guild = interaction.guild;
-      const totalUsers = await User.countDocuments({ serverID: guild.id });
-    
-      const topUsers = await User.find({ serverID: guild.id })
-        .sort({ prestige: -1, xp: -1 })
-        .skip(5)
-        .limit(5);
-    
-      if (topUsers.length === 0) {
-        return interaction.reply({ content: "丨𝐕ous êtes que 5 sur le serveur my bad. :joy:", ephemeral: true });
+    async function launchSearch(interaction, { roleName, gameLabel }) {
+      const existing = await getOrCleanExisting(interaction);
+      if (existing) {
+        return interaction.reply({ content: "Doucement, attends tranquillement ! Prends toi un coca et respire.", ephemeral: true });
       }
-    
-      const leaderboardEmbed = new EmbedBuilder()
-        .setColor("Gold")
-        .setTitle(`📊丨𝐂lassement du serveur ${guild.name}`)
+
+      const role = interaction.guild.roles.cache.find(r => r.name === roleName);
+      if (!role) {
+        return interaction.reply({ content: `Je ne trouve pas le rôle **${roleName}**.`, ephemeral: true });
+      }
+
+      const expiresAt = new Date(Date.now() + SEARCH_DURATION_MS);
+      const expiresUnix = Math.floor(expiresAt.getTime() / 1000);
+
+      const embed = new EmbedBuilder()
+        .setTitle('𝐑𝐄𝐂𝐇𝐄𝐑𝐂𝐇𝐄 𝐃𝐄 𝐌𝐀𝐓𝐄 !')
         .setDescription(
-          topUsers
-            .map((user, index) => {
-              const position = index + 6;
-              const username = bot.users.cache.get(user.userID)?.username || "Utilisateur mystère";
-              const prestigeStars = user.prestige > 0 ? " ⭐".repeat(user.prestige) : "";
-    
-              return `**${position}ᵉᵐᵉ** ◟ **${username}**\n🔹 **𝐍iveau** : \`${user.level}${prestigeStars}\`\n💠 **𝐗P** : \`${user.xp.toLocaleString()}\``;
-            })
-            .join("\n────────────────────────\n")
+          `${role}\n\`${interaction.user.username}\` recherche son mate pour **${gameLabel}** !\n\n` +
+          `⏳ **Expire** <t:${expiresUnix}:R>`
         )
-        .setThumbnail(guild.iconURL({ dynamic: true }))
-        .setFooter({ text: `𝐂ordialement l'équipe ${guild.name}`, iconURL: guild.iconURL() })
-        .setTimestamp();
-    
-      await interaction.reply({
-        embeds: [leaderboardEmbed],
-        ephemeral: true,
-      });
-    }
-    function padNumber(number) {
-      return number < 10 ? `0${number}` : number;
-    }
-    
-    // Bouton Vocal Time
-    if (interaction.customId === "VOCAL_TIME_BUTTON") {
-      const userId = interaction.user.id;
-      const serverId = interaction.guild.id;
+        .setColor('Red')
+        .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-      User.findOne({ userID: userId, serverID: serverId }, (err, user) => {
-        if (err) {
-          console.error(err);
-          interaction.reply({ content: "Une erreur est survenue lors de la récupération des données.", ephemeral: true });
-          return;
+      const cancelBtn = new ButtonBuilder()
+        .setCustomId(`${CANCEL_PREFIX}${interaction.user.id}`)
+        .setLabel("Annuler ma recherche")
+        .setStyle(ButtonStyle.Secondary);
+
+      const row = new ActionRowBuilder().addComponents(cancelBtn);
+
+      const sent = await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        allowedMentions: { roles: [role.id], users: [] }
+      }).then(() => interaction.fetchReply());
+
+      await new SearchMateMessage({
+        userId: interaction.user.id,
+        guildId: interaction.guild.id,
+        channelId: interaction.channel.id,
+        messageId: sent.id,
+        createdAt: new Date()
+      }).save().catch(() => {});
+
+      setTimeout(async () => {
+        try {
+          const ch = await interaction.client.channels.fetch(sent.channelId).catch(() => null);
+          const msg = ch ? await ch.messages.fetch(sent.id).catch(() => null) : null;
+          if (msg) await msg.delete().catch(() => {});
+        } finally {
+          await SearchMateMessage.deleteOne({ userId: interaction.user.id, guildId: interaction.guild.id }).catch(() => {});
         }
-
-        if (!user) {
-          interaction.reply({ content: "Impossible de trouver les données de l'utilisateur.", ephemeral: true });
-          return;
-        }
-
-        const totalSeconds = user.voiceTime;
-        const days = Math.floor(totalSeconds / (24 * 60 * 60));
-        const hours = padNumber(Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60)));
-        const minutes = padNumber(Math.floor((totalSeconds % (60 * 60)) / 60));
-        const seconds = padNumber(Math.floor(totalSeconds % 60));
-
-        let timeString = '';
-        if (days > 0) timeString += `\`${days} jour${days > 1 ? 's' : ''}\`, `;
-        if (hours > 0 || days > 0) timeString += `\`${hours} heure${hours > 1 ? 's' : ''}\`, `;
-        if (minutes > 0 || hours > 0 || days > 0) timeString += `\`${minutes} minute${minutes > 1 ? 's' : ''}\` et `;
-        timeString += `\`${seconds} seconde${seconds > 1 ? 's' : ''}\``;
-
-        interaction.reply({ content: `Temps passé en vocal: ${timeString}.`, ephemeral: true });
-      });
+      }, SEARCH_DURATION_MS).unref();
     }
+    async function handleCancelSearch(interaction) {
+      if (!interaction.customId?.startsWith(CANCEL_PREFIX)) return false;
 
-    // Bouton Falconix
-    if (interaction.customId === "FALCONIX_BUTTON") {
-      const user = await User.findOne({
-        userID: interaction.user.id,
-        serverID: interaction.guild.id
-      });
-    
-      if (!user) {
-        return interaction.reply({ content: "Erreur : Utilisateur non trouvé dans la base de données.", ephemeral: true });
+      const authorId = interaction.customId.slice(CANCEL_PREFIX.length);
+      const isAuthor = authorId === interaction.user.id;
+      const isStaff  = interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages);
+
+      if (!isAuthor && !isStaff) {
+        // on peut silencieusement ignorer, mais au moins on évite "This interaction failed"
+        await interaction.deferUpdate().catch(() => {});
+        return true;
       }
 
-      const formattedFalconix = parseFloat(user.falconix).toFixed(5);
-    
-      const FalconixEmbed = new EmbedBuilder()
-        .setAuthor({
-          name: "𝐏𝐎𝐑𝐓𝐄 𝐌𝐎𝐍𝐍𝐀𝐈𝐄",
-          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
-        })
-        .setThumbnail("https://i.postimg.cc/wjbvW906/Monnaie-Falconix.png")
-        .addFields(
-          { name: `\u200B`, value: `\u200B`, inline: true },
-          { name: `**Tu as** \`${formattedFalconix}\` **Falconix.**`, value: `\u200B`, inline: true},
-        )
-        const message = await interaction.reply({ embeds: [FalconixEmbed], fetchReply: true });
-        setTimeout(() => {
-          message.delete().catch(console.error);
-        }, 15000);
-    }
+      // Ack silencieux (pas de message envoyé)
+      await interaction.deferUpdate().catch(() => {});
 
-    //Bouton lancer une recherche Apex Legends
+      // Supprime le message cliqué
+      try { await interaction.message.delete().catch(() => {}); } catch {}
+
+      // Supprime l’entrée BDD (par messageId ou par userId)
+      await SearchMateMessage.deleteOne({ messageId: interaction.message.id }).catch(() => {});
+      await SearchMateMessage.deleteOne({ userId: authorId, guildId: interaction.guild.id }).catch(() => {});
+
+      return true;
+    }
     if (interaction.customId === "SEARCHMATE_APEX_BUTTON") {
-
-      const existingMessage = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
-      if (existingMessage) {
-          return interaction.reply({ content: 'Doucement, attends tranquillement ! Prends toi un coca et respire.', ephemeral: true });
-      }
-  
-      const apexRole = interaction.guild.roles.cache.find(role => role.name === "Apex Legends");
-      const embed = new EmbedBuilder()
-          .setTitle('𝐑𝐄𝐂𝐇𝐄𝐑𝐂𝐇𝐄 𝐃𝐄 𝐌𝐀𝐓𝐄 !')
-          .setDescription(`${apexRole}\n\`${interaction.user.username}\` recherche son mate pour **Apex Legends** !`)
-          .setColor('Red')
-          .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
-  
-      const sentMessageResponse = await interaction.reply({embeds: [embed]});
-      const sentMessage = sentMessageResponse instanceof require('discord.js').Message ? 
-                          sentMessageResponse : 
-                          await interaction.fetchReply();
-  
-      const sentMessageId = sentMessage.id;
-      
-      const newSearchMessage = new SearchMateMessage({
-          userId: interaction.user.id,
-          guildId: interaction.guild.id,
-          channelId: interaction.channel.id,
-          messageId: sentMessageId,
-      });
-      await newSearchMessage.save();
-  
-      let timeLeft = 30 * 60;
-  
-      const formatTime = (time) => {
-        const minutes = Math.floor(time / 60);
-    
-        if (minutes === 0) return '𝐐uelques secondes...';
-    
-        return `${minutes.toString().padStart(2, '0')} minute${minutes > 1 ? 's' : ''}`;
-    };
-  
-      const timerId = setInterval(async () => {
-          timeLeft -= 60;
-  
-          embed.setFooter({
-              text: `Temps restant : ${formatTime(timeLeft)}`,
-              iconURL: interaction.guild.iconURL(),
-          });
-          await sentMessage.edit({ embeds: [embed] });
-  
-          if (timeLeft <= 0) {
-              clearInterval(timerId);
-              try {
-                  await sentMessage.delete();
-                  await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
-              } catch (error) {
-                  console.error('[APEX SEARCH] Erreur lors de la suppression du message :', error);
-              }
-          }
-      }, 60000);
+      await launchSearch(interaction, { roleName: "Apex Legends", gameLabel: "Apex Legends" });
     }
-
-    //Bouton lancer une recherche Call of Duty
     if (interaction.customId === "SEARCHMATE_COD_BUTTON") {
-
-      const existingMessage = await SearchMateMessage.findOne({ userId: interaction.user.id, guildId: interaction.guild.id });
-      if (existingMessage) {
-          return interaction.reply({ content: 'Doucement, attends tranquillement ! Prends toi un coca et respire.', ephemeral: true });
-      }
-  
-      const codRole = interaction.guild.roles.cache.find(role => role.name === "Call of Duty");
-      const embed = new EmbedBuilder()
-          .setTitle('𝐑𝐄𝐂𝐇𝐄𝐑𝐂𝐇𝐄 𝐃𝐄 𝐌𝐀𝐓𝐄 !')
-          .setDescription(`${codRole}\n\`${interaction.user.username}\` recherche son mate pour **Call of Duty** !`)
-          .setColor('Red')
-          .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
-  
-      const sentMessageResponse = await interaction.reply({embeds: [embed]});
-      const sentMessage = sentMessageResponse instanceof require('discord.js').Message ? 
-                          sentMessageResponse : 
-                          await interaction.fetchReply();
-  
-      const sentMessageId = sentMessage.id;
-      
-      const newSearchMessage = new SearchMateMessage({
-          userId: interaction.user.id,
-          guildId: interaction.guild.id,
-          channelId: interaction.channel.id,
-          messageId: sentMessageId,
-      });
-      await newSearchMessage.save();
-  
-      let timeLeft = 30 * 60;
-  
-      const formatTime = (time) => {
-        const minutes = Math.floor(time / 60);
-    
-        if (minutes === 0) return '𝐐uelques secondes...';
-    
-        return `${minutes.toString().padStart(2, '0')} minute${minutes > 1 ? 's' : ''}`;
-    };
-  
-      const timerId = setInterval(async () => {
-          timeLeft -= 60;
-  
-          embed.setFooter({
-              text: `Temps restant : ${formatTime(timeLeft)}`,
-              iconURL: interaction.guild.iconURL(),
-          });
-          await sentMessage.edit({ embeds: [embed] });
-  
-          if (timeLeft <= 0) {
-              clearInterval(timerId);
-              try {
-                  await sentMessage.delete();
-                  await SearchMateMessage.deleteOne({ _id: newSearchMessage._id });
-              } catch (error) {
-                  console.error('[COD SEARCH] Erreur lors de la suppression du message :', error);
-              }
-          }
-      }, 60000);
+      await launchSearch(interaction, { roleName: "Call of Duty", gameLabel: "Call of Duty" });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith(CANCEL_PREFIX)) {
+      await handleCancelSearch(interaction);
     }
 
     //Bouton pour crée un vocal pour Apex Legends
@@ -4607,132 +4287,163 @@ module.exports = {
     }
 
     // Bouton statistique d'Apex Legends
-    if (interaction.customId === 'STATS_APEX_BUTTON') {
-      try {
-          const discordId = interaction.user.id;
-          let user = await ApexStats.findOne({ discordId: discordId });
-  
-          if (!user) {
-              await interaction.reply({ content: "Veuillez fournir votre plateforme et identifiant de jeu...", ephemeral: true });
-              const filter = m => m.author.id === discordId;
-              const collector = interaction.channel.createMessageCollector({ filter, time: 60000, max: 1 });
-  
-              collector.on('collect', async (message) => {
-                  const [platform, gameUsername] = message.content.split(',').map(item => item.trim());
-                  if (!platform || !gameUsername) {
-                      return interaction.followUp({ content: 'Les données fournies sont incorrectes. Assurez-vous de fournir la plateforme et l’identifiant de jeu.', ephemeral: true });
-                  }
-  
-                  const server = message.guild.name;
-                  user = new ApexStats({ discordId, username: interaction.user.username, server, platform, gameUsername });
-                  await user.save();
-  
-                  interaction.followUp({ content: `Vos informations ont été enregistrées ! Plateforme: ${platform}, Identifiant de jeu: ${gameUsername}` });
-              });
-  
-              collector.on('end', (collected) => {
-                  if (collected.size === 0) {
-                      interaction.followUp({ content: 'Ehhh le temps est écoulé. Clique à nouveau sur le bouton pour réessayer.', ephemeral: true });
-                  }
-              });
-          } else {
-              const APEX_API_KEY = config.apex_api;
-              const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${user.gameUsername}&platform=${user.platform}`;
-              const response = await axios.get(API_URL);
-              const stats = response.data;
-  
-              const playerName = stats.global.name;
-              const level = stats.global.level;
-              const selected_legend = stats.legends.selected.LegendName;
-              const rank_name = stats.global.rank.rankName;
-              const rank_div = stats.global.rank.rankDiv;
-              const rank_score = stats.global.rank.rankScore;
-              const legend_banner = stats.legends.selected.ImgAssets.banner;
-              const rankThumbnail = getRankThumbnail(rank_name);
-              const prestigeLevel = stats.global.levelPrestige;
-              let levelWithStars = `${level}`;
-  
-              if (prestigeLevel > 0) {
-                  const stars = '⭐'.repeat(prestigeLevel);
-                  levelWithStars = `${level} ${stars}`;
-              }
-  
-              let selectedLegendName = stats.legends.selected.LegendName;
-  
-              if (stats.legends.all[selectedLegendName]) {
-                  const trackers = stats.legends.all[selectedLegendName].data;
-  
-                  if (trackers && trackers.length > 0) {
-                      let trackerInfo = "";
-                      for (let i = 0; i < trackers.length && i < 3; i++) {
-                          let tracker = trackers[i];
-                          if (tracker && tracker.name && tracker.value) {
-                              let formattedValue = formatNumberWithSpaces(tracker.value);
-                              let stylizedName = stylizeFirstLetter(tracker.name);
-                              trackerInfo += `**${stylizedName}** : \`${formattedValue}\`\n`;
-                          }
-                      }
-  
-                      const Stats_Apex_Embed = new EmbedBuilder()
-                          .setTitle(`◟**${playerName}**`)
-                          .setDescription(`\n\n**𝐍iveaux** : \`${levelWithStars}\`\n**𝐏ersonnage** : **\`${selected_legend}\`**\n\n${trackerInfo}\n**𝐑ang** : \`${rank_name} ${rank_div}\`\n**𝐒core** : \`${rank_score} / 1000 LP\``)
-                          .setImage(legend_banner)
-                          .setThumbnail(rankThumbnail)
-                          .setColor('Red')
-                          .setFooter({
-                              text: `Enregistre tes stats sur apexlegendsstatus.com`,
-                              iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
-                          });
-                      await interaction.reply({ embeds: [Stats_Apex_Embed], ephemeral: true });
-                  } else {
-                      await interaction.reply({ content: "**Nous n'avons pas pu trouver les trackers pour ta légende. Rajoute des trackers ou choisis une autre légende.**", ephemeral: true });
-                  }
-              } else {
-                  await interaction.reply({ content: "**La légende sélectionnée n'est pas présente dans les données. Rajoute des trackers ou choisis une autre légende.**", ephemeral: true });
-              }
-          }
-      } catch (error) {
-          console.error('Erreur lors de la récupération des données utilisateur:', error);
-          await interaction.reply({ content: "**Pour l'instant, je rencontre des erreurs lors de la récupération de vos informations. Réessaye plus tard... Ou demain.**", ephemeral: true });
-      }
+    const STATS_BTN_ID   = 'STATS_APEX_BUTTON';
+    const MODAL_CUSTOMID = 'APEX_REGISTER_MODAL';
+    const INPUT_PLATFORM = 'platform';
+    const INPUT_USERNAME = 'gameUsername';
+
+    function normalizePlatform(raw) {
+      const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+      if (['pc', 'steam', 'origin'].includes(s)) return 'PC';
+      if (['ps', 'psn', 'ps4', 'ps5', 'playstation'].includes(s)) return 'PS4';
+      if (['xbox', 'xb', 'xone', 'x1', 'xseries', 'seriesx', 'seriesxs'].includes(s)) return 'X1';
+      if (['switch', 'ns', 'nintendo', 'nsw'].includes(s)) return 'SWITCH';
+      return null;
     }
-    function formatNumberWithSpaces(num) {
-      return num.toLocaleString('fr-FR');
-    }
-    function stylizeFirstLetter(text) {
-      const alphabet = {
-          'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 
-          'H': '𝐇', 'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 
-          'O': '𝐎', 'P': '𝐏', 'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 
-          'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 'Y': '𝐘', 'Z': '𝐙'
-      };
-  
-      const firstLetter = text.charAt(0).toUpperCase();
-      if (alphabet[firstLetter]) {
-          return text.replace(firstLetter, alphabet[firstLetter]);
-      }
-      return text;
-    }
-    function getRankThumbnail(rankName) {
+    function getRankThumbnail(rankName = '') {
       switch (rankName.toLowerCase()) {
-          case 'rookie':
-              return 'https://i0.wp.com/www.alphr.com/wp-content/uploads/2022/02/BR_Unranked.png?resize=425%2C425&ssl=1';
-          case 'bronze':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_bronze_rs15.png';
-          case 'silver':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_silver_rs7.png';
-          case 'gold':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_gold_rs7.png';
-          case 'platinium':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_platinum_rs7.png';
-          case 'diamond':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_diamond_rs7.png';
-          case 'master':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_master_rs7.png';
-          case 'predator':
-              return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
+        case 'rookie':    return 'https://i0.wp.com/www.alphr.com/wp-content/uploads/2022/02/BR_Unranked.png?resize=425%2C425&ssl=1';
+        case 'bronze':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_bronze_rs15.png';
+        case 'silver':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_silver_rs7.png';
+        case 'gold':      return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_gold_rs7.png';
+        case 'platinum':  return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_platinum_rs7.png';
+        case 'diamond':   return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_diamond_rs7.png';
+        case 'master':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_master_rs7.png';
+        case 'predator':  return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
+        default:          return null;
       }
     }
+    function formatFR(n){ return Number(n||0).toLocaleString('fr-FR'); }
+    function stylizeFirstLetter(text=''){
+      const map = {'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙'};
+      if (!text) return text;
+      const f = text[0].toUpperCase();
+      return map[f] ? text.replace(text[0], map[f]) : text;
+    }
+    if (interaction.isButton() && interaction.customId === STATS_BTN_ID) {
+      const discordId = interaction.user.id;
+      let user = await ApexStats.findOne({ discordId });
+
+      if (!user) {
+        // Affiche un modal (pas besoin d’écrire dans le salon)
+        const modal = new ModalBuilder()
+          .setCustomId(MODAL_CUSTOMID)
+          .setTitle('Apex Legends — Enregistrement');
+
+        const platformInput = new TextInputBuilder()
+          .setCustomId(INPUT_PLATFORM)
+          .setLabel('Plateforme (PC / PS / XBOX / SWITCH)')
+          .setPlaceholder('Ex: PC')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(12);
+
+        const usernameInput = new TextInputBuilder()
+          .setCustomId(INPUT_USERNAME)
+          .setLabel('Identifiant en jeu')
+          .setPlaceholder('Ex: TBM_PQF')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(32);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(platformInput),
+          new ActionRowBuilder().addComponents(usernameInput),
+        );
+
+        return interaction.showModal(modal);
+      }
+
+      // Déjà enregistré → on fetch et on affiche
+      await fetchAndReplyApexStats(interaction, user);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === MODAL_CUSTOMID) {
+      const platformRaw = interaction.fields.getTextInputValue(INPUT_PLATFORM);
+      const gameUsername = interaction.fields.getTextInputValue(INPUT_USERNAME);
+
+      const platform = normalizePlatform(platformRaw);
+      if (!platform) {
+        return interaction.reply({ 
+          content: "Plateforme invalide. Utilise **PC**, **PS**, **XBOX** ou **SWITCH**.",
+          ephemeral: true
+        });
+      }
+
+      const discordId = interaction.user.id;
+      const server = interaction.guild?.name || 'N/A';
+
+      // upsert
+      const user = await ApexStats.findOneAndUpdate(
+        { discordId },
+        { $set: { discordId, username: interaction.user.username, server, platform, gameUsername } },
+        { new: true, upsert: true }
+      );
+
+      await interaction.reply({ 
+        content: `✅ Infos enregistrées ! Plateforme: **${platform}**, ID: **${gameUsername}**.\nJe récupère tes stats…`,
+        ephemeral: true 
+      });
+
+      await fetchAndReplyApexStats(interaction, user, /*followUp=*/true);
+    }
+    async function fetchAndReplyApexStats(interaction, user, followUp = false) {
+      try {
+        const APEX_API_KEY = config.apex_api;
+        const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
+        const { data: stats } = await axios.get(API_URL, { timeout: 12_000 });
+
+        const playerName = stats?.global?.name ?? user.gameUsername;
+        const level = stats?.global?.level ?? 0;
+        const prestige = stats?.global?.levelPrestige ?? 0;
+        const levelWithStars = prestige > 0 ? `${level} ${'⭐'.repeat(prestige)}` : String(level);
+
+        const selectedLegend = stats?.legends?.selected?.LegendName ?? '—';
+        const trackers = stats?.legends?.all?.[selectedLegend]?.data || [];
+
+        const rankName = stats?.global?.rank?.rankName ?? '—';
+        const rankDiv  = stats?.global?.rank?.rankDiv ?? '';
+        const rankScore = stats?.global?.rank?.rankScore ?? 0;
+        const legendBanner = stats?.legends?.selected?.ImgAssets?.banner ?? null;
+        const rankThumb = getRankThumbnail(rankName);
+
+        let trackerInfo = '';
+        for (let i = 0; i < Math.min(3, trackers.length); i++) {
+          const t = trackers[i];
+          if (!t?.name) continue;
+          trackerInfo += `**${stylizeFirstLetter(t.name)}** : \`${formatFR(t.value || 0)}\`\n`;
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`◟ **${playerName}**`)
+          .setDescription(
+            `\n**𝐍iveau** : \`${levelWithStars}\`\n` +
+            `**𝐏ersonnage** : **\`${selectedLegend}\`**\n\n` +
+            `${trackerInfo}\n` +
+            `**𝐑ang** : \`${rankName}${rankDiv ? ' ' + rankDiv : ''}\`\n` +
+            `**𝐒core** : \`${formatFR(rankScore)} / 1000 LP\``
+          )
+          .setColor('Red')
+          .setFooter({ 
+            text: `Enregistre tes stats sur apexlegendsstatus.com`,
+            iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
+          });
+
+        if (legendBanner) embed.setImage(legendBanner);
+        if (rankThumb) embed.setThumbnail(rankThumb);
+
+        const method = followUp ? 'followUp' : 'reply';
+        await interaction[method]({ embeds: [embed], ephemeral: true });
+      } catch (e) {
+        console.error('[APEX] Fetch error:', e?.message);
+        const method = followUp ? 'followUp' : 'reply';
+        await interaction[method]({
+          content: "Impossible de récupérer tes stats pour le moment. Réessaie en enregistrant tes stats sur apexlegendsstatus.com.",
+          ephemeral: true
+        });
+      }
+    }
+
     // Bouton statistique Call of Duty
     if (interaction.customId === 'STATS_COD_BUTTON') {
       await interaction.reply({ content: "Ceci n'est malheuresement pas encore disponible.", ephemeral: true });
