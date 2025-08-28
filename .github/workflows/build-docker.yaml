@@ -3,8 +3,8 @@ name: Construction de l'image docker
 on:
   push:
     paths-ignore:
-      - '.**'
-      - '.*/**' 
+      - '.gitignore'
+      - '.github/**' 
       - 'README.md'
   workflow_dispatch:
     inputs:
