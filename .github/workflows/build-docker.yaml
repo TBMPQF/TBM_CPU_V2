@@ -4,7 +4,9 @@ on:
   push:
     paths-ignore:
       - '.gitignore'
-      - '.github/**' 
+      - 'docker/*.yaml'
+      - 'docker/*.env'
+      - 'logs/**'
       - 'README.md'
   workflow_dispatch:
     inputs:
@@ -60,6 +62,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          dockerfile: docker/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ env.IMAGE_LOWER }}:latest
