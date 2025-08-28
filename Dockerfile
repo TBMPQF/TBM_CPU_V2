@@ -9,11 +9,17 @@ WORKDIR /data
 COPY . .
 
 # Installation des dépendances
-RUN apk add --no-cache gawk ffmpeg py3-pip
+RUN apk add --no-cache gawk ffmpeg py3-pip \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev
 RUN npm install
 
 # Rendre executable le script de démarrage
 RUN chmod +x ./entrypoint-docker.sh
 
-# Démarrer le code
+# Démarrer le code avec le script d'entrée
 ENTRYPOINT ["./entrypoint-docker.sh"]
