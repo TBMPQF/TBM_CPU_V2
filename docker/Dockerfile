@@ -13,7 +13,10 @@ COPY . .
 COPY docker/entrypoint-docker.sh ./entrypoint-docker.sh
 
 # Installation des dépendances
-RUN apk add --no-cache gawk ffmpeg py3-pip \
+RUN apk add --no-cache nano \
+    gawk \
+    ffmpeg \
+    py3-pip \
     build-base \
     cairo-dev \
     jpeg-dev \
