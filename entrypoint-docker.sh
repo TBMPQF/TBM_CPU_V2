@@ -24,4 +24,4 @@ cat << EOF > ./config.json
 EOF
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
-node /data/index.js > >(awk '{ print strftime(\"%d/%m_%Hh%Mm%Ss\"), $0; fflush(); }' | tee -a /data/logs/current_output.log) 2> >(awk '{ print strftime(\"%d/%m_%Hh%Mm%Ss\"), $0; fflush(); }' | tee -a /data/logs/current_error.log >&2)"
+node /data/index.js > >(awk '{ print strftime(\"%d/%m_%Hh%Mm%Ss\"), $0; fflush(); }' | tee -a /data/logs/current_output.log) 2> >(awk '{ print strftime(\"%d/%m_%Hh%Mm%Ss\"), $0; fflush(); }' | tee -a /data/logs/current_error.log >&2)
