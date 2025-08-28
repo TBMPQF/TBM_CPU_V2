@@ -8,7 +8,7 @@ WORKDIR /data
 COPY . .
 
 # Installation des dépendances
-RUN apk add --no-cache ffmpeg git py3-pip
+RUN apk add --no-cache gawk ffmpeg py3-pip
 
 # Rendre executable le script de démarrage
 RUN chmod +x ./entrypoint-docker.sh
