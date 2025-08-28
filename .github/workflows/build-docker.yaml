@@ -54,10 +54,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Construction de l'image Docker
+      - name: Preparation à la construction de l'image Docker
         uses: docker/setup-buildx-action@v3
 
-      - name: Publication de l'image Docker dans la bibliothèque GitHub
+      - name: Construction de l'image Docker et Publication dans la bibliothèque GitHub
         uses: docker/build-push-action@v5
         with:
           context: .
