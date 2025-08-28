@@ -3,7 +3,9 @@
 .github
 .vscode
 config.json
-docker/**
+docker/*.yaml
+docker/Dockerfile
+docker/*.env
 node_modules/**
 package-lock.json
 README.md
