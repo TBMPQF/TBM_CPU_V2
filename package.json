@@ -9,7 +9,7 @@
     "start": "node index.js"
   },
   "engines": {
-    "node": "20.10.0"
+    "node": "22.6.0"
   },
   "dependencies": {
     "@discordjs/rest": "^1.7.0",
