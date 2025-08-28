@@ -1,5 +1,6 @@
-FROM node:lts
+FROM node:22.6.0-alpine
 
+# Etiquette de l'image
 LABEL maintainer="TBMPQF"
 LABEL org.opencontainers.image.source=https://github.com/TBMPQF/TBM_CPU_V2
 LABEL org.opencontainers.image.description="Image Docker pour lancer le bot discord TBM_CPU"
