@@ -3,7 +3,6 @@ name: Construction de l'image docker
 on:
   push:
     paths-ignore:
-      - 'docs/**'
       - '.**'
       - '.*/**' 
       - 'README.md'
