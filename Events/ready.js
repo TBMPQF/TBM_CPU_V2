@@ -18,10 +18,12 @@ const { verifierEtLancerJeuxBingo } = require('../bingoFunctions');
 const fs = require('fs');
 const { startTwitchCheck } = require('../twitch');
 const { networkInterfaces, hostname } = require("os");
+const { startComplianceTicker } = require("../utils/complianceTicker");
 
 module.exports = {
   name: "ready",
   async execute(bot, member) {
+    startComplianceTicker(bot);
     
     //Log de portainer en fichier .txt
     const CHANNEL_ID = '1272586896920285365';
@@ -68,82 +70,258 @@ module.exports = {
     // Lancer le Bingo + la vérif Twitch
     verifierEtLancerJeuxBingo(bot);
 
-    // Vérification des membres et serveurs + ajout dans la BDD si besoin
-    await initializeServersAndUsers(bot);
-    async function initializeServersAndUsers(bot) {
-      bot.guilds.cache.forEach(async (guild) => {
-        let serverConfig = await ServerConfig.findOne({ serverID: guild.id });
-        if (!serverConfig) {
-          serverConfig = new ServerConfig({
-            serverID: guild.id,
-            serverName: guild.name,
-          });
-          await serverConfig.save();
-        }
-    
-        guild.members.cache.forEach(async (member) => {
-          if (!member.user.bot) {
-            let user = await User.findOne({ userID: member.id, serverID: guild.id });
-            if (!user) {
-              user = new User({
-                userID: member.id,
-                username: member.user.tag,
-                serverID: guild.id,
-                serverName: guild.name,
-                joinedAt: member.joinedAt,
-              });
-              await user.save();
-            }
-          }
-        });
-      });
+    // Vérification des membres et serveurs + ajout BDD + rôle welcome
+    const SLEEP_MS = 120;
+    const envBool = (name, def = false) => {
+      const v = String(process.env[name] ?? "").trim().toLowerCase();
+      if (["1","true","yes","y","on"].includes(v))  return true;
+      if (["0","false","no","n","off"].includes(v)) return false;
+      return def;
+    };
+
+    const DO_SYNC_ON_BOOT = envBool("SYNC_ON_BOOT", false); // Mettre SYNC_ON_BOOT=true pour activer la synchro au démarrage
+    const DEBUG_INIT      = envBool("DEBUG_INIT", true); // logs verbeux si true
+    const C = {
+      dim: s => `\x1b[2m${s}\x1b[0m`,
+      gray: s => `\x1b[90m${s}\x1b[0m`,
+      green: s => `\x1b[32m${s}\x1b[0m`,
+      yellow: s => `\x1b[33m${s}\x1b[0m`,
+      red: s => `\x1b[31m${s}\x1b[0m`,
+      cyan: s => `\x1b[36m${s}\x1b[0m`,
+      magenta: s => `\x1b[35m${s}\x1b[0m`,
+      bold: s => `\x1b[1m${s}\x1b[0m`,
+    };
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function normalizeStored(val) {
+      if (!val) return { id: undefined, name: undefined };
+      if (Array.isArray(val)) return { id: val[0], name: val[1] };
+      if (typeof val === "string") return { id: val, name: undefined };
+      return { id: undefined, name: undefined };
     }
+    async function fetchRoleRewardsByPrestige(serverID) {
+      const doc = await ServerRole.findOne({ serverID });
+      const out = {};
+      for (let p = 0; p <= 10; p++) out[p] = [];
+      if (!doc) return out;
+
+      for (let p = 0; p <= 10; p++) {
+        const data = doc[`prestige${p}Roles`];
+        if (data && typeof data.get === "function") {
+          data.forEach((rawVal, lvlKey) => {
+            const { id, name } = normalizeStored(rawVal);
+            const lvl = Number(lvlKey);
+            if (Number.isFinite(lvl) && id) out[p].push({ level: lvl, roleId: id, roleName: name || "" });
+          });
+        } else if (data && typeof data === "object" && !Array.isArray(data)) {
+          Object.entries(data).forEach(([lvlKey, rawVal]) => {
+            const { id, name } = normalizeStored(rawVal);
+            const lvl = Number(lvlKey);
+            if (Number.isFinite(lvl) && id) out[p].push({ level: lvl, roleId: id, roleName: name || "" });
+          });
+        }
+        out[p].sort((a, b) => a.level - b.level);
+      }
+      return out;
+    }
+    function pickRewardForLevel(rewards, level) {
+      let chosen = null;
+      for (const r of rewards) { if (r.level <= level) chosen = r; else break; }
+      return chosen;
+    }
+    async function syncMemberPrestigeRole(guild, member, rewardsByPrestige, userDoc, welcomeRole) {
+      const p = Math.max(0, Number(userDoc?.prestige) || 0);
+      const l = Math.max(p > 0 ? 1 : 0, Number(userDoc?.level) || 0);
+
+      const me = guild.members.me;
+      if (!me || !me.permissions.has(PermissionFlagsBits.ManageRoles)) return { removed: 0, added: false };
+
+      // ensemble de tous les rôles "récompense"
+      const allRewardIds = new Set();
+      for (const arr of Object.values(rewardsByPrestige)) for (const r of arr) if (r.roleId) allRewardIds.add(r.roleId);
+      if (welcomeRole && !allRewardIds.has(welcomeRole.id)) allRewardIds.add(welcomeRole.id);
+
+      const rewards = rewardsByPrestige[p] || [];
+      let chosen = pickRewardForLevel(rewards, l);
+      if (!chosen && p === 0 && l >= 1 && welcomeRole) {
+        chosen = { roleId: welcomeRole.id, level: 1, roleName: welcomeRole.name };
+      }
+
+      const cache = member.roles.cache;
+      const toRemove = [...allRewardIds].filter(id => (!chosen || id !== chosen.roleId) && cache.has(id));
+      let removed = 0;
+      if (toRemove.length) {
+        const editable = toRemove.filter(id => guild.roles.cache.get(id)?.editable);
+        if (editable.length) {
+          await member.roles.remove(editable).catch(() => {});
+          removed = editable.length;
+          await sleep(SLEEP_MS);
+        }
+      }
+
+      let added = false;
+      if (chosen && !cache.has(chosen.roleId)) {
+        const roleObj = guild.roles.cache.get(chosen.roleId) || await guild.roles.fetch(chosen.roleId).catch(() => null);
+        if (roleObj?.editable) {
+          await member.roles.add(roleObj).catch(() => {});
+          added = true;
+          await sleep(SLEEP_MS);
+        }
+      }
+      return { removed, added };
+    }
+    function banner(title) {
+      const line = "─".repeat(title.length + 2);
+      console.log(C.cyan(`┌${line}┐`));
+      console.log(C.cyan(`│ ${C.bold(title)} │`));
+      console.log(C.cyan(`└${line}┘`));
+    }
+    function guildLine({ name, upserts, synced, errorsUpsert, errorsRole, ms }) {
+      const base = `${C.bold(name)}  ${C.green("✓ upserts:")} ${upserts}  ${C.green("✓ roles:")} ${synced}`;
+      const errs = (errorsUpsert || errorsRole)
+        ? `  ${errorsUpsert ? C.yellow(`⚠ upsert:${errorsUpsert}`) : ""}${errorsRole ? C.yellow(`  ⚠ roles:${errorsRole}`) : ""}`
+        : "";
+      const time = `  ${C.dim(`${ms}ms`)}`;
+      console.log(` • ${base}${errs}${time}`);
+    }
+    async function initializeServersAndUsers(bot) {
+      if (!DO_SYNC_ON_BOOT) {
+        banner("Initialisation SKIPPED");
+        console.log(C.gray(" • Raison : SYNC_ON_BOOT=false (aucune synchro au démarrage)\n"));
+        return;
+      }
+      banner("Initialisation serveurs & utilisateurs");
+      console.log(C.gray(" • SYNC_ON_BOOT=true  → synchro au démarrage activée\n"));
+
+      const t0 = Date.now();
+      let totalUpserts = 0, totalSynced = 0, totalErrUpsert = 0, totalErrRole = 0;
+
+      for (const [, guild] of bot.guilds.cache) {
+        const g0 = Date.now();
+
+        // Upsert config (léger)
+        const serverConfig = await ServerConfig.findOneAndUpdate(
+          { serverID: guild.id },
+          {
+            $setOnInsert: { serverID: guild.id },
+            $set: { serverName: guild.name }
+          },
+          { upsert: true, new: true }
+        );
+
+        // Welcome role fallback (P0/L1)
+        let welcomeRole = null;
+        if (serverConfig.roleWelcomeID) {
+          welcomeRole = guild.roles.cache.get(serverConfig.roleWelcomeID)
+            || await guild.roles.fetch(serverConfig.roleWelcomeID).catch(() => null);
+        }
+        if (!welcomeRole && serverConfig.roleWelcomeName) {
+          welcomeRole = guild.roles.cache.find(r => r.name === serverConfig.roleWelcomeName) || null;
+        }
+
+        // mapping récompenses
+        const rewardsByPrestige = await fetchRoleRewardsByPrestige(guild.id);
+
+        // charge membres (sans presences)
+        try { await guild.members.fetch(); }
+        catch (e) { if (DEBUG_INIT) console.warn(C.yellow(`[init] fetch members ${guild.name}: ${e?.code || e?.message}`)); }
+
+        const members = guild.members.cache.filter(m => !m.user.bot);
+        let upserts = 0, synced = 0, errUpsert = 0, errRole = 0;
+
+        for (const member of members.values()) {
+          // Upsert user compact (évite le conflit mongoose)
+          try {
+            await User.updateOne(
+              { userID: member.id, serverID: guild.id },
+              {
+                $setOnInsert: {
+                  userID: member.id,
+                  serverID: guild.id,
+                  joinedAt: member.joinedAt,
+                },
+                $set: {
+                  username: member.user.tag,
+                  serverName: guild.name,
+                },
+              },
+              { upsert: true, setDefaultsOnInsert: true }
+            );
+            upserts++;
+          } catch (err) {
+            errUpsert++;
+            if (DEBUG_INIT) console.warn(C.yellow(`[init] upsert ${member.user.tag}: ${err?.message || err}`));
+          }
+
+          try {
+            const u = await User.findOne({ userID: member.id, serverID: guild.id }).lean();
+            await syncMemberPrestigeRole(guild, member, rewardsByPrestige, u, welcomeRole);
+            synced++;
+          } catch (err) {
+            errRole++;
+            if (DEBUG_INIT) console.warn(C.yellow(`[init] roleSync ${member.user.tag}: ${err?.message || err}`));
+          }
+        }
+
+        totalUpserts += upserts; totalSynced += synced;
+        totalErrUpsert += errUpsert; totalErrRole += errRole;
+
+        guildLine({
+          name: guild.name,
+          upserts, synced,
+          errorsUpsert: errUpsert, errorsRole: errRole,
+          ms: Date.now() - g0,
+        });
+      }
+
+      const dt = Date.now() - t0;
+      const summary =
+        `${C.green("✓ upserts:")} ${totalUpserts}  ${C.green("✓ roles:")} ${totalSynced}` +
+        (totalErrUpsert || totalErrRole
+          ? `  ${C.yellow("⚠ upsert:")} ${totalErrUpsert}  ${C.yellow("⚠ roles:")} ${totalErrRole}`
+          : "");
+      console.log(C.cyan("─".repeat(60)));
+      console.log(` ${summary}   ${C.dim(`${dt}ms`)}`);
+      console.log(C.cyan("─".repeat(60)));
+    }
+    await initializeServersAndUsers(bot);
 
     const serverId = '716810235985133568';
     
     //Si un membre est dans un vocal, l'enregistrer pour qu'il gagne a nouveau l'xp et calcul du temps en vocal
-    bot.guilds.cache.forEach(async guild => {
-      await guild.members.fetch();
-      guild.channels.cache.forEach(channel => {
-        if (channel.type === ChannelType.GuildVoice) {
-          channel.members.forEach(async member => {
-            const isMemberRegistered = await InVocal.findOne({ discordId: member.id, serverId: guild.id });
-            if (!member.user.bot && !isMemberRegistered) {
-              const newInVocal = new InVocal({
-                discordId: member.id,
-                serverId: guild.id,
-                username: member.user.tag,
-                vocalName: channel.name,
-                joinTimestamp: moment().tz("Europe/Paris").toDate()
-              });
-              await newInVocal.save();
-              voiceUsers.set(member.id, { joinTimestamp: Date.now(), serverId: guild.id });
-            }
-          });
-        }
-      });
-    });
+    function isEligibleChannel(guild, channel) {
+      if (!channel) return false;
+      if (guild?.afkChannelId && guild.afkChannelId === channel.id) return false;
+      return channel.type === ChannelType.GuildVoice || channel.type === ChannelType.GuildStageVoice;
+    }
+    async function rehydrateVoicePresence(bot) {
+      for (const [, guild] of bot.guilds.cache) {
+        await guild.members.fetch().catch(() => {});
+        await guild.channels.fetch().catch(() => {});
 
-    try {
-      const inVocalEntries = await InVocal.find({});
-      inVocalEntries.forEach(async entry => {
-        if (bot.guilds.cache.has(entry.serverId)) {
-          const guild = bot.guilds.cache.get(entry.serverId);
-          const member = guild.members.cache.get(entry.discordId);
-          const joinTimestamp = moment().tz("Europe/Paris").toDate();
-          
-          if (member && member.voice.channel) {
-            voiceUsers.set(member.id, { joinTimestamp: joinTimestamp, serverId: guild.id });
-          } else {
-            await InVocal.deleteOne({ discordId: entry.discordId, serverId: entry.serverId });
+        for (const [, channel] of guild.channels.cache) {
+          if (!isEligibleChannel(guild, channel)) continue;
+
+          for (const [, member] of channel.members) {
+            if (member.user.bot) continue;
+
+            await InVocal.updateOne(
+              { discordId: member.id, serverId: guild.id },
+              {
+                $set:   { username: member.user.tag, vocalName: channel.name },
+                $setOnInsert: { joinTimestamp: moment().tz("Europe/Paris").toDate() },
+              },
+              { upsert: true }
+            ).catch(() => {});
+
+            voiceUsers.set(member.id, { joinTimestamp: Date.now(), serverId: guild.id });
+            await sleep(25);
           }
         }
-      });
-
-      initializeXpDistributionInterval(bot);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des utilisateurs en vocal:', error);
+      }
     }
+    await rehydrateVoicePresence(bot);
+    initializeXpDistributionInterval(bot);
 
     //Gestion qui supprime le vocal de jeu crée lorsqu'il tombe à 0 utilisateurs
     const ApexVoiceCategoryID = '716810236417278034';
@@ -599,51 +777,61 @@ async function handleFailure(server, retryCount, error) {
 }
 
 // Mise à jour du nombre de personnes connectées sur le serveur
-async function updateVoiceChannelServer(server) {
+async function updateVoiceChannelServer(guild) {
   let channel;
   try {
-    await server.members.fetch({ withPresences: true });
+    let approx = await guild.fetch({ withCounts: true }).catch(() => null);
+    let onlineMembers = approx?.approximatePresenceCount ?? 0;
+    let memberCount   = approx?.approximateMemberCount ?? (guild.memberCount ?? 0);
 
-    channel = server.channels.cache.find((channel) =>
-      channel.name.startsWith("丨𝐎n𝐋ine")
+    try {
+      await guild.members.fetch({ withPresences: true, time: 15_000 });
+
+      const filtered = guild.members.cache.filter(
+        (m) => !m.user.bot && ['online', 'idle', 'dnd'].includes(m.presence?.status)
+      );
+      onlineMembers = filtered.size;
+
+      memberCount = guild.members.cache.filter(m => !m.user.bot).size;
+    } catch (e) {
+      if (e?.code === 'GuildMembersTimeout') {
+        console.warn("[ONLINE] members.fetch timeout — fallback aux compteurs approximatifs.");
+      } else {
+        console.warn("[ONLINE] members.fetch échec — fallback aux compteurs approximatifs.", e?.message);
+      }
+    }
+
+    channel = guild.channels.cache.find(
+      (c) => c.type === ChannelType.GuildVoice && c.name.startsWith("丨𝐎n𝐋ine")
     );
 
     if (!channel) {
-      channel = await server.channels.create({
+      channel = await guild.channels.create({
         name: "丨𝐎n𝐋ine",
         type: ChannelType.GuildVoice,
         permissionOverwrites: [
-          {
-            id: server.id,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
         ],
       });
     }
 
-    const filteredMembers = server.members.cache.filter(
-      (member) =>
-        ['online', 'dnd', 'idle'].includes(member.presence?.status) &&
-        !member.user.bot
-    );
-
-    const onlineMembers = filteredMembers.size;
-    const memberCount = server.members.cache.filter(member => !member.user.bot).size;
-
-    await channel.setName(`丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`)
-      .catch(error => {
-        if (error.code === 'GuildMembersTimeout') {
-          console.warn("[ONLINE] Timeout lors de la mise à jour du canal, mais continuation du processus.");
-          return;
+    const newName = `丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`;
+    if (channel.name !== newName) {
+      await channel.setName(newName).catch((err) => {
+        if (err?.code === 'GuildMembersTimeout') {
+          console.warn("[ONLINE] Timeout pendant setName — ignoré.");
         } else {
-          throw error;
+          throw err;
         }
       });
+    }
 
   } catch (error) {
     console.error("[ONLINE] Erreur lors de la mise à jour du salon vocal:", error);
     if (channel) {
-      channel.setName(`丨𝐎n𝐋ine`).catch(err => console.error("[ONLINE] Impossible de réinitialiser le nom du canal:", err));
+      channel.setName("丨𝐎n𝐋ine").catch((err) =>
+        console.error("[ONLINE] Impossible de réinitialiser le nom du canal:", err)
+      );
     }
   }
 }

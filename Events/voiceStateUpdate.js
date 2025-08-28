@@ -1,68 +1,98 @@
-const { voiceUsers, updateVoiceTimeForUser, initializeXpDistributionInterval } = require('../models/shared');
+const { ChannelType } = require("discord.js");
+const moment = require("moment-timezone");
 const InVocal = require("../models/inVocal");
-const moment = require('moment-timezone');
+
+const {
+  voiceUsers,
+  updateVoiceTimeForUser,
+} = require("../models/shared");
+
+function isAfkChannel(guild, channelId) {
+  return guild?.afkChannelId && guild.afkChannelId === channelId;
+}
+function isEligibleChannel(guild, channel) {
+  if (!channel) return false;
+  if (isAfkChannel(guild, channel.id)) return false;
+  return (
+    channel.type === ChannelType.GuildVoice ||
+    channel.type === ChannelType.GuildStageVoice
+  );
+}
+function countHumans(channel) {
+  if (!channel) return 0;
+  return channel.members.filter(m => !m.user.bot).size;
+}
+function isAloneHuman(channel) {
+  return countHumans(channel) <= 1;
+}
+
+async function upsertInVocal(member, channel) {
+  await InVocal.updateOne(
+    { discordId: member.id, serverId: member.guild.id },
+    {
+      $set: {
+        username: member.user.tag,
+        vocalName: channel?.name || "Unknown",
+      },
+      $setOnInsert: {
+        joinTimestamp: moment().tz("Europe/Paris").toDate(),
+      },
+    },
+    { upsert: true }
+  );
+}
+async function deleteInVocal(member) {
+  await InVocal.deleteOne({ discordId: member.id, serverId: member.guild.id });
+}
 
 module.exports = {
-  name: 'voiceStateUpdate',
-  async execute(oldState, newState, bot) {
+  name: "voiceStateUpdate",
+  async execute(oldState, newState) {
     try {
-      handleVoiceStateUpdate(oldState, newState, bot);
-      initializeXpDistributionInterval(bot);
-    } catch (error) {
-      console.error('[VOCAL XP] Erreur lors de la mise à jour de l\'état vocal :', error);
+      if (newState?.member?.user?.bot || oldState?.member?.user?.bot) return;
+
+      const guild = newState.guild || oldState.guild;
+      const oldChan = oldState.channel;
+      const newChan = newState.channel;
+
+      const wasEligible = isEligibleChannel(guild, oldChan);
+      const isNowEligible = isEligibleChannel(guild, newChan);
+
+      if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+        if (wasEligible) {
+          await updateVoiceTimeForUser(oldState.member.id).catch(() => {});
+          await deleteInVocal(oldState.member).catch(() => {});
+          voiceUsers.delete(oldState.member.id);
+        }
+        if (isNowEligible) {
+          voiceUsers.set(newState.member.id, { joinTimestamp: Date.now(), serverId: newState.guild.id });
+          await upsertInVocal(newState.member, newChan).catch(() => {});
+        }
+        return;
+      }
+
+      if (!oldState.channelId && newState.channelId) {
+        if (isNowEligible) {
+          voiceUsers.set(newState.member.id, { joinTimestamp: Date.now(), serverId: newState.guild.id });
+          await upsertInVocal(newState.member, newChan).catch(() => {});
+        }
+        return;
+      }
+
+      if (oldState.channelId && !newState.channelId) {
+        if (wasEligible) {
+          await updateVoiceTimeForUser(oldState.member.id).catch(() => {});
+          await deleteInVocal(oldState.member).catch(() => {});
+          voiceUsers.delete(oldState.member.id);
+        }
+        return;
+      }
+
+      if (isNowEligible && newChan && oldChan && newChan.id === oldChan.id && newChan.name !== oldChan.name) {
+        await upsertInVocal(newState.member, newChan).catch(() => {});
+      }
+    } catch (err) {
+      console.error("[VOCAL XP] Erreur voiceStateUpdate:", err);
     }
-  }
+  },
 };
-
-async function handleVoiceStateUpdate(oldState, newState) {
-  if (newState.member.user.bot) return;
-
-  if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-    await updateInVocalEntry(newState);
-  } else if (!oldState.channelId && newState.channelId) {
-    voiceUsers.set(newState.member.id, { joinTimestamp: Date.now(), serverId: newState.guild.id });
-    await createInVocalEntry(newState);
-  } else if (oldState.channelId && !newState.channelId) {
-    await updateVoiceTimeForUser(oldState.member.id);
-    await deleteInVocalEntry(oldState);
-    voiceUsers.delete(oldState.member.id);
-  }
-}
-
-async function updateInVocalEntry(newState) {
-  try {
-    const inVocal = await InVocal.findOne({ discordId: newState.member.id, serverId: newState.guild.id });
-    if (inVocal) {
-      inVocal.vocalName = newState.channel.name;
-      await inVocal.save();
-    } else {
-      await createInVocalEntry(newState);
-    }
-  } catch (error) {
-    console.error('[VOCAL XP] Erreur lors de la mise à jour de l\'entrée InVocal:', error);
-  }
-}
-
-async function createInVocalEntry(newState) {
-  const newInVocal = new InVocal({
-    discordId: newState.member.id,
-    serverId: newState.guild.id,
-    username: newState.member.user.tag,
-    vocalName: newState.channel.name,
-    joinTimestamp: moment().tz("Europe/Paris").toDate(),
-  });
-
-  try {
-    await newInVocal.save();
-  } catch (error) {
-    console.error('[VOCAL XP] Erreur lors de l\'enregistrement de l\'utilisateur en vocal:', error);
-  }
-}
-
-async function deleteInVocalEntry(oldState) {
-  try {
-    await InVocal.deleteOne({ discordId: oldState.member.id, serverId: oldState.guild.id });
-  } catch (error) {
-    console.error('[VOCAL XP] Erreur lors de la suppression de l\'entrée InVocal:', error);
-  }
-}

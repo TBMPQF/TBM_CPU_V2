@@ -6,10 +6,10 @@
   "repository": "",
   "description": "tbmcpuv2",
   "scripts": {
-    "start": "node main.js"
+    "start": "node index.js"
   },
   "engines": {
-    "node": "16.x"
+    "node": "20.10.0"
   },
   "dependencies": {
     "@discordjs/rest": "^1.7.0",
@@ -40,7 +40,6 @@
     "minecraft-server-util": "^5.1.1",
     "moment-timezone": "^0.5.43",
     "mongoose": "^6.7.1",
-    "node": "^20.10.0",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.6.9",
     "opusscript": "^0.0.8",
