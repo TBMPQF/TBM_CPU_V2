@@ -130,21 +130,39 @@ module.exports = (bot) => {
         }
     }
     async function handleStopMusic(interaction, serverId) {
-        const queue = distube.getQueue(serverId);
-    
-        if (!queue || queue.songs.length === 0) {
-            await interaction.reply({ content: ":no_entry_sign:丨𝐋a playlist est maintenant vide et la musique est arrêtée. 𝐉e quitte le salon vocal !", ephemeral: true });
-        } else {
-            await interaction.deferReply({ ephemeral: true });
-            try {
-                distube.stop(interaction.guild);
-                await interaction.editReply({ content: ":no_entry_sign:丨𝐋a musique a été arrêtée et la playlist vidée. 𝐉e quitte le salon vocal !", ephemeral: true });
-                disconnectIfEmpty(queue);
-            } catch (error) {
-                console.error("[MUSIC] Error stopping music:", error);
-                await interaction.editReply({ content: "[MUSIC] :x: Une erreur est survenue lors de l'arrêt de la musique.", ephemeral: true });
-            }
+    const voiceChannel = interaction.member.voice.channel;
+    if (!voiceChannel) {
+        await interaction.reply({
+            content: ":no_entry_sign:丨𝐓u dois être dans un salon vocal pour arrêter la musique !",
+            ephemeral: true
+        });
+        return;
+    }
+
+    const queue = distube.getQueue(serverId);
+
+    if (!queue || queue.songs.length === 0) {
+        await interaction.reply({
+            content: ":no_entry_sign:丨𝐋a playlist est maintenant vide et la musique est arrêtée. 𝐉e quitte le salon vocal !",
+            ephemeral: true
+        });
+    } else {
+        await interaction.deferReply({ ephemeral: true });
+        try {
+            distube.stop(interaction.guild);
+            await interaction.editReply({
+                content: ":no_entry_sign:丨𝐋a musique a été arrêtée et la playlist vidée. 𝐉e quitte le salon vocal !",
+                ephemeral: true
+            });
+            disconnectIfEmpty(queue);
+        } catch (error) {
+            console.error("[MUSIC] Error stopping music:", error);
+            await interaction.editReply({
+                content: "[MUSIC] :x: Une erreur est survenue lors de l'arrêt de la musique.",
+                ephemeral: true
+            });
         }
+    }
     }
     async function handleNextMusic(interaction, serverId) {
         await interaction.deferReply({ ephemeral: true });
@@ -457,7 +475,6 @@ module.exports = (bot) => {
 
     bot.on('voiceStateUpdate', async (oldState, newState) => {
         if (!newState.channelId && oldState.channelId) {
-            console.log(`[MUSIC] ${oldState.member.id} a quitté le salon vocal.`);
             const userId = oldState.member.id;
             const guildId = oldState.guild.id;
             await removeSongsFromUser(userId, guildId);

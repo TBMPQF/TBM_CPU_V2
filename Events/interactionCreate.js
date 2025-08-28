@@ -1,5 +1,6 @@
 const {
   ActionRowBuilder,
+  AttachmentBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -28,10 +29,15 @@ const ApexStats = require('../models/apexStats');
 const ServerRoleMenu = require('../models/serverRoleMenu')
 const Warning = require('../models/warns')
 const { unmuteRequests } = require('../models/shared');
-const { intervalleAleatoire, lancerJeuBingo } = require('../bingoFunctions');
+const { intervalleAleatoire } = require('../bingoFunctions');
 const Suggestion = require('../models/suggestion');
 const TwitchStreamers = require("../models/TwitchStreamers")
 const messagesRandom = require('../models/messageRandom');
+const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const ETAT_DB = {
+  ACTIF: '𝐀𝐂𝐓𝐈𝐅',
+  INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅',
+};
 
 mongoose.connect(config.mongourl, {
   useNewUrlParser: true,
@@ -42,7 +48,106 @@ module.exports = {
   name: "interactionCreate",
   async execute(interaction, bot) {
 
-    //Gestion des suggestions
+    async function getLogChannel(interaction) {
+      const conf = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (!conf?.logChannelID) return null;
+      return interaction.client.channels.cache.get(conf.logChannelID)
+          || await interaction.client.channels.fetch(conf.logChannelID).catch(() => null);
+    }
+
+    // Fonction pour le bingo
+    const VISUAL_STATUS = {
+      ACTIF: '𝐀𝐂𝐓𝐈𝐅',
+      INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅',
+    };
+    function replaceLine(desc, label, lineValue) {
+      const lines = (desc || "").split("\n");
+      const idx = lines.findIndex(l => l.trim().toLowerCase().startsWith(label.toLowerCase() + " :"));
+      const newLine = `${label} : ${lineValue}`;
+      if (idx >= 0) {
+        lines[idx] = newLine;
+      } else {
+        lines.push(newLine);
+      }
+      return lines.join("\n");
+    }
+    async function resolveBingoChannel(interaction) {
+      const cfg = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      const byId = cfg?.bingoChannelID;
+      const byName = (await Bingo.findOne({ serverID: interaction.guild.id }))?.bingoChannelName;
+
+      let channel = null;
+      // 1) guild cache
+      if (byId) channel = interaction.guild.channels.cache.get(byId) || null;
+      // 2) guild fetch
+      if (!channel && byId) channel = await interaction.guild.channels.fetch(byId).catch(() => null);
+      // 3) client fetch (au cas où)
+      if (!channel && byId) channel = await interaction.client.channels.fetch(byId).catch(() => null);
+      // 4) fallback par nom
+      if (!channel && byName) {
+        channel = interaction.guild.channels.cache.find(c => c.name === byName) || null;
+        if (!channel) {
+          const all = await interaction.guild.channels.fetch().catch(() => null);
+          if (all) channel = [...all.values()].find(c => c.name === byName) || null;
+        }
+        // si on l'a trouvé par nom, réécrire l'ID en BDD
+        if (channel) {
+          await ServerConfig.updateOne(
+            { serverID: interaction.guild.id },
+            { $set: { bingoChannelID: channel.id, bingoChannelName: channel.name } },
+            { upsert: true }
+          );
+          await Bingo.updateOne(
+            { serverID: interaction.guild.id },
+            { $set: { bingoChannelName: channel.name, serverName: interaction.guild.name } },
+            { upsert: true }
+          );
+        }
+      }
+
+      return channel; // peut être null
+    }
+    function removeLineByLabel(desc, label) {
+      return (desc || "").split("\n")
+        .filter(l => !l.trim().toLowerCase().startsWith(label.toLowerCase() + " :"))
+        .join("\n");
+    }
+    function setStatusLine(desc, statusText) {
+      const lines = (desc || "").split("\n");
+      const filtered = lines.filter(l => !/^\s*(ACTIF|INACTIF|𝐀𝐂𝐓𝐈𝐅|𝐈𝐍𝐀𝐂𝐓𝐈𝐅)\s*$/u.test(l));
+
+      while (filtered.length && filtered[filtered.length - 1].trim() === "") filtered.pop();
+
+      filtered.push("");
+      filtered.push(statusText);
+
+      return filtered.join("\n");
+    }
+    function applyNextBingoFooterNoTs(embed, bingoDoc, guild) {
+      const ETAT_DB_LOCAL = (typeof ETAT_DB !== "undefined")
+        ? ETAT_DB
+        : { ACTIF: '𝐀𝐂𝐓𝐈𝐅', INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅' };
+
+      const actif = ((bingoDoc?.etat || '').trim() === ETAT_DB_LOCAL.ACTIF);
+
+      if (actif && bingoDoc?.nextBingoTime) {
+        const d = new Date(bingoDoc.nextBingoTime);
+        const when = new Intl.DateTimeFormat('fr-FR', {
+          weekday: 'short', day: '2-digit', month: 'long',
+          hour: '2-digit', minute: '2-digit',
+          timeZone: 'Europe/Paris',
+        }).format(d);
+
+        return embed
+          .setFooter({
+            text: `◟𝐏rochain bingo : ${when}`,
+          })
+      }
+
+      return embed
+    }
+
+    // Gestion des suggestions
     async function sendLogMessage(interaction, message) {
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
     
@@ -386,7 +491,234 @@ module.exports = {
             });
         }
       }
-    } else {
+    }
+    // Gestion rôles des niveaux
+    const LEVELS = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+    const ensurePrestigeMap = async (server, key) => {
+      if (!server[key] || typeof server[key].get !== "function") {
+        server[key] = new Map();
+        server.markModified(key);
+        await server.save();
+      }
+      return server[key];
+    };
+    const normalizeValue = (val) => {
+      // Retourne { id, name } depuis divers formats (string, [id], [id,name])
+      if (!val) return { id: undefined, name: undefined };
+      if (Array.isArray(val)) {
+        const id = val[0];
+        const name = val[1];
+        return { id, name };
+      }
+      if (typeof val === "string") return { id: val, name: undefined };
+      return { id: undefined, name: undefined };
+    };
+    const getRoleInfo = (guild, prestigeRoles, lvl) => {
+      const stored = normalizeValue(prestigeRoles.get(String(lvl)));
+      const role = stored.id ? guild.roles.cache.get(stored.id) : null;
+      return { id: stored.id, storedName: stored.name, role };
+    };
+
+    if (
+    interaction.isStringSelectMenu() &&
+    interaction.customId.startsWith("ROLE_MODIFY_SELECT_")
+  ) {
+    const selectedPrestige = interaction.customId.slice("ROLE_MODIFY_SELECT_".length);
+    const selectedValue = interaction.values[0];
+    const levelMatch = /^LEVEL_(\d+)$/.exec(selectedValue);
+    const isBulk = selectedValue === "ADD_BULK";
+
+    const server = await ServerRole.findOne({ serverID: interaction.guild.id });
+    if (!server) {
+      return interaction.reply({ content: "❌丨Serveur introuvable.", ephemeral: true });
+    }
+
+    const prestigeRoles = await ensurePrestigeMap(server, selectedPrestige);
+    const botMember = await interaction.guild.members.fetch(interaction.client.user.id);
+
+    const sendUpdatedEmbed = async () => {
+      const roleListText = LEVELS.map((level) => {
+        const { role, storedName } = getRoleInfo(interaction.guild, prestigeRoles, level);
+        return `𝐍iveau **${level}** ◟ ${role ? role.toString() : (storedName ? `*${storedName}*` : "*Aucun rôle défini.*")}`;
+      }).join("\n");
+
+      const embed = new EmbedBuilder()
+        .setTitle("🧩丨Rôles mis à jour")
+        .setDescription(roleListText)
+        .setColor("#88c9f9");
+
+      const modifyButton = new ButtonBuilder()
+        .setCustomId(`MODIFY_${selectedPrestige}`)
+        .setLabel("Modifier les rôles")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🖌️");
+
+      const rowButton = new ActionRowBuilder().addComponents(modifyButton);
+
+      await interaction.followUp({ embeds: [embed], components: [rowButton], ephemeral: true });
+    };
+
+    if (isBulk) {
+      await interaction.deferUpdate();
+      const promptMsg = await interaction.channel.send(
+        `📝丨Mentionne maintenant **jusqu'à 12 rôles** à assigner aux niveaux suivants :\n\`${LEVELS.join(", ")}\`\nFormat : @Rôle1 @Rôle2...`
+      );
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        max: 1,
+        time: 60_000,
+      });
+
+      collector.on("collect", async (msg) => {
+        const roles = msg.mentions.roles;
+
+        if (roles.size === 0 || roles.size > 12) {
+          await interaction.followUp({ content: "❌丨Mentionne entre 1 et 12 rôles maximum.", ephemeral: true });
+          return;
+        }
+
+        const invalid = roles.some((role) => role.position >= botMember.roles.highest.position);
+        if (invalid) {
+          await interaction.followUp({ content: "🚫丨Certains rôles sont au-dessus de mes permissions.", ephemeral: true });
+          return;
+        }
+
+        const roleArray = Array.from(roles.values()).slice(0, 12);
+        roleArray.forEach((role, i) => {
+          const lvl = LEVELS[i];
+          if (lvl) prestigeRoles.set(String(lvl), [role.id, role.name]);
+        });
+
+        server.markModified(selectedPrestige);
+        await server.save();
+
+        await sendUpdatedEmbed();
+        await interaction.followUp({ content: "✅丨Rôles mis à jour avec succès !", ephemeral: true });
+
+        msg.delete().catch(() => {});
+        promptMsg.delete().catch(() => {});
+      });
+
+      collector.on("end", async (_, reason) => {
+        if (reason === "time") {
+          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence l’action.", ephemeral: true });
+          promptMsg.delete().catch(() => {});
+        }
+      });
+
+      return;
+    }
+
+    if (levelMatch) {
+      const level = levelMatch[1];
+
+      await interaction.deferUpdate();
+      const promptMsg = await interaction.channel.send(
+        `📝丨Mentionne maintenant le rôle à assigner pour le niveau **${level}**.`
+      );
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        max: 1,
+        time: 60_000,
+      });
+
+      collector.on("collect", async (msg) => {
+        const role = msg.mentions.roles.first();
+        if (!role) {
+          await interaction.followUp({ content: "❌丨Tu dois mentionner un rôle valide.", ephemeral: true });
+          return;
+        }
+
+        if (role.position >= botMember.roles.highest.position) {
+          await interaction.followUp({ content: "🚫丨Ce rôle est au-dessus de mes permissions.", ephemeral: true });
+          return;
+        }
+
+        prestigeRoles.set(String(level), [role.id, role.name]);
+        server.markModified(selectedPrestige);
+        await server.save();
+
+        await sendUpdatedEmbed();
+        await interaction.followUp({ content: `✅丨Le rôle du niveau **${level}** a été mis à jour !`, ephemeral: true });
+
+        msg.delete().catch(() => {});
+        promptMsg.delete().catch(() => {});
+      });
+
+      collector.on("end", async (_, reason) => {
+        if (reason === "time") {
+          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence.", ephemeral: true });
+          promptMsg.delete().catch(() => {});
+        }
+      });
+    }
+  }
+    if (interaction.isButton() && interaction.customId.startsWith("MODIFY_")) {
+      const selectedPrestige = interaction.customId.slice("MODIFY_".length);
+
+      let server = await ServerRole.findOne({ serverID: interaction.guild.id });
+      if (!server) {
+        server = new ServerRole({ serverID: interaction.guild.id, serverName: interaction.guild.name });
+        await server.save();
+      }
+
+      await ensurePrestigeMap(server, selectedPrestige);
+      const prestigeRoles = server[selectedPrestige]; 
+
+      if (typeof prestigeRoles?.forEach === "function") {
+        let touched = false;
+        prestigeRoles.forEach((val, key) => {
+          const { id, name } = normalizeValue(val);
+          if (id && (!name || name === "")) {
+            const r = interaction.guild.roles.cache.get(id);
+            prestigeRoles.set(String(key), [id, r?.name ?? ""]);
+            touched = true;
+          }
+        });
+        if (touched) {
+          server.markModified(selectedPrestige);
+          await server.save();
+        }
+      }
+
+      const roleOptions = LEVELS.map((level) => {
+        const { role, storedName } = getRoleInfo(interaction.guild, prestigeRoles, level);
+        return {
+          label: `◟𝐍iveau ${level}`,
+          value: `LEVEL_${level}`,
+          description: role ? `𝐀ctuel : ${role.name}` : (storedName ? `𝐀ctuel : ${storedName}` : "Aucun rôle défini."),
+        };
+      })
+
+      const modifySelectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`ROLE_MODIFY_SELECT_${selectedPrestige}`)
+        .setPlaceholder("Sélectionne un niveau à modifier")
+        .addOptions(roleOptions);
+
+      const rowSelect = new ActionRowBuilder().addComponents(modifySelectMenu);
+
+      const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
+      const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+        label: i === 0 ? "🎓丨Niveau Standard" : `${badgeMap[i] || "🏆"}丨Prestige ${i}`,
+        value: `prestige${i}Roles`,
+        description: i === 0 ? "Configurer les rôles standard" : `Configurer les rôles pour le Prestige ${i}`,
+      }));
+
+      const selectPrestige = new StringSelectMenuBuilder()
+        .setCustomId("SELECT_PRESTIGE_ROLE")
+        .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+        .addOptions(prestigeOptions);
+
+      const rowPrestige = new ActionRowBuilder().addComponents(selectPrestige);
+
+      await interaction.update({
+        components: [rowPrestige, rowSelect],
+      });
+    }
+
+      else {
       
     // Bouton Daily, pour récupérer son bonus quotidien.
     if (interaction.customId === "DAILYXP") {
@@ -408,11 +740,13 @@ module.exports = {
       const msIn47Hours = 47 * 60 * 60 * 1000;
       const msIn23Hours = 23 * 60 * 60 * 1000;
       const daysInWeek = 7;
+
       let resetConsecutiveDaily = false;
+      let lostBefore = 0; // on mémorise l'ancienne série si on la perd
 
       if (lastClaim && now.getTime() - lastClaim.getTime() < msIn47Hours) {
+        // Fenêtre de 47h toujours valable → on vérifie le cooldown 23h
         const timeSinceLastClaim = now.getTime() - lastClaim.getTime();
-      
         if (timeSinceLastClaim < msIn23Hours) {
           const timeRemaining = msIn23Hours - timeSinceLastClaim;
           const hoursRemaining = Math.floor(timeRemaining / (60 * 60 * 1000));
@@ -422,262 +756,746 @@ module.exports = {
           const secondsRemaining = Math.floor(
             (timeRemaining % (60 * 1000)) / 1000
           );
-      
+
           let timeRemainingMessage = "";
           if (hoursRemaining > 0) {
-              timeRemainingMessage += `\`${hoursRemaining} heure${hoursRemaining > 1 ? 's' : ''}\`, `;
-              timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
+            timeRemainingMessage += `\`${hoursRemaining} heure${hoursRemaining > 1 ? "s" : ""}\`, `;
+            timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? "s" : ""}\` et `;
           } else if (minutesRemaining > 0) {
-              timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? 's' : ''}\` et `;
+            timeRemainingMessage += `\`${minutesRemaining.toString().padStart(2, "0")} minute${minutesRemaining > 1 ? "s" : ""}\` et `;
           }
-          timeRemainingMessage += `\`${secondsRemaining.toString().padStart(2, "0")} seconde${secondsRemaining > 1 ? 's' : ''}\``;
-      
+          timeRemainingMessage += `\`${secondsRemaining.toString().padStart(2, "0")} seconde${secondsRemaining > 1 ? "s" : ""}\``;
+
           return interaction.reply({
             content: `丨𝐓u dois attendre encore **${timeRemainingMessage}** avant de pouvoir récupérer ton \`𝐃aily\` !`,
-            ephemeral: true
-        });
+            ephemeral: true,
+          });
         }
 
+        // Ok pour claim dans la même “fenêtre”
         user.consecutiveDaily += 1;
       } else {
-        user.lostConsecutiveDaily = user.consecutiveDaily;
+        // Série perdue (hors fenêtre 47h)
+        lostBefore = user.consecutiveDaily || 0;           // ancienne série
+        user.lostConsecutiveDaily = lostBefore;
         resetConsecutiveDaily = true;
-        user.consecutiveDaily = 1;
+        user.consecutiveDaily = 1;                         // on repart à 1
       }
 
+      // Maj record si besoin
       if (user.consecutiveDaily > user.maxDaily) {
         user.maxDaily = user.consecutiveDaily;
       }
 
+      // Message spécial toutes les 50 flammes (inchangé)
       const SPECIAL_DAILY_STREAK = 50;
-      const selectedMessage = messagesRandom.DailyStreak[Math.floor(Math.random() * messagesRandom.DailyStreak.length)]
-          .replace('<USER_NAME>', interaction.user.username)
-          .replace('<STREAK>', user.consecutiveDaily);
+      const selectedMessage = messagesRandom.DailyStreak[
+        Math.floor(Math.random() * messagesRandom.DailyStreak.length)
+      ]
+        .replace("<USER_NAME>", interaction.user.username)
+        .replace("<STREAK>", user.consecutiveDaily);
 
       if (user.consecutiveDaily % SPECIAL_DAILY_STREAK === 0) {
-          const specialChannel = interaction.guild.channels.cache.get('717144491525406791');
-          if (specialChannel) {
-              specialChannel.send(selectedMessage)
-                  .then(message => {
-                      const reactions = ['🇱', '🇴', '🇸', '🇪', '🇷'];
-                      reactions.forEach(reaction => message.react(reaction));
-                  })
-                  .catch(console.error);
-          }
+        const specialChannel = interaction.guild.channels.cache.get("717144491525406791");
+        if (specialChannel) {
+          specialChannel
+            .send(selectedMessage)
+            .then((message) => {
+              const reactions = ["🇱", "🇴", "🇸", "🇪", "🇷"];
+              reactions.forEach((reaction) => message.react(reaction));
+            })
+            .catch(console.error);
+        }
       }
 
-
+      // Calcul du gain XP + malus
       const baseXP = 200;
       const weeksConsecutive = Math.floor(user.consecutiveDaily / daysInWeek);
       const bonusXP = baseXP * 0.02 * weeksConsecutive;
       let totalXP = baseXP + bonusXP;
 
       if (user.malusDuration > 0) {
-        if (user.malusDaily > totalXP) {
-          user.malusDaily = totalXP;
-        }
-
+        if (user.malusDaily > totalXP) user.malusDaily = totalXP;
         totalXP -= user.malusDaily;
         user.malusDuration -= 1;
-
-        if (user.malusDuration == 0) {
-          user.malusDaily = 0;
-        }
+        if (user.malusDuration === 0) user.malusDaily = 0;
       }
 
       user.xp += totalXP;
-      levelUp(interaction, user, user.xp);
+      // Mets à jour la date AVANT la réponse (et persiste tout)
+      user.lastDaily = now;
+      await user.save();
 
-      let dailyMessage = "";
+      // Level up/down avec l'XP fraîche
+      levelUp(interaction, user, user.xp).catch(() => {});
+
+      // ====== Embed + texte ======
+      let messageText = "";
+      let footerText = "";
 
       if (lastClaim == null) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
-      } else if (resetConsecutiveDaily) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐌ais tu as __perdu__ toute tes flammes \`1\` - :fire:\n 𝐓on ancien record est de \`${user.maxDaily}\`.`;
-      } else if (user.consecutiveDaily === 1) {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:`;
+        messageText = `✨丨𝐁onus quotidien activé ! Tu gagnes \`+${totalXP} 𝐗P\` 🎉`;
+      } else if (resetConsecutiveDaily && lostBefore >= 2) {
+        // On ne parle de perte que si l'ancienne série >= 2
+        messageText =
+          `🎁丨𝐁onus récupéré ! Tu gagnes \`+${totalXP} 𝐗P\` 🧩\n` +
+          `𝐌ais tu as __perdu__ ta série de flammes.. 🧯`;
+        footerText = `🔥 𝐀ncienne série : ${lostBefore} jour${lostBefore > 1 ? "s" : ""}`;
+      } else if (user.consecutiveDaily === 1 && !resetConsecutiveDaily) {
+        messageText = `🎉丨𝐁onus quotidien du jour : \`+${totalXP} 𝐗P\` 🧩`;
       } else {
-        dailyMessage = `丨𝐓u viens de récuperer ton bonus quotidien ! \`+${totalXP} 𝐗p\` ! - :tada:\n\n 𝐓u es en **feu** \`${user.consecutiveDaily}\` - :fire:\n 𝐓on record est de \`${user.maxDaily}\`.`;
+        messageText =
+          `丨𝐁onus récupéré ! 𝐓u gagnes \`+${totalXP} 𝐗P\` 🧩\n` +
+          `𝐒érie actuelle : \`${user.consecutiveDaily}\` jour${user.consecutiveDaily > 1 ? "s" : ""} 🔥`;
+        footerText = `🏆 𝐑ecord : ${user.maxDaily} jour${user.maxDaily > 1 ? "s" : ""}`;
       }
-
-      user.lastDaily = now;
 
       const dailyEmbed = new EmbedBuilder()
         .setColor("Gold")
-        .setTitle(dailyMessage)
+        .setTitle(messageText)
         .setAuthor({
           name: interaction.user.username,
-          iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
         })
         .setTimestamp();
 
-      let components = [];
+      if (footerText) dailyEmbed.setFooter({ text: footerText });
 
-      if (resetConsecutiveDaily == true && lastClaim != null) {
-        const RécupDailyrow = new ActionRowBuilder().addComponents(
+      // Bouton de rattrapage → seulement si vraie perte (ancienne série ≥ 2)
+      const components = [];
+      if (resetConsecutiveDaily && lastClaim != null && lostBefore >= 2) {
+        const recoverRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId("RECUPDAILY_BUTTON")
             .setEmoji("💨")
             .setLabel("丨𝐑attraper mon 𝐃aily")
             .setStyle(ButtonStyle.Primary)
         );
-
-        components.push(RécupDailyrow);
+        components.push(recoverRow);
       }
 
-      interaction.reply({
+      await interaction.reply({
         embeds: [dailyEmbed],
-        components: components,
+        components,
         ephemeral: true,
       });
 
-      //LOG Pour Daily.
-      const serverInfo = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
-      });
-
-      if (serverInfo || !serverInfo.logChannelID) {
+      // 📋 LOG DAILY (fix: on log seulement si on a bien un channel)
+      const serverInfo = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (serverInfo && serverInfo.logChannelID) {
         const XPLOG = new EmbedBuilder()
           .setColor("Orange")
           .setAuthor({
             name: interaction.user.username,
-            iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
           })
-          .setTitle(
-            `丨𝐕ient de récuperer son bonus quotidien. 💸`
-          )
-          .setTimestamp()
-          .setFooter({
-            text: `𝐒érie en cours : ${user.consecutiveDaily}`
+          .setTitle("丨𝐕ient de récupérer son bonus quotidien. 💸")
+          .setTimestamp();
+
+        if (resetConsecutiveDaily && lastClaim && lostBefore >= 2) {
+          XPLOG.setFooter({
+            text: `⚠️ 𝐏𝐄𝐑𝐓𝐄 𝐃𝐄 𝐒𝐄𝐑𝐈𝐄 ◟ 𝐀ncienne série : ${lostBefore} jour${lostBefore > 1 ? "s" : ""}`,
           });
-
-        if (serverInfo && serverInfo.logChannelID) {
-          const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
-          if (logChannel) {
-            logChannel.send({ embeds: [XPLOG] });
-          }
+        } else {
+          XPLOG.setFooter({
+            text: `🔥 𝐒érie actuelle : ${user.consecutiveDaily} jour${user.consecutiveDaily > 1 ? "s" : ""}`,
+          });
         }
+
+        const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
+        if (logChannel) logChannel.send({ embeds: [XPLOG] }).catch(() => {});
       }
     }
-    // Bouton récupération lors de perte du daily
+
+    const FALCON_BG_URL = "https://i.postimg.cc/Zn88HV3f/Falcon23.png";
+    const FALCONIX_EMOJI_URL = "https://cdn.discordapp.com/emojis/1186719745106513971.png?size=64&quality=lossless";
+    const FLAME_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/1f525.png";
+
+    const THEME = {
+      bg: "#0f1216",
+      card: "#1b2028",
+      text: "#ffffff",
+      sub: "#c9d2e3",
+      ring: "#F5C243",
+      accentGold: "#F5C243",
+      accentGoldDark: "#E3A923",
+      track: "rgba(255,255,255,0.12)",
+    };
+
+    const XP_BLOCK = Math.pow(51 / 0.1, 2);
+    const pf = (p) => 1 + 0.15 * Math.max(0, p || 0);
+    const levelFrom = (xp, p) =>
+      Math.min(50, Math.floor(0.1 * Math.sqrt(Math.max(0, xp) / pf(p))));
+
+    function rebuildFromCareer(careerXP) {
+      let rem = Math.max(0, Number(careerXP) || 0);
+      let p = 0;
+      while (rem >= pf(p) * XP_BLOCK) { rem -= pf(p) * XP_BLOCK; p++; }
+      const level = levelFrom(rem, p);
+      return { prestige: p, level, xp: Math.round(rem) };
+    }
+
+    function computeCareerFromUser(user) {
+      const p = Math.max(0, Number(user.prestige) || 0);
+      let career = Math.max(0, Number(user.xp) || 0);
+      for (let i = 0; i < p; i++) career += pf(i) * XP_BLOCK;
+      return Math.round(career);
+    }
+
+    // Coût / malus (tes règles)
+    const DAILY_COST_PER_MISS = 600;
+    function costFromStreakMiss(n)      { return (Number(n) || 0) * DAILY_COST_PER_MISS; }
+    function malusFromStreakMiss(n)     { n = Number(n) || 0; return n < 7 ? 50 : 75; }
+    function malusDaysFromStreakMiss(n) { n = Number(n) || 0; return Math.max(1, Math.floor(n / 7)); }
+
+    // ---------- Helpers dessin ----------
+    function rrPath(ctx, x, y, w, h, r = 0) {
+      const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+    function fillRR(ctx, x, y, w, h, r, style) { rrPath(ctx, x, y, w, h, r); ctx.fillStyle = style; ctx.fill(); }
+    function toFr(n) { return Number(n || 0).toLocaleString("fr-FR"); }
+
+    function computeFlameSizeForValue(ctx, rawNum, {
+      base = 36, step = 3, min = 45, max = 70, ratio = 0.70, fontScale = 0.38,
+    } = {}) {
+      const num = Math.max(0, Number(rawNum) || 0);
+      const label = num.toLocaleString("fr-FR");
+      const digits = String(Math.floor(num)).length;
+
+      let size = Math.min(max, Math.max(min, base + step * Math.max(0, digits - 1)));
+      let fontSize = Math.round(size * fontScale);
+      const fits = () => ctx.measureText(label).width <= size * ratio;
+
+      ctx.font = `800 ${fontSize}px FalconMath, Inter, Segoe UI, Arial, sans-serif`;
+      while (!fits() && size < max) {
+        size += 2;
+        fontSize = Math.round(size * fontScale);
+        ctx.font = `800 ${fontSize}px FalconMath, Inter, Segoe UI, Arial, sans-serif`;
+      }
+      while (!fits() && fontSize > 9) {
+        fontSize -= 1;
+        ctx.font = `800 ${fontSize}px FalconMath, Inter, Segoe UI, Arial, sans-serif`;
+      }
+      return { size, fontSize, label };
+    }
+
+    async function drawPill(ctx, { x, y, w, h, iconUrl = null, label, value, divider = true }) {
+      fillRR(ctx, x, y, w, h, h / 2, "rgba(255,255,255,0.06)");
+      const s = 20;
+      const ix = x + 10;
+      const iy = y + (h - s) / 2;
+
+      if (iconUrl) {
+        try {
+          const img = await loadImage(iconUrl);
+          ctx.drawImage(img, ix, iy, s, s);
+        } catch {}
+      }
+      let tx = iconUrl ? ix + s + 10 : x + 12;
+
+      if (divider) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(tx - 6, y + 6, 2, h - 12);
+        ctx.restore();
+      }
+
+      ctx.font = "600 14px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = THEME.sub;
+      ctx.fillText(label, tx, y + h / 2 + 5);
+
+      ctx.font = "700 16px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = THEME.text;
+      const vw = ctx.measureText(value).width;
+      ctx.fillText(value, x + w - vw - 14, y + h / 2 + 5);
+    }
+
+    async function renderDailyRecoveryCardRankStyle({
+      username,          // (non affiché)
+      avatarURL,
+      streak,            // lostConsecutiveDaily
+      costCareer,        // coût en XP (ex-careerXP)
+      balanceCareer,     // solde XP (ex-careerXP)
+      balanceFalconix,   // solde Falconix
+      preview,           // { prestige, level } ou null
+    }) {
+      const W = 920, H = 270;
+      const canvas = createCanvas(W, H);
+      const ctx = canvas.getContext("2d");
+
+      // fond & panneau
+      ctx.save();
+      rrPath(ctx, 0, 0, W, H, 26);
+      ctx.clip();
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, THEME.bg);
+      bg.addColorStop(1, "#131821");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      const PANEL = { x: 14, y: 14, w: W - 28, h: H - 28, r: 20 };
+      fillRR(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r, THEME.card);
+
+      // watermark
+      try {
+        const falcon = await loadImage(FALCON_BG_URL);
+        const fw = Math.min(W * 0.55, falcon.width);
+        const fh = fw * (falcon.height / falcon.width);
+        ctx.save();
+        rrPath(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r);
+        ctx.clip();
+        ctx.globalAlpha = 0.14;
+        ctx.drawImage(falcon, W - fw - 30, (H - fh) / 2, fw, fh);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      } catch {}
+
+      // avatar + titre
+      const AVA = 52;
+      const ax = PANEL.x + 22;
+      const ay = PANEL.y + 18;
+      try {
+        const avatar = await loadImage(avatarURL);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ax + AVA / 2, ay + AVA / 2, AVA / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(avatar, ax, ay, AVA, AVA);
+        ctx.restore();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = THEME.ring;
+        ctx.beginPath();
+        ctx.arc(ax + AVA / 2, ay + AVA / 2, AVA / 2 + 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+      } catch {}
+
+      const left = ax + AVA + 14;
+      const titleY = ay + 26;
+
+      ctx.fillStyle = THEME.text;
+      ctx.shadowColor = "rgba(0,0,0,0.35)";
+      ctx.shadowBlur = 10;
+      ctx.font = "800 26px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillText("Rattraper le Daily manqué ?", left, titleY);
+      ctx.shadowBlur = 0;
+
+      const pad = 14;
+      const { size: flameSize, fontSize, label } = computeFlameSizeForValue(ctx, streak);
+      const flameX = PANEL.x + PANEL.w - pad - flameSize;
+      const flameY = PANEL.y + pad;
+      try {
+        const img = await loadImage(FLAME_PNG);
+        ctx.globalAlpha = 0.88;
+        ctx.drawImage(img, flameX, flameY, flameSize, flameSize);
+        ctx.globalAlpha = 1;
+      } catch {}
+      const cx = flameX + flameSize / 2;
+      const cy = flameY + flameSize * 0.66;
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${fontSize}px FalconMath, Inter, Segoe UI, Arial, sans-serif`;
+      ctx.lineWidth = Math.max(1.5, fontSize / 7);
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.strokeText(label, cx, cy);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, cx, cy);
+
+      ctx.font = "700 16px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = THEME.sub;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText("Série manquée", PANEL.x + PANEL.w - pad, flameY + flameSize + 22);
+
+      ctx.textAlign = "left";
+      let infoX = left;
+      let infoY = titleY + 36;
+
+      if (preview) {
+        ctx.fillStyle = THEME.sub;
+        ctx.font = "600 18px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+        ctx.fillText("Après paiement", infoX, infoY);
+        infoY += 28;
+
+        ctx.fillStyle = THEME.text;
+        ctx.font = "500 20px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+        ctx.fillText(`Tu deviendras ➜ Prestige ${preview.prestige} • Niveau ${preview.level}`, infoX, infoY);
+      }
+
+      const pillH = 36;
+      const pillY = H - 22 - pillH;
+      const gap  = 12;
+      const pW   = Math.floor((W - 60) / 3);
+
+      await drawPill(ctx, {
+        x: 36 + (pW + gap) * 0, y: pillY, w: pW, h: pillH,
+        iconUrl: null,
+        label: "Coût",
+        value: `${Number(costCareer).toLocaleString("fr-FR")} XP`,
+        divider: true,
+      });
+      await drawPill(ctx, {
+        x: 36 + (pW + gap) * 1, y: pillY, w: pW, h: pillH,
+        iconUrl: null,
+        label: "XP DISPONIBLE",
+        value: Number(balanceCareer).toLocaleString("fr-FR"),
+        divider: true,
+      });
+      await drawPill(ctx, {
+        x: 36 + (pW + gap) * 2, y: pillY, w: pW, h: pillH,
+        iconUrl: FALCONIX_EMOJI_URL,
+        label: "Falconix",
+        value: String(balanceFalconix),
+        divider: true,
+      });
+
+      return canvas.toBuffer("image/png");
+    }
+
+    function normalizeStored(val) {
+      if (!val) return { id: undefined, name: undefined };
+      if (Array.isArray(val)) return { id: val[0], name: val[1] };
+      if (typeof val === "string") return { id: val, name: undefined };
+      return { id: undefined, name: undefined };
+    }
+    async function fetchRoleRewardsByPrestige(serverID) {
+      const doc = await ServerRole.findOne({ serverID });
+      const out = {}; for (let i = 0; i <= 10; i++) out[i] = [];
+      if (!doc) return out;
+      for (let i = 0; i <= 10; i++) {
+        const data = doc[`prestige${i}Roles`];
+        if (data && typeof data.get === "function") {
+          data.forEach((rawVal, lvlKey) => {
+            const { id, name } = normalizeStored(rawVal);
+            const lvl = Number(lvlKey);
+            if (Number.isFinite(lvl) && id) out[i].push({ level: lvl, roleId: id, roleName: name || "" });
+          });
+        } else if (data && typeof data === "object" && !Array.isArray(data)) {
+          Object.entries(data).forEach(([lvlKey, rawVal]) => {
+            const { id, name } = normalizeStored(rawVal);
+            const lvl = Number(lvlKey);
+            if (Number.isFinite(lvl) && id) out[i].push({ level: lvl, roleId: id, roleName: name || "" });
+          });
+        }
+        out[i].sort((a, b) => a.level - b.level);
+      }
+      return out;
+    }
+    function pickRewardForLevel(rewards, level) {
+      let chosen = null;
+      for (const r of rewards) { if (r.level <= level) chosen = r; else break; }
+      return chosen;
+    }
+    async function applyPrestigeRole(member, rewards, chosen) {
+      const allRoleIds = rewards.map(r => r.roleId).filter(Boolean);
+      const cache = member.roles.cache;
+      const toRemove = allRoleIds.filter(id => (!chosen || id !== chosen.roleId) && cache.has(id));
+      if (toRemove.length) await member.roles.remove(toRemove).catch(() => {});
+      if (chosen && !cache.has(chosen.roleId)) {
+        const roleObj = member.guild.roles.cache.get(chosen.roleId) || await member.guild.roles.fetch(chosen.roleId).catch(() => null);
+        if (roleObj) await member.roles.add(roleObj).catch(() => {});
+      }
+    }
+    async function syncRolesAfterStateChange(guild, member, prevPrestige, newPrestige, newLevel) {
+      try {
+        const rewardsByPrestige = await fetchRoleRewardsByPrestige(guild.id);
+        if (newPrestige !== prevPrestige) {
+          const prevIds = (rewardsByPrestige[prevPrestige] || []).map(r => r.roleId).filter(Boolean);
+          if (prevIds.length) await member.roles.remove(prevIds).catch(() => {});
+        }
+        const newRewards = rewardsByPrestige[newPrestige] || [];
+        const chosen = pickRewardForLevel(newRewards, newLevel || 1);
+        await applyPrestigeRole(member, newRewards, chosen);
+      } catch (e) {
+        console.warn("[daily-syncRoles] échec sync rôles:", e?.message);
+      }
+    }
+
     if (interaction.customId === "RECUPDAILY_BUTTON") {
-      const user = await User.findOne({
-        serverID: interaction.guild.id,
-        userID: interaction.user.id,
+      const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+
+      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
+      if (streakMiss <= 0) return interaction.reply({ content: "𝐓u n'as aucun Daily manqué à récupérer.", ephemeral: true });
+
+      const costXP        = costFromStreakMiss(streakMiss);
+      const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
+      const canPayCareer  = currentCareer >= costXP;
+      const canPayFalconix = (Number(user.falconix) || 0) >= 1;
+      const preview       = canPayCareer ? rebuildFromCareer(currentCareer - costXP) : null;
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("CONFIRM_RECUPDAILY_CAREER").setLabel(`Payer ${costXP.toLocaleString("fr-FR")} XP`).setStyle(ButtonStyle.Primary).setDisabled(!canPayCareer),
+        new ButtonBuilder().setCustomId("CONFIRM_RECUPDAILY_FALCONIX").setLabel("Payer 1 Falconix").setStyle(ButtonStyle.Secondary).setDisabled(!canPayFalconix),
+        new ButtonBuilder().setCustomId("CANCEL_RECUPDAILY_BUTTON").setLabel("Annuler").setStyle(ButtonStyle.Danger),
+      );
+
+      // Répond vite -> defer + edit (téléchargement images)
+      await interaction.deferReply({ ephemeral: true });
+
+      const buffer = await renderDailyRecoveryCardRankStyle({
+        username: interaction.user.username,
+        avatarURL: interaction.user.displayAvatarURL({ extension: "png", size: 128, forceStatic: true }),
+        streak: streakMiss,
+        costCareer: costXP,
+        balanceCareer: currentCareer,
+        balanceFalconix: Number(user.falconix) || 0,
+        preview,
       });
 
-      const currentXP = Number(user.xp) || 0;
-      const storedConsecutiveDaily = Number(user.lostConsecutiveDaily) || 0;
+      const file = new AttachmentBuilder(buffer, { name: "recupdaily.png" });
+      return interaction.editReply({ files: [file], components: [row] });
+    }
 
-      const costXP = calculateCostXP(storedConsecutiveDaily);
-      const malus = calculateMalus(storedConsecutiveDaily);
-      const malusDuration = calculateMalusDuration(storedConsecutiveDaily);
-      const xpLoss = costXP; // Supposons que la perte d'XP est égale au coût
-      const lostLevels = calculateLostLevels(currentXP, xpLoss);
+    if (interaction.customId === "CONFIRM_RECUPDAILY_CAREER") {
+      const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
 
-      if (user.xp >= costXP) {
-        const confirmMessage = `丨𝐓u veux vraiment récupérer ton __𝐃aily__ ? 𝐓u avais une série de \`${
-            user.lostConsecutiveDaily
-        }\`.\n Ça te coûtera \`${costXP.toLocaleString()}\` 𝐗p, tu perdras \`${lostLevels}\` niveau(x), et tu auras un malus de \`${malus}\` 𝐗p pour \`${malusDuration}\` jour(s) sur tes prochains __𝐃aily__.`;
+      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
+      if (streakMiss <= 0) return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
 
-        const yesButton = new ButtonBuilder()
-          .setCustomId("CONFIRM_RECUPDAILY_BUTTON")
-          .setLabel("Oui")
-          .setStyle(ButtonStyle.Success);
-        const noButton = new ButtonBuilder()
-          .setCustomId("CANCEL_RECUPDAILY_BUTTON")
-          .setLabel("Non")
-          .setStyle(ButtonStyle.Danger);
+      const costXP = costFromStreakMiss(streakMiss);
+      const malus = malusFromStreakMiss(streakMiss);
+      const malusDuration = malusDaysFromStreakMiss(streakMiss);
 
-        const row = new ActionRowBuilder().addComponents(yesButton, noButton);
-
-        await interaction.reply({
-          content: confirmMessage,
-          components: [row],
-          ephemeral: true,
-        });
-      } else {
+      const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
+      if (currentCareer < costXP) {
         return interaction.reply({
-          content: `丨𝐓u n'as pas assez d'𝐗p pour rattraper ton __bonus quotidien__. 𝐓u as besoin de \`${costXP.toLocaleString()}\` 𝐗p minimum et tu as uniquement \`${user.xp.toLocaleString()}\` 𝐗p disponible.`,
+          content: `Solde insuffisant : il faut \`${costXP.toLocaleString("fr-FR")} XP\`. Solde actuel: \`${currentCareer.toLocaleString("fr-FR")}\`.`,
           ephemeral: true,
         });
       }
-    }
-    function calculateLostLevels(currentXP, xpLoss) {
-      // Calculer le niveau actuel à partir de l'XP actuel
-      let currentLevel = Math.floor(0.1 * Math.sqrt(currentXP));
-    
-      // Calculer le nouvel XP après la perte
-      let newXP = Math.max(0, currentXP - xpLoss);
-    
-      // Calculer le nouveau niveau à partir du nouvel XP
-      let newLevel = Math.floor(0.1 * Math.sqrt(newXP));
-    
-      // Calculer les niveaux perdus
-      let lostLevels = currentLevel - newLevel;
-    
-      return Math.max(0, lostLevels);
-    }
-    function calculateCostXP(consecutiveDaily) {
-      // Chaque jour de la série coûte 600 xp
-      return consecutiveDaily * 600;
-    }
-    function calculateMalus(consecutiveDaily) {
-      // Malus est de 50 si la série est inférieure à 7 jours, sinon c'est 75
-      return consecutiveDaily < 7 ? 50 : 75;
-    }
-    function calculateMalusDuration(consecutiveDaily) {
-      // Chaque semaine de la série rajoute 1 jour de malus
-      return Math.max(1, Math.floor(consecutiveDaily / 7));
-    }
-    // Bouton confirmation récupération de daily
-    if (interaction.customId === "CONFIRM_RECUPDAILY_BUTTON") {
-      const user = await User.findOne({
-        serverID: interaction.guild.id,
-        userID: interaction.user.id,
-      });
-    
-      if (user.lostConsecutiveDaily === 0) {
-        return interaction.reply({
-          content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.",
-          ephemeral: true,
-        });
+
+      // Débit + rebuild
+      const newCareer = currentCareer - costXP;
+      const state = rebuildFromCareer(newCareer);
+
+      const prevPrestige = user.prestige || 0;
+      user.careerXP = newCareer;
+      user.prestige = state.prestige;
+      user.level    = state.level;
+      user.xp       = state.xp;
+
+      user.consecutiveDaily     = streakMiss;
+      user.lostConsecutiveDaily = 0;
+      user.malusDaily           = malus;
+      user.malusDuration        = malusDuration;
+      user.lastDaily            = new Date();
+
+      await user.save();
+      await syncRolesAfterStateChange(interaction.guild, interaction.member, prevPrestige, state.prestige, state.level);
+
+      try {
+      const logChannel = await getLogChannel(interaction);
+      if (logChannel) {
+        const embed = new EmbedBuilder()
+          .setColor("Orange")
+          .setAuthor({
+            name: interaction.user.tag,
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+          })
+          .setTitle("Rattrapage du Daily en XP")
+          .addFields(
+            { name: "Série manquée", value: `\`${streakMiss}\` jour${streakMiss > 1 ? "s" : ""} 🔥`, inline: true },
+            { name: "Coût", value: `\`${costXP.toLocaleString("fr-FR")} XP\``, inline: true },
+            { name: "XP disponible", value: `\`${currentCareer.toLocaleString("fr-FR")} → ${newCareer.toLocaleString("fr-FR")}\``, inline: true },
+            { name: "Nouveau statut", value: `Prestige \`${state.prestige}\` • Niveau \`${state.level}\``, inline: true },
+            { name: "Malus", value: `\`${malus}\` XP pendant \`${malusDuration}\` jour${malusDuration > 1 ? "s" : ""}`, inline: true },
+          )
+          .setTimestamp();
+
+        await logChannel.send({ embeds: [embed] });
       }
-    
-      const costXP = calculateCostXP(user.lostConsecutiveDaily);
-      const malus = calculateMalus(user.lostConsecutiveDaily);
-      const malusDuration = calculateMalusDuration(user.lostConsecutiveDaily);
-  
-      let remainingCost = costXP;
-      if (user.xp >= remainingCost) {
-        user.xp -= remainingCost;
-        remainingCost = 0;
-      } else {
-        remainingCost -= user.xp;
-        user.xp = 0;
-    
-        for (let i = user.prestige; i > 0 && remainingCost > 0; i--) {
-          for (let lvl = 50; lvl > 0 && remainingCost > 0; lvl--) {
-            const xpForLevel = xpPerLevel(lvl);
-            if (remainingCost >= xpForLevel) {
-              remainingCost -= xpForLevel;
-            } else {
-              break;
-            }
-          }
+    } catch {}
+      return interaction.reply({
+        content:
+          `✅ Daily récupéré en **XP** !\n` +
+          `• Débit: \`-${costXP.toLocaleString("fr-FR")} XP\` → Solde: \`${newCareer.toLocaleString("fr-FR")}\`\n` +
+          `• Nouveau statut: Prestige \`${state.prestige}\`, Niveau \`${state.level}\`\n` +
+          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
+        ephemeral: true,
+      });
+      
+    }
+
+    if (interaction.customId === "CONFIRM_RECUPDAILY_FALCONIX") {
+      const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+
+      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
+      if (streakMiss <= 0) return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
+      if ((Number(user.falconix) || 0) < 1) return interaction.reply({ content: "Il faut **1 Falconix** pour payer cette récupération.", ephemeral: true });
+
+      const malus = malusFromStreakMiss(streakMiss);
+      const malusDuration = malusDaysFromStreakMiss(streakMiss);
+
+      user.falconix = (Number(user.falconix) || 0) - 1;
+      user.consecutiveDaily     = streakMiss;
+      user.lostConsecutiveDaily = 0;
+      user.malusDaily           = malus;
+      user.malusDuration        = malusDuration;
+      user.lastDaily            = new Date();
+      await user.save();
+
+      try {
+        const logChannel = await getLogChannel(interaction);
+        if (logChannel) {
+          const falcBefore = (Number(user.falconix) || 0) + 1;
+          const falcAfter  = Number(user.falconix) || 0;
+
+          const embed = new EmbedBuilder()
+            .setColor("Blurple")
+            .setAuthor({
+              name: interaction.user.tag,
+              iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+            })
+            .setTitle("Rattrapage du Daily en Falconix")
+            .addFields(
+              { name: "Série manquée", value: `\`${streakMiss}\` jour${streakMiss > 1 ? "s" : ""} 🔥`, inline: true },
+              { name: "Coût", value: "`1 Falconix`", inline: true },
+              { name: "Solde Falconix", value: `\`${falcBefore} → ${falcAfter}\``, inline: true },
+              { name: "Statut", value: `Prestige \`${user.prestige}\` • Niveau \`${user.level}\``, inline: true },
+              { name: "Malus", value: `\`${malus}\` XP pendant \`${malusDuration}\` jour${malusDuration > 1 ? "s" : ""}`, inline: true },
+            )
+            .setTimestamp();
+
+          await logChannel.send({ embeds: [embed] });
         }
+      } catch {
+        console.error("Erreur lors de l'envoi du log", interaction);
       }
-    
-      user.consecutiveDaily = user.lostConsecutiveDaily;
+
+      return interaction.reply({
+        content:
+          `✅ Daily récupéré en dépensant **1 Falconix**.\n` +
+          `• Falconix restant: \`${user.falconix}\`\n` +
+          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
+        ephemeral: true,
+      });
+    }
+
+    if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
+      const filter = { userID: interaction.user.id, serverID: interaction.guild.id };
+      const updated = await User.findOneAndUpdate(filter, { $set: { lostConsecutiveDaily: 0 } }, { new: true });
+      if (!updated) {
+        console.error("Utilisateur non trouvé pour CANCEL_RECUPDAILY_BUTTON", filter);
+        return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+      }
+      return interaction.reply({
+        content: "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 😅",
+        ephemeral: true,
+      });
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Bouton confirmation récupération de daily
+    if (interaction.customId === "CONFIRM_RECUPDAILY_CAREER") {
+      const user = await User.findOne({
+        serverID: interaction.guild.id,
+        userID: interaction.user.id,
+      });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+
+      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
+      if (streakMiss <= 0) {
+        return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
+      }
+
+      const costXP = calculateCostXP(streakMiss);
+      const malus = calculateMalus(streakMiss);
+      const malusDuration = calculateMalusDuration(streakMiss);
+
+      const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
+      if (currentCareer < costXP) {
+        return interaction.reply({
+          content: `Solde insuffisant : il faut \`${costXP.toLocaleString("fr-FR")} careerXP\`. ` +
+                  `Solde actuel: \`${currentCareer.toLocaleString("fr-FR")}\`.`,
+          ephemeral: true,
+        });
+      }
+
+      // 1) Débit du careerXP
+      const newCareer = currentCareer - costXP;
+
+      // 2) Rebuild prestige/level/xp depuis le nouveau careerXP
+      const state = rebuildFromCareer(newCareer);
+
+      // 3) Persiste tout + applique le malus et la récup
+      user.careerXP = newCareer;
+      const prevPrestige = user.prestige || 0;
+      user.prestige = state.prestige;
+      user.level    = state.level;
+      user.xp       = state.xp;
+
+      user.consecutiveDaily   = streakMiss;
+      user.lostConsecutiveDaily = 0;
+      user.malusDaily         = malus;
+      user.malusDuration      = malusDuration;
+      user.lastDaily          = new Date();
+      await user.save();
+      await syncRolesAfterStateChange(interaction.guild, interaction.member, prevPrestige, state.prestige, state.level);
+
+      await interaction.reply({
+        content:
+          `✅ Daily récupéré en **careerXP** !\n` +
+          `• Débit: \`-${costXP.toLocaleString("fr-FR")} careerXP\` → Solde: \`${newCareer.toLocaleString("fr-FR")}\`\n` +
+          `• Nouveau statut: Prestige \`${state.prestige}\`, Niveau \`${state.level}\`\n` +
+          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
+        ephemeral: true,
+      });
+    }
+    if (interaction.customId === "CONFIRM_RECUPDAILY_FALCONIX") {
+      const user = await User.findOne({
+        serverID: interaction.guild.id,
+        userID: interaction.user.id,
+      });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+
+      const streakMiss = Number(user.lostConsecutiveDaily) || 0;
+      if (streakMiss <= 0) {
+        return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
+      }
+
+      if ((Number(user.falconix) || 0) < 1) {
+        return interaction.reply({ content: "Il faut **1 Falconix** pour payer cette récupération.", ephemeral: true });
+      }
+
+      const malus = calculateMalus(streakMiss);
+      const malusDuration = calculateMalusDuration(streakMiss);
+
+      user.falconix = (Number(user.falconix) || 0) - 1;
+      user.consecutiveDaily = streakMiss;
       user.lostConsecutiveDaily = 0;
       user.malusDaily = malus;
       user.malusDuration = malusDuration;
       user.lastDaily = new Date();
-    
       await user.save();
-    
+
       await interaction.reply({
-        content: `𝐓u as récupéré ton Daily avec succès !\n\n🔸 **𝐂oût** : \`${costXP.toLocaleString()} 𝐗P\`\n🔸 **Malus** : \`${malus}\` 𝐗P pour \`${malusDuration}\` jour(s).\n🔸 **𝐗P restant** : \`${user.xp.toLocaleString()} 𝐗P\``,
+        content:
+          `✅ Daily récupéré en dépensant **1 Falconix**.\n` +
+          `• Falconix restant: \`${user.falconix}\`\n` +
+          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
         ephemeral: true,
       });
     }
@@ -706,7 +1524,7 @@ module.exports = {
       });
     }
 
-    //SelectMenu pour le channel rôle, sélecteur de jeux.
+    // SelectMenu pour le channel rôle, sélecteur de jeux.
     if (interaction.isStringSelectMenu()) {
       const member = interaction.member;
 
@@ -741,7 +1559,7 @@ module.exports = {
       }
     }
 
-    //Unmute quelqu'un avec le bouton sur le message des logs
+    // Unmute quelqu'un avec le bouton sur le message des logs
     if (interaction.customId === "UNMUTE") {
       const memberId = unmuteRequests.get(interaction.message.id);
       if (!memberId) {
@@ -767,7 +1585,7 @@ module.exports = {
             if (error.code === 10008) {
               clearInterval(interval);
             } else {
-              console.error('Erreur lors de la mise à jour du message :', error);
+              console.error('[UNMUTE] Erreur lors de la mise à jour du message :', error);
             }
           });
         } else {
@@ -830,12 +1648,12 @@ module.exports = {
       if (member.roles.cache.some((role) => role.id == roleID)) {
         await member.roles.remove(roleID);
         interaction.editReply({
-          content: `Votre rôle \`${roleName}\` a été supprimé.`,
+          content: `丨𝐓on rôle \`${roleName}\` a été supprimé.`,
         });
       } else {
         await member.roles.add(roleID);
         interaction.editReply({
-          content: `Vous avez récupéré votre rôle \`${roleName}\`.`,
+          content: `丨𝐓u as récupéré le rôle \`${roleName}\`.`,
         });
       }
     }
@@ -1094,127 +1912,144 @@ module.exports = {
           }, 1000);
       });
     }
-    if (interaction.customId === "ROLE_LISTE") { 
-      const serverRoles = await ServerRole.findOne({
-        serverID: interaction.guild.id,
-      });
 
-      const rowRolesListe = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("ROLES_PERSOLISTE")
-          .setEmoji("🖌️")
-          .setLabel("Modifier les rôles")
-          .setStyle(ButtonStyle.Secondary)
-      );
+    if (interaction.customId === "ROLE_LISTE") {
+  const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
 
-      if (!serverRoles) {
-        return interaction.reply({
-          content: "👁️‍🗨️丨𝐈l n'y a pas de rôles stockés pour ce serveur.",
-          components: [rowRolesListe],
-        });
-      }
+  const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+    label: i === 0 ? "🎓丨𝐍iveau 𝐒tandard" : `${badgeMap[i] || "🏆"}丨𝐏restige ${i}`,
+    value: `prestige${i}Roles`,
+    description: i === 0 ? "𝐂onfigurer les rôles standard" : `𝐂onfigurer les rôles pour le Prestige ${i}`,
+  }));
 
-      const levels = [1, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId("SELECT_PRESTIGE_ROLE")
+    .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+    .addOptions(prestigeOptions);
 
-      const prestigeRolesList = Object.entries(serverRoles.prestiges || {})
-      .map(([prestige, levels]) => {
-        const levelRoles = Object.entries(levels)
-          .map(([level, roleIds]) => {
-            const rolesText = roleIds
-              .map(id => interaction.guild.roles.cache.get(id)?.toString() || "Rôle inconnu")
-              .join(", ");
-            return `𝐍iveau **${level}** | ${rolesText}`;
-          })
-          .join("\n");
+  const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
-        return `__**𝐑ôles Prestige ${prestige} :**__\n\n${levelRoles}`;
-      })
-      .join("\n\n");
-
-    const roleEmbed = new EmbedBuilder()
-      .setTitle("__𝐋iste des Rôles__")
-      .setColor("#b3c7ff")
-      .setDescription(prestigeRolesList || "Aucun rôle enregistré.");
-
-    interaction.reply({ embeds: [roleEmbed], components: [rowRolesListe] });
+  await interaction.reply({
+    content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
+    components: [selectRow],
+    ephemeral: true,
+  });
     }
-    if (interaction.customId === "ROLES_PERSOLISTE") {
-      if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+    if (interaction.isStringSelectMenu() && interaction.customId === "SELECT_PRESTIGE_ROLE") {
+      const selectedPrestige = interaction.values[0]; // ex: prestige3Roles
+      const prestigeNumber = parseInt(selectedPrestige.replace("prestige", "").replace("Roles", ""), 10);
+
+      const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
+      const prestigeLabel = Number.isFinite(prestigeNumber) && prestigeNumber === 0
+        ? "🎓 Niveau Standard"
+        : `${badgeMap[prestigeNumber] || "🏆"} Prestige ${prestigeNumber}`;
+
+      let server = await ServerRole.findOne({ serverID: interaction.guild.id });
+      if (!server) {
+        server = new ServerRole({ serverID: interaction.guild.id, serverName: interaction.guild.name });
+        await server.save();
       }
-  
-      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
-      if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
-      }
-  
-      let currentPrestige = "prestige0Roles";
-      let secondsRemaining = 180;
-      let originalContent = `🙏🏻丨Merci de répondre en mentionnant les rôles personnalisés. Tu peux mentionner jusqu'à 12 rôles. *(Exemple: @Role1, @Role2, etc.)*`;
-  
-      const replyMessage = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
-      });
-  
-      const interval = setInterval(() => {
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(console.error);
-          } else {
-              clearInterval(interval);
-          }
-      }, 1000);
-  
-      const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 180000
-      });
-  
-      collector.on("collect", async (m) => {
-          clearInterval(interval);
-  
-          const roles = m.mentions.roles.map(role => role.id);
-  
-          if (roles.length > 12) {
-              await interaction.followUp("😵 Vous avez mentionné trop de rôles, le maximum est de 12.");
-              return;
-          }
-  
-          if (roles.some(roleId => interaction.guild.roles.cache.get(roleId).position >= botMember.roles.highest.position)) {
-              await interaction.followUp("↘️ Un ou plusieurs des rôles mentionnés sont supérieurs à mon rôle le plus élevé.");
-              return;
-          }
-  
-          let server = await ServerRole.findOne({ serverID: interaction.guild.id }) || new ServerRole({
-              serverID: interaction.guild.id,
-              serverName: interaction.guild.name,
-              prestige0Roles: [],
-              prestige1Roles: [],
+
+      const ensureAndMigrate = async () => {
+        await ensurePrestigeMap(server, selectedPrestige);
+        let prestigeRoles = server[selectedPrestige];
+
+        if (Array.isArray(prestigeRoles)) {
+          const m = new Map();
+          LEVELS.forEach((lvl, i) => {
+            const roleId = prestigeRoles[i];
+            if (roleId) {
+              const role = interaction.guild.roles.cache.get(roleId);
+              m.set(String(lvl), [roleId, role?.name ?? ""]);
+            }
           });
-  
-          server[currentPrestige] = roles;
+          server[selectedPrestige] = m;
+          prestigeRoles = m;
+          server.markModified(selectedPrestige);
           await server.save();
-  
-          const successMessage = `🤘 Les rôles pour le prestige \`${currentPrestige.replace('prestige', '').replace('Roles', '')}\` ont été enregistrés avec succès !`;
-          await interaction.followUp({ content: successMessage, ephemeral: true });
-  
-          if (currentPrestige === "prestige0Roles") {
-              currentPrestige = "prestige1Roles";
-              originalContent = `🙏🏻 Entrez maintenant les rôles pour le prestige \`1\`. N'oubliez pas, vous pouvez mentionner jusqu'à 12 rôles pour chaque prestige.`;
-              await interaction.followUp({ content: originalContent, ephemeral: false });
-              secondsRemaining = 180; // Reset timer for next collection
-          } else {
-              collector.stop();
+        } else if (prestigeRoles && typeof prestigeRoles === "object" && typeof prestigeRoles.get !== "function") {
+          const m = new Map();
+          for (const [k, v] of Object.entries(prestigeRoles)) {
+            if (Array.isArray(v)) {
+              const id = v[0];
+              const role = id ? interaction.guild.roles.cache.get(id) : null;
+              m.set(String(k), [id, role?.name ?? v[1] ?? ""]);
+            }
           }
-      });
-  
-      collector.on("end", async (collected, reason) => {
-          if (reason === "time") {
-              await interaction.followUp({ content: "⏳ Temps écoulé pour la réponse. Veuillez réessayer.", ephemeral: true });
+          server[selectedPrestige] = m;
+          prestigeRoles = m;
+          server.markModified(selectedPrestige);
+          await server.save();
+        }
+
+        if (typeof prestigeRoles?.forEach === "function") {
+          let touched = false;
+          prestigeRoles.forEach((val, key) => {
+            const { id, name } = normalizeValue(val);
+            if (id && (!name || name === "")) {
+              const r = interaction.guild.roles.cache.get(id);
+              prestigeRoles.set(String(key), [id, r?.name ?? ""]);
+              touched = true;
+            }
+          });
+          if (touched) {
+            server.markModified(selectedPrestige);
+            await server.save();
           }
+        }
+
+        return server[selectedPrestige];
+      };
+
+      const prestigeRoles = await ensureAndMigrate();
+
+      const roleListText = LEVELS.map((level) => {
+        const { role, storedName } = getRoleInfo(interaction.guild, prestigeRoles, level);
+        return `𝐍iveau **${level}** ◟ ${role ? role.toString() : (storedName ? `*${storedName}*` : "*Aucun rôle défini.*")}`;
+      }).join("\n");
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🧩丨𝐑ôles pour ${prestigeLabel}`)
+        .setDescription(roleListText)
+        .setColor("#88c9f9");
+
+      const modifySelectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`ROLE_MODIFY_SELECT_${selectedPrestige}`)
+        .setPlaceholder("𝐒électionne un niveau à modifier")
+        .addOptions(
+          LEVELS.map((level) => {
+            const { role, storedName } = getRoleInfo(interaction.guild, prestigeRoles, level);
+            return {
+              label: `◟𝐍iveau ${level}`,
+              value: `LEVEL_${level}`,
+              description: role ? `𝐀ctuel : ${role.name}` : (storedName ? `𝐀ctuel : ${storedName}` : "Aucun rôle défini."),
+            };
+          })
+        );
+
+      const rowSelect = new ActionRowBuilder().addComponents(modifySelectMenu);
+
+      const prestigeOptions = Array.from({ length: 11 }, (_, i) => ({
+        label: i === 0 ? "🎓丨Niveau Standard" : `${badgeMap[i] || "🏆"}丨Prestige ${i}`,
+        value: `prestige${i}Roles`,
+        description: i === 0 ? "Configurer les rôles standard" : `Configurer les rôles pour le Prestige ${i}`,
+      }));
+
+      const selectPrestige = new StringSelectMenuBuilder()
+        .setCustomId("SELECT_PRESTIGE_ROLE")
+        .setPlaceholder("丨𝐒électionne un prestige à consulter ou modifier")
+        .addOptions(prestigeOptions);
+
+      const rowPrestige = new ActionRowBuilder().addComponents(selectPrestige);
+
+      await interaction.update({
+        content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
+        embeds: [embed],
+        components: [rowPrestige, rowSelect],
+        ephemeral: true,
       });
     }
+
     if (interaction.customId === "WELCOME_BUTTON") { // OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
@@ -2546,124 +3381,164 @@ module.exports = {
           await interaction.reply({ content: "Une erreur est survenue lors de la gestion du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
       }
     }
+    if (interaction.customId === "BINGO_BUTTON") {
+      await interaction.deferUpdate();
+
+      let secondsRemaining = 60;
+      const originalContent = "🙏🏻丨𝐑éponds avec **l’ID** du salon pour le 𝐁ingo (clic droit → Copier l'identifiant).";
+      const promptMsg = await interaction.channel.send(`${originalContent} ***${secondsRemaining}s***`);
+
+      const timer = setInterval(() => {
+        secondsRemaining--;
+        if (secondsRemaining > 0) promptMsg.edit(`${originalContent} ***${secondsRemaining}s***`).catch(() => {});
+        else clearInterval(timer);
+      }, 1000);
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        time: 60000,
+        max: 1,
+      });
+
+      collector.on('collect', async (m) => {
+        clearInterval(timer);
+        const channelId = m.content.trim();
+        let channel = interaction.guild.channels.cache.get(channelId)
+          || await interaction.guild.channels.fetch(channelId).catch(() => null)
+          || await interaction.client.channels.fetch(channelId).catch(() => null);
+
+        if (!channel) {
+          await interaction.followUp({ content: "😵丨𝐒alon invalide.", ephemeral: true });
+          return;
+        }
+
+        await ServerConfig.updateOne(
+          { serverID: interaction.guild.id },
+          { $set: { bingoChannelID: channel.id, bingoChannelName: channel.name } },
+          { upsert: true }
+        );
+        await Bingo.updateOne(
+          { serverID: interaction.guild.id },
+          {
+            $set: { serverName: interaction.guild.name, bingoChannelName: channel.name },
+            $setOnInsert: { lastBingoTime: null, nextBingoTime: null, etat: ETAT_DB.INACTIF }
+          },
+          { upsert: true }
+        );
+
+        const baseEmbed = interaction.message.embeds?.[0];
+        const prev = baseEmbed?.data || {};
+        const newDesc = replaceLine(prev.description || "", "𝐒alon actuel", `\`${channel.name}\``);
+        const newEmbed = new EmbedBuilder(prev).setDescription(newDesc);
+
+        const bingoDoc = await Bingo.findOne({ serverID: interaction.guild.id }).lean();
+        const isActive = ((bingoDoc?.etat || '').trim()) === ETAT_DB.ACTIF;
+
+        const primaryBtn = new ButtonBuilder()
+          .setCustomId(isActive ? 'BINGO_DISABLE' : 'BINGO_PUSH')
+          .setLabel(isActive ? '𝐃ésactiver' : '𝐀ctiver')
+          .setStyle(isActive ? ButtonStyle.Danger : ButtonStyle.Primary);
+
+        if (!isActive) primaryBtn.setEmoji('✔️');
+
+        const row = new ActionRowBuilder().addComponents(
+          primaryBtn,
+          new ButtonBuilder()
+            .setCustomId('BINGO_BUTTON')
+            .setEmoji("📝")
+            .setLabel('𝐌odifier 𝐒alon')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.message.edit({ embeds: [newEmbed], components: [row] }).catch(() => {});
+        await interaction.followUp({ content: `🤘丨𝐒alon mis à jour : **${channel.name}**.`, ephemeral: true });
+
+        m.delete().catch(() => {});
+        promptMsg.delete().catch(() => {});
+      });
+
+      collector.on('end', async (_c, reason) => {
+        if (reason === 'time') await interaction.followUp({ content: '⏳ | Temps écoulé pour la réponse.', ephemeral: true });
+        clearInterval(timer);
+        promptMsg.delete().catch(() => {});
+      });
+    }
     if (interaction.customId === "BINGO_PUSH") {
-      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
-      if (!serverConfig) {
-        return interaction.reply({ content: "Configuration du serveur non trouvée.", ephemeral: true });
+      const channel = await resolveBingoChannel(interaction);
+      if (!channel) {
+        return interaction.reply({
+          content: "Salon non enregistré. Clique d’abord sur **Modifier le salon** et choisis un salon valide.",
+          ephemeral: true
+        });
       }
-    
-      const bingoChannelName = serverConfig.bingoChannelName || "Salon non configuré";
-    
-      const result = await Bingo.findOneAndUpdate(
+
+      let bingoDoc = await Bingo.findOneAndUpdate(
         { serverID: interaction.guild.id },
         {
           $set: {
-            etat: 'ACTIF',
             serverName: interaction.guild.name,
-            bingoChannelName: bingoChannelName
+            bingoChannelName: channel.name,
+            etat: ETAT_DB.ACTIF
           },
-          $setOnInsert: {
-            nextBingoTime: null
-          }
+          $setOnInsert: { lastBingoTime: null, nextBingoTime: null }
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
-    
-      if (!result.nextBingoTime) {
-        const delayToNextBingo = intervalleAleatoire(2, 5); // 2 à 5 jours
-        const nextBingoTime = new Date(Date.now() + delayToNextBingo);
-        await Bingo.findOneAndUpdate(
-          { serverID: interaction.guild.id },
-          { $set: { nextBingoTime: nextBingoTime } }
-        );
+
+      const now = Date.now();
+      const nextTs = bingoDoc.nextBingoTime ? new Date(bingoDoc.nextBingoTime).getTime() : 0;
+      if (!nextTs || nextTs <= now) {
+        const delay = intervalleAleatoire(2, 5); // 2–5 min en test (ou jours en prod)
+        const next = new Date(now + delay);
+        bingoDoc.nextBingoTime = next;
+        await bingoDoc.save();
       }
-    
-      await interaction.reply({ content: "丨𝐋e \`𝐁ingo\` a été activé ! :comet:", ephemeral: true });
+
+      const baseEmbed = interaction.message.embeds?.[0];
+
+      const VISUAL_STATUS_LOCAL = (typeof VISUAL_STATUS !== "undefined")
+        ? VISUAL_STATUS
+        : { ACTIF: '𝐀𝐂𝐓𝐈𝐅', INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅' };
+
+      let desc = baseEmbed?.description || "";
+      desc = setStatusLine(desc, VISUAL_STATUS_LOCAL.ACTIF);
+      desc = removeLineByLabel(desc, "◟𝐏rochain bingo");
+      desc = replaceLine(desc, "𝐒alon actuel", `\`${channel.name}\``);
+
+      let newEmbed = new EmbedBuilder(baseEmbed?.data || {}).setDescription(desc);
+      newEmbed = applyNextBingoFooterNoTs(newEmbed, bingoDoc, interaction.guild);
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('BINGO_DISABLE').setLabel('𝐃ésactiver').setStyle(ButtonStyle.Danger),        // pas d’emoji
+        new ButtonBuilder().setCustomId('BINGO_BUTTON').setEmoji("📝").setLabel('𝐌odifier 𝐒alon').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('BINGO_DESAC').setEmoji("❌").setLabel('𝐑éinitialiser').setStyle(ButtonStyle.Danger)
+      );
+
+      await interaction.update({ embeds: [newEmbed], components: [row] });
     }
-    if (interaction.customId === "BINGO_BUTTON") { //OK
-      let secondsRemaining = 60;
-      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour le `𝐁ingo` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
-  
-      const replyMessage = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
-      });
-  
-      let followUpMessages = [];
-      let messageDeleted = false;
-  
-      const interval = setInterval(() => {
-          if (messageDeleted) {
-              clearInterval(interval);
-              return;
-          }
-  
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  if (error.code === 10008) {
-                      messageDeleted = true;
-                      clearInterval(interval);
-                  } else {
-                      console.error('Erreur lors de la mise à jour du message :', error);
-                  }
-              });
-          } else {
-              clearInterval(interval);
-          }
-      }, 1000);
-  
-      const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 60000,
-          max: 1
-      });
-  
-      collector.on("collect", async (m) => {
-          clearInterval(interval);
-          followUpMessages.push(m);
-  
-          const channelId = m.content.trim();
-          const channel = interaction.guild.channels.cache.get(channelId);
-          if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
-              followUpMessages.push(errorMsg);
-              return;
-          }
-          await ServerConfig.findOneAndUpdate(
-              { serverID: interaction.guild.id },
-              {
-                  bingoChannelID: channelId,
-                  bingoChannelName: channel.name
-              },
-              { upsert: true, new: true }
-          );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐁ingo\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
-          followUpMessages.push(successMsg);
-      });
-  
-      collector.on("end", async (collected, reason) => {
-          if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, *Game of Thrones* aurait eu le temps de refaire sa dernière saison.", ephemeral: true });
-              followUpMessages.push(timeoutMsg);
-          }
-          replyMessage.delete().catch(error => {
-              if (error.code === 10008) {
-                  messageDeleted = true;
-              } else {
-                  console.error('Erreur lors de la suppression du message initial :', error);
-              }
-          });
-          setTimeout(() => {
-              followUpMessages.forEach(msg => {
-                  msg.delete().catch(error => {
-                      if (error.code !== 10008) {
-                          console.error('Erreur lors de la suppression du message de suivi :', error);
-                      }
-                  });
-              });
-          }, 1000);
-      });
+    if (interaction.customId === "BINGO_DISABLE") {
+      const bingoDoc = await Bingo.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        { $set: { etat: ETAT_DB.INACTIF, nextBingoTime: null, serverName: interaction.guild.name } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      const baseEmbed = interaction.message.embeds?.[0];
+      const prev = baseEmbed?.data || {};
+      let desc = baseEmbed?.description || "";
+      desc = setStatusLine(desc, VISUAL_STATUS.INACTIF);
+      desc = removeLineByLabel(desc, "◟𝐏rochain bingo");
+
+      let newEmbed = new EmbedBuilder(prev).setDescription(desc);
+      newEmbed = newEmbed.setFooter(null).setTimestamp(null);
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('BINGO_PUSH').setEmoji("✔️").setLabel('𝐀ctiver').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('BINGO_BUTTON').setEmoji("📝").setLabel('𝐌odifier 𝐒alons').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('BINGO_DESAC').setEmoji("❌").setLabel('𝐑éinitialiser').setStyle(ButtonStyle.Danger)
+      );
+
+      await interaction.update({ embeds: [newEmbed], components: [row] });
     }
     if (interaction.customId === "TWITCH_BUTTON") { //OK
       let secondsRemaining = 60;
@@ -3867,45 +4742,37 @@ module.exports = {
     if (!interaction.isCommand()) return;
     if (!bot.commands.has(interaction.commandName)) return;
 
-    let timeoutFlag = false;
-    let timeout = setTimeout(function () {
-      timeoutFlag = true;
-      interaction.reply({
-        content:
-          "**L'exécution de la commande prend plus de temps que prévu. __Merci__ de patienter...**",
-        ephemeral: true,
-      });
-    }, 5000);
+    const TIMEOUT_MS = 5000;
+    const timeout = setTimeout(async () => {
+      if (interaction.deferred || interaction.replied) return;
+
+      try {
+        await interaction.reply({
+          content: "**L'exécution de la commande prend plus de temps que prévu. Merci de patienter...**",
+          ephemeral: true,
+        });
+      } catch (_) {}
+    }, TIMEOUT_MS);
 
     try {
       await bot.commands.get(interaction.commandName).execute(interaction, bot);
-      clearTimeout(timeout);
     } catch (error) {
       console.error(error);
-      if (typeof interaction.reply === "function") {
-        interaction.reply({
-          content:
-            "**Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.**",
-          ephemeral: true,
-        });
-      } else {
-        interaction.channel.send({
-          content:
-            "**Une erreur est survenue lors de l'exécution de la commande -> contact mon créateur `tbmpqf`.**",
-        });
-      }
-    }
-    if (timeoutFlag) {
-      // En cas de dépassement du temps, vous pouvez ajouter une action supplémentaire ici
-      console.error(
-        `Command ${interaction.commandName} trop longue a executé.`
-      );
-      // Si vous avez un système de surveillance externe, vous pouvez envoyer une notification à ce système.
-      interaction.followUp({
-        content:
-          "**La commande a pris trop de temps à répondre et a été annulée. Veuillez réessayer plus tard.**",
-        ephemeral: true,
-      });
+      try {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.reply({
+            content: "**Une erreur est survenue lors de l'exécution de la commande -> contacte `tbmpqf`.**",
+            ephemeral: true,
+          });
+        } else {
+          await interaction.followUp({
+            content: "**Une erreur est survenue lors de l'exécution de la commande -> contacte `tbmpqf`.**",
+            ephemeral: true,
+          });
+        }
+      } catch (_) {}
+    } finally {
+      clearTimeout(timeout);
     }
   }
   },
