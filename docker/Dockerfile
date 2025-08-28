@@ -10,7 +10,7 @@ WORKDIR /data
 
 # Copie des fichiers locaux dans l'image
 COPY . .
-COPY docker/entrypoint-docker.sh ./
+COPY docker/entrypoint-docker.sh ./entrypoint-docker.sh
 
 # Installation des dépendances
 RUN apk add --no-cache gawk ffmpeg py3-pip \
