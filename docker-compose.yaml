@@ -1,6 +1,6 @@
 services:
   bot:
-    restart: no #unless-stopped
+    restart: unless-stopped
     image: ghcr.io/tbmpqf/tbm_cpu_v2:${COMMIT_REF:-main}
     container_name: tbm-cpu-v2
     hostname: tbm-cpu-v2
