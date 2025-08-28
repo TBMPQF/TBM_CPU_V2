@@ -1,4 +1,4 @@
-FROM node:22.6.0-alpine
+FROM node:lts
 LABEL maintainer="TBMPQF"
 LABEL org.opencontainers.image.description="Image Docker pour lancer le bot discord TBM_CPU"
 
