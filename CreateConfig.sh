@@ -2,7 +2,7 @@ cat << EOF > ./config.json
 {
   "token": "$TOKEN",
   "mongourl": "$BDD_URL",
-  "serveurMinecraftDOMAIN": "$PERSONAL_DOMAINE_NAME",
+  "serveurMinecraftDOMAIN": "$MINECRAFT_SERVER_URL",
   "twitch": {
     "clientId": "$TWITCH_ID",
     "clientSecret": "$TWITCH_SECRET"

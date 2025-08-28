@@ -1,0 +1,8 @@
+.env
+.gitignore
+.github
+.vscode
+config.json
+docker/**
+package-lock.json
+README.md

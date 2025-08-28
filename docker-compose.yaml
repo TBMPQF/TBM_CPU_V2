@@ -1,0 +1,15 @@
+services:
+  bot:
+    restart: unless-stopped
+    image: ghcr.io/tbmpqf/tbm_cpu_v2:${COMMIT_REF:-main}
+    container_name: tbm-cpu-v2
+    hostname: tbm-cpu-v2
+    environment:
+      APEX_API: ${APEX_API}
+      BDD_URL: ${BDD_URL}
+      GENIUS_API: ${GENIUS_API}
+      MINECRAFT_SERVER_URL: ${MINECRAFT_SERVER_URL}
+      TOKEN: ${TOKEN}
+      TWITCH_ID: ${TWITCH_ID}
+      TWITCH_SECRET: ${TWITCH_SECRET}
+      TZ: Europe/Paris
