@@ -19,6 +19,7 @@ RUN apk add --no-cache gawk ffmpeg py3-pip \
     pango-dev \
     giflib-dev \
     pixman-dev
+
 RUN npm install
 
 # Rendre executable le script de démarrage
