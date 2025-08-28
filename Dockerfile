@@ -7,11 +7,11 @@ WORKDIR /data
 # Copie des fichiers locaux dans l'image
 COPY . .
 
-# Installation des dependances
+# Installation des dépendances
 RUN apk add --no-cache ffmpeg git py3-pip
 
-# Make config script executable
+# Rendre executable le script de démarrage
 RUN chmod +x ./entrypoint-docker.sh
 
-# Entrypoint (can be overridden by docker-compose)
-CMD sh -c "./entrypoint-docker.sh"
+# Démarrer le code
+ENTRYPOINT ["./entrypoint-docker.sh"]
