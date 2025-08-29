@@ -11,6 +11,7 @@ WORKDIR /data
 # Copie des fichiers locaux dans l'image
 COPY . .
 COPY docker/entrypoint-docker.sh ./entrypoint-docker.sh
+COPY build-info.json ./build-info.json
 
 # Installation des dépendances
 RUN apk add --no-cache nano \

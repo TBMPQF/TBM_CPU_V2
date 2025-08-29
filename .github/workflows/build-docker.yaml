@@ -27,6 +27,10 @@ jobs:
       - name: Clone du Repos GitHub
         uses: actions/checkout@v3
 
+      - name: Génération du fichier de version build-info.json
+        run: |
+          echo "{\"tag\": \"${{ github.event.inputs.version || env.BRANCH_NAME }}\", \"sha\": \"${{ github.sha }}\"}" > build-info.json
+
       - name: Preparation du nommage de l'image docker
         run: |
           echo "IMAGE_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV

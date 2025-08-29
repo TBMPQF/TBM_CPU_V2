@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Affichage de la version en cours
+
+echo "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
+echo "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
+
 # Gestion des fichiers de Logs
 if [ -d "./logs/current_output.log" ]; then
   mv ./logs/current_output.log ./logs/output.log
