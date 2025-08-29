@@ -2,8 +2,8 @@
 
 # Affichage de la version en cours
 
-echo "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
-echo "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
+echo INF - "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
+echo INF - "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
 
 # Gestion des fichiers de Logs
 if [ -d "./logs/current_output.log" ]; then
@@ -30,11 +30,11 @@ elif [ $delai -gt 120 ]; then
 else
   delai=$((delai))
 fi
-echo "Démarrage multiple ($nombre_redemmarage) en cours, attente de $delai seconde(s)..."
+echo INF - "Démarrage multiple ($nombre_redemmarage) en cours, attente de $delai seconde(s)..."
 sleep $delai
 
 # Creation du fichier de configuration
-echo "Création du fichier de configuration..."
+echo INF - "Création du fichier de configuration..."
 cat << EOF > ./config.json
 {
   "token": "$TOKEN",
@@ -50,5 +50,5 @@ cat << EOF > ./config.json
 EOF
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
-echo "Démarrage du bot..."
+echo INF - "Démarrage du bot..."
 node /data/index.js > >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_output.log) 2> >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_error.log >&2)
