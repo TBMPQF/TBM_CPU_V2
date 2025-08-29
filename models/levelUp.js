@@ -145,7 +145,7 @@ async function levelUp(obj, userDoc, newXP) {
       userDoc.xp = 0;
 
       if (levelUpChannel) {
-        levelUpChannel.send(`**${authorUser}丨** 𝐓u viens de passer au Prestige **\`${newPrestige}\`** ! ⭐`);
+        levelUpChannel.send(`**${authorUser}丨** 𝐓u viens de passer au Prestige **\`${newPrestige}\`** ! - ⭐`);
       }
 
       const rewardsByPrestige = await fetchRoleRewardsByPrestige(guild.id);
@@ -159,7 +159,7 @@ async function levelUp(obj, userDoc, newXP) {
 
       if (levelUpChannel && chosen) {
         const roleObj = guild.roles.cache.get(chosen.roleId);
-        if (roleObj) levelUpChannel.send(`**丨** 𝐓u débloques le grade ${roleObj}. 𝐅élicitations ! 🎉`);
+        if (roleObj) levelUpChannel.send(`**丨** 𝐓u débloques le grade ${roleObj}. 𝐅élicitations ! - 🎉`);
       }
     }
     return;
@@ -178,7 +178,7 @@ async function levelUp(obj, userDoc, newXP) {
       userDoc.xp    = newXP;
 
       if (levelUpChannel && effectiveLevel > oldLevel) {
-        levelUpChannel.send(`**${authorUser}丨** 𝐓u viens de passer au niveau **\`${effectiveLevel}\`** ! :worm:`);
+        levelUpChannel.send(`**${authorUser}丨** 𝐓u viens de passer au niveau **\`${effectiveLevel}\`** ! - :worm:`);
       }
 
       const rewardsByPrestige = await fetchRoleRewardsByPrestige(guild.id);
@@ -192,7 +192,7 @@ async function levelUp(obj, userDoc, newXP) {
 
       if (levelUpChannel && chosen && !hadBefore && effectiveLevel !== 1) {
         const roleObj = guild.roles.cache.get(chosen.roleId) || await guild.roles.fetch(chosen.roleId).catch(() => null);
-        if (roleObj) levelUpChannel.send(`**丨** 𝐓u débloques le grade ${roleObj}. 𝐅élicitations ! 🎉`);
+        if (roleObj) levelUpChannel.send(`**丨** 𝐓u débloques le grade ${roleObj}. 𝐅élicitations ! - 🎉`);
       }
       return;
     }

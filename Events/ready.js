@@ -1,4 +1,4 @@
-const { ActivityType, EmbedBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { ActivityType, EmbedBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const Discord = require("discord.js");
 const loadSlashCommands = require("../handlers/loaders/loadSlashCommands");
 const fetch = require("node-fetch");
@@ -397,37 +397,53 @@ module.exports = {
       }
     })();
 
-    // Réinitialise le message de playlist pour la musique
-    const channelMusicId = '1136327173343559810';
-    Music.findOne({ serverId: serverId })
-    .then((musicEntry) => {
-      if (musicEntry && musicEntry.messageId) {
-        const channel = bot.channels.cache.get(channelMusicId);
-        if (!channel) return console.error('Channel not found!');
-        
-        channel.messages.fetch(musicEntry.messageId)
-        .then((message) => {
-          
-          const newEmbed = new EmbedBuilder()
-            .setColor("Purple")
-            .setTitle(`――――――――∈ \`MUSIQUES\` ∋――――――――`)
-            .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-            .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.")
-            .setFooter({
-              text: `𝐂ordialement, l'équipe${bot.guilds.cache.get(serverId).name}`,
-              iconURL: bot.guilds.cache.get(serverId).iconURL(),
-            });
-          message.edit({ embeds: [newEmbed] });
-        })
-        .catch((error) => {
-          console.error(`Le message rechercher est introuvable : ${error}`);
-        });
-      }
-    })
-    .catch((error) => {
-      console.error(`Failed to fetch music entry: ${error}`);
-    });
+    // Réinitialise/crée le message de playlist pour la musique
+    async function resetMusicMessage(serverId) {
+      const channelMusicId = '1136327173343559810';
 
+      const channel = bot.channels.cache.get(channelMusicId) || await bot.channels.fetch(channelMusicId).catch(() => null);
+      if (!channel) return console.error('Channel not found!');
+      const guild = bot.guilds.cache.get(serverId) || await bot.guilds.fetch(serverId).catch(() => null);
+      if (!guild) return console.error('Guild not found!');
+
+      const newEmbed = new EmbedBuilder()
+        .setColor("Purple")
+        .setTitle("――――――――∈ `MUSIQUES` ∋――――――――")
+        .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
+        .setDescription("**𝐋a playlist est vide pour le moment**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.\n𝐔ne fois la playlist crée, n'oublie pas d'être dans le même salon que le BOT pour intéragir avec les différents boutons. (:")
+        .setFooter({
+          text: `𝐂ordialement, l'équipe ${guild.name}`,
+          iconURL: guild.iconURL(),
+        });
+
+      const rowPlayOnly = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('PLAY_MUSIC')
+          .setLabel('▶️')
+          .setStyle(ButtonStyle.Success)
+      );
+
+      const musicEntry = await Music.findOne({ serverId }).catch(() => null);
+      if (musicEntry && musicEntry.messageId) {
+        const existingMsg = await channel.messages.fetch(musicEntry.messageId).catch(() => null);
+        if (existingMsg) {
+          await existingMsg.edit({ embeds: [newEmbed], components: [rowPlayOnly] }).catch(() => {});
+          return existingMsg;
+        }
+      }
+
+      const sent = await channel.send({ embeds: [newEmbed], components: [rowPlayOnly] }).catch(() => null);
+      if (sent) {
+        await Music.findOneAndUpdate(
+          { serverId },
+          { serverId, channelId: channel.id, messageId: sent.id },
+          { upsert: true }
+        ).catch(() => {});
+      }
+      return sent;
+    }
+
+    await resetMusicMessage(serverId);
     loadSlashCommands(bot);
     //Donne l'heure Française
     function formatTwoDigits(num) {
