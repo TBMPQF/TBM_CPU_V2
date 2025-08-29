@@ -22,9 +22,13 @@ else
   echo $((nombre_demmarage + 1)) >> ./nombre_redemmarage.txt
 fi
 nombre_redemmarage=$(tail -n 1 ./nombre_redemmarage.txt)
-delai=$((nombre_redemmarage * 1))
-if [ $delai -gt 120 ]; then
+delai=$((nombre_redemmarage - 1))
+if [ $delai -lt 0 ]; then
+  delai='0'
+elif [ $delai -gt 120 ]; then
   delai='120'
+else
+  delai=$((delai))
 fi
 echo "Démarrage multiple ($nombre_redemmarage) en cours, attente de $delai seconde(s)..."
 sleep $delai
