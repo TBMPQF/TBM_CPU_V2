@@ -13,17 +13,19 @@ COPY . .
 COPY docker/entrypoint-docker.sh ./entrypoint-docker.sh
 COPY build-info.json ./build-info.json
 
-# Installation des dépendances
-RUN apk add --no-cache nano \
-    gawk \
-    ffmpeg \
-    py3-pip \
+# Installation des dépendances système
+RUN apk add --no-cache \
     build-base \
     cairo-dev \
-    jpeg-dev \
-    pango-dev \
+    ffmpeg \
+    gawk \
     giflib-dev \
-    pixman-dev
+    jpeg-dev \
+    jq \
+    nano \
+    pango-dev \
+    pixman-dev \
+    py3-pip
 
 RUN npm install
 
