@@ -81,15 +81,16 @@ async function addExperience(member, serverId, xpToAdd) {
       return;
     }
 
-    user.xp = (Number(user.xp) || 0) + xpToAdd;
+    user.xp        = (Number(user.xp) || 0) + xpToAdd;
+    user.careerXP  = (Number(user.careerXP) || 0) + xpToAdd;
     await user.save();
 
-    // ✅ passer l'objet attendu par levelUp
     await levelUp({ guild: member.guild, member, author: member.user }, user, user.xp);
   } catch (error) {
     console.error('[ADD XP VOCAL] Erreur lors de l\'ajout de l\'expérience:', error);
   }
 }
+
 
 module.exports = {
   voiceUsers,

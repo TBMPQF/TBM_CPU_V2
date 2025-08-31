@@ -21,6 +21,29 @@ module.exports = (bot) => {
   const isAutoOn = (gid) => autoDjEnabled.get(gid) === true;
   const setAuto  = (gid, v) => autoDjEnabled.set(gid, !!v);
 
+  const DEFAULT_THUMB = "https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj";
+
+  function getSongThumb(input) {
+    let url = null;
+    const song = (input && typeof input === 'object') ? input : null;
+
+    if (song) {
+      url = song.thumbnail || song.thumbnailUrl || song.thumbnailURL ||
+            (Array.isArray(song.thumbnails) && song.thumbnails[0]?.url) || null;
+      if (!url && song.url) {
+        const id = youtubeIdFromUrl(song.url);
+        if (id) url = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      }
+      if (!url && song.id) {
+        url = `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`;
+      }
+    } else if (typeof input === 'string') {
+      const id = youtubeIdFromUrl(input);
+      if (id) url = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+    }
+
+    return url || DEFAULT_THUMB;
+  }
   function youtubeIdFromUrl(url = "") {
     try {
       if (!url) return null;
@@ -424,7 +447,6 @@ module.exports = (bot) => {
       return ephemeralError(interaction, "[MUSIC] :x: 𝐄rreur lors de l'arrêt de la musique.");
     }
   }
-
   async function handleNextMusic(interaction, serverId) {
     await ackSilently(interaction);
 
@@ -450,7 +472,8 @@ module.exports = (bot) => {
         const base = queue.songs[0] || (queue.previousSongs && queue.previousSongs[queue.previousSongs.length - 1]) || null;
         const next = await pickRelatedTrack(serverId, base);
         if (next) {
-          await updateMusicEmbed(interaction.channel, serverId, { previewTitle: next.title });
+          const previewThumb = getSongThumb(next.url);
+          await updateMusicEmbed(interaction.channel, serverId, { previewTitle: next.title, previewThumb });
           await distube.play(voiceChannel, next.url, { member: interaction.member, textChannel: interaction.channel });
           await distube.skip(interaction.guild);
           await updateMusicEmbed(interaction.channel, serverId);
@@ -689,14 +712,13 @@ module.exports = (bot) => {
       let characterCount = 0;
       let songCount = 0;
 
-      const previewIndex = Number.isInteger(opts.previewIndex) ? opts.previewIndex : null; // ex: 1 → afficher la #2 en tête
+      const previewIndex = Number.isInteger(opts.previewIndex) ? opts.previewIndex : null;
       const previewTitle = typeof opts.previewTitle === 'string' ? opts.previewTitle : null;
 
       const hasQueue = !!(queue && Array.isArray(queue.songs) && queue.songs.length > 0);
       const hasTemp  = songQueues.has(guildId) && songQueues.get(guildId).length > 0;
 
       if (hasQueue) {
-        // Mode "preview" : on réordonne l’affichage pour mettre la suivante en tête
         if (previewIndex !== null && queue.songs[previewIndex]) {
           for (let i = previewIndex; i < queue.songs.length; i++) {
             const s = queue.songs[i];
@@ -707,14 +729,12 @@ module.exports = (bot) => {
             songCount++;
           }
         }
-        // Mode "previewTitle" (AutoDJ) : on met le titre proposé en tête (durée inconnue pour l’instant)
         else if (previewTitle) {
           const head = `1丨${previewTitle} - \`…\``;
           playlistText += `**${head}**\n`;
           characterCount += head.length;
           songCount++;
         }
-        // Affichage normal
         else {
           for (const [index, song] of queue.songs.entries()) {
             const isPaused = queue.paused && index === 0;
@@ -742,10 +762,21 @@ module.exports = (bot) => {
       const guildName = guild.name;
       const guildIcon = guild.iconURL() ?? null;
 
+      let thumb = DEFAULT_THUMB;
+      if (hasQueue) {
+        if (previewIndex !== null && queue.songs[previewIndex]) {
+          thumb = getSongThumb(queue.songs[previewIndex]);
+        } else if (previewTitle && opts.previewThumb) {
+          thumb = opts.previewThumb;
+        } else {
+          thumb = getSongThumb(queue.songs[0]);
+        }
+      }
+
       const newEmbed = new EmbedBuilder()
         .setColor("Purple")
         .setTitle("――――――――∈ `MUSIQUES` ∋――――――――")
-        .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
+        .setThumbnail(thumb)
         .setDescription(playlistText + (hasQueue ? `\n\n> 🔁 𝐌ode 𝐀utoDJ : **${isAutoOn(guildId) ? "Activé" : "Désactivé"}**` : ""))
         .setFooter({ text: `𝐂ordialement, l'équipe ${guildName}`, iconURL: guildIcon });
 
@@ -758,7 +789,6 @@ module.exports = (bot) => {
         const lstate    = lyricsState.get(guildId);
         const lyricsOk  = !!(lstate && lstate.songKey === key && lstate.available === true);
 
-        // 1 seule ligne : Play/Pause + Next + Stop + AutoDJ + Lyrics (5 max/ligne)
         const rowMain = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('PLAY_PAUSE_TOGGLE')
@@ -768,7 +798,7 @@ module.exports = (bot) => {
             .setCustomId('NEXT_MUSIC')
             .setLabel('⏭️')
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(false),               // on laisse cliquable même en pause
+            .setDisabled(false),
           new ButtonBuilder()
             .setCustomId('STOP_MUSIC')
             .setLabel('⏹️')

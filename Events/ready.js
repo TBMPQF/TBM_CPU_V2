@@ -793,24 +793,42 @@ async function handleFailure(server, retryCount, error) {
 }
 
 // Mise à jour du nombre de personnes connectées sur le serveur
+const onlineUpdateLocks = new Map();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function withRetries(fn, { retries = 2, baseDelay = 800 } = {}) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try { return await fn(); }
+    catch (e) {
+      lastErr = e;
+      if (e?.code === 'UND_ERR_CONNECT_TIMEOUT' || e?.name === 'ConnectTimeoutError') {
+        if (i < retries) { await sleep(baseDelay * (i + 1)); continue; }
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
 async function updateVoiceChannelServer(guild) {
+  if (!guild || !guild.id) return;
+  if (onlineUpdateLocks.get(guild.id)) return;
+  onlineUpdateLocks.set(guild.id, true);
+
   let channel;
   try {
-    let approx = await guild.fetch({ withCounts: true }).catch(() => null);
+    let approx = await withRetries(() => guild.fetch({ withCounts: true }).catch(() => null));
     let onlineMembers = approx?.approximatePresenceCount ?? 0;
     let memberCount   = approx?.approximateMemberCount ?? (guild.memberCount ?? 0);
 
     try {
-      await guild.members.fetch({ withPresences: true, time: 15_000 });
-
+      await withRetries(() => guild.members.fetch({ withPresences: true }));
       const filtered = guild.members.cache.filter(
         (m) => !m.user.bot && ['online', 'idle', 'dnd'].includes(m.presence?.status)
       );
       onlineMembers = filtered.size;
-
-      memberCount = guild.members.cache.filter(m => !m.user.bot).size;
+      memberCount   = guild.members.cache.filter(m => !m.user.bot).size;
     } catch (e) {
-      if (e?.code === 'GuildMembersTimeout') {
+      if (e?.code === 'UND_ERR_CONNECT_TIMEOUT' || e?.name === 'ConnectTimeoutError') {
         console.warn("[ONLINE] members.fetch timeout — fallback aux compteurs approximatifs.");
       } else {
         console.warn("[ONLINE] members.fetch échec — fallback aux compteurs approximatifs.", e?.message);
@@ -820,34 +838,33 @@ async function updateVoiceChannelServer(guild) {
     channel = guild.channels.cache.find(
       (c) => c.type === ChannelType.GuildVoice && c.name.startsWith("丨𝐎n𝐋ine")
     );
-
     if (!channel) {
-      channel = await guild.channels.create({
+      channel = await withRetries(() => guild.channels.create({
         name: "丨𝐎n𝐋ine",
         type: ChannelType.GuildVoice,
         permissionOverwrites: [
           { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
         ],
-      });
+      }));
     }
 
     const newName = `丨𝐎n𝐋ine ${onlineMembers} / ${memberCount}`;
     if (channel.name !== newName) {
-      await channel.setName(newName).catch((err) => {
-        if (err?.code === 'GuildMembersTimeout') {
-          console.warn("[ONLINE] Timeout pendant setName — ignoré.");
-        } else {
-          throw err;
-        }
-      });
+      await withRetries(() => channel.setName(newName));
     }
 
   } catch (error) {
+    if (error?.code === 'UND_ERR_CONNECT_TIMEOUT' || error?.name === 'ConnectTimeoutError') {
+      console.warn("[ONLINE] Timeout réseau — mise à jour reportée.");
+      return;
+    }
     console.error("[ONLINE] Erreur lors de la mise à jour du salon vocal:", error);
     if (channel) {
       channel.setName("丨𝐎n𝐋ine").catch((err) =>
         console.error("[ONLINE] Impossible de réinitialiser le nom du canal:", err)
       );
     }
+  } finally {
+    onlineUpdateLocks.delete(guild.id);
   }
 }

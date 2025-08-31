@@ -822,7 +822,11 @@ module.exports = {
       }
 
       user.xp += totalXP;
-      // Mets à jour la date AVANT la réponse (et persiste tout)
+      const currentCareer = Number.isFinite(user.careerXP)
+        ? Number(user.careerXP)
+        : computeCareerFromUser(user);
+
+      user.careerXP = currentCareer + totalXP;
       user.lastDaily = now;
       await user.save();
 
