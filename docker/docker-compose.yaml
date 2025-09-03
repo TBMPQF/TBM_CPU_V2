@@ -17,7 +17,13 @@ services:
       - stack.env
     volumes:
       - tbm-cpu-v2:/data/logs
+    networks:
+      - tbm_cpu
 
 volumes:
   tbm-cpu-v2:
     name: tbm-cpu-v2
+
+networks:
+  tbm_cpu:
+    name: tbm_cpu
