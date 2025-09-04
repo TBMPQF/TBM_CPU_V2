@@ -10,8 +10,9 @@ fi
 if [ ! -d "./logs" ]; then
   mkdir ./logs
 fi
-LOGFILES=("output" "error")
-for LOGFILE in "${LOGFILES[@]}"; do
+
+LOGFILES="output error"
+for LOGFILE in $LOGFILES; do
   # Deplacement des fichiers de logs précedent pour les lire au prochain démmarrage
   if [ -f "./logs/current_${LOGFILE}.log" ]; then
     echo "INF - Déplacement des anciens fichiers de logs ${LOGFILE}..."
