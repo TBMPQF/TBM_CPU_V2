@@ -1,0 +1,1 @@
+Ce fichier est necessaire pour que le bot puisse avoir accès aux fichiers de logs

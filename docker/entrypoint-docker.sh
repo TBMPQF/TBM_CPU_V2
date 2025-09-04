@@ -5,12 +5,23 @@
 echo INF - "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
 echo INF - "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
 
-# Gestion des fichiers de Logs
-if [ -d "./logs/current_output.log" ]; then
-  mv ./logs/current_output.log ./logs/output.log
-fi
-if [ -d "./logs/current_error.log" ]; then
-  mv ./logs/current_error.log ./logs/error.log
+# Gestion des fichiers .logs
+if [ ! -d "./logs" ]; then
+  mkdir ./logs
+else
+  # Deplacement des fichiers de logs précedent pour les lire au prochain démmarrage
+  if [ -d "./logs/current_output.log" ]; then
+    rm ./logs/output.log
+    mv ./logs/current_output.log ./logs/output.log
+  fi
+  # Deplacement des fichiers d'erreurs précedent pour les lire au prochain démmarrage
+  if [ -d "./logs/current_error.log" ]; then
+    rm ./logs/error.log
+    mv ./logs/current_error.log ./logs/error.log
+  fi
+  # Creation des fichiers de logs pour le fonctionnement
+  touch ./logs/current_output.log
+  touch ./logs/current_error.log
 fi
 
 # Gestion du delai de démarrage en cas de multiple reboot
