@@ -10,23 +10,17 @@ fi
 if [ ! -d "./logs" ]; then
   mkdir ./logs
 fi
-
-# Deplacement des fichiers de logs précedent pour les lire au prochain démmarrage
-if [ -f "./logs/current_output.log" ]; then
-  echo "INF - Déplacement des anciens fichiers de logs..."
-  rm ./logs/output.log
-  mv ./logs/current_output.log ./logs/output.log
-fi
-# Deplacement des fichiers d'erreurs précedent pour les lire au prochain démmarrage
-if [ -f "./logs/current_error.log" ]; then
-  echo "INF - Déplacement des anciens fichiers d'erreurs..."
-  rm ./logs/error.log
-  mv ./logs/current_error.log ./logs/error.log
-fi
-# Creation des fichiers de logs pour le fonctionnement
-echo "INF - Creation des fichiers de logs pour l'execution du bot en cours..."
-touch ./logs/current_output.log
-touch ./logs/current_error.log
+LOGFILES=("output" "error")
+for LOGFILE in "${LOGFILES[@]}"; do
+  # Deplacement des fichiers de logs précedent pour les lire au prochain démmarrage
+  if [ -f "./logs/current_${LOGFILE}.log" ]; then
+    echo "INF - Déplacement des anciens fichiers de logs ${LOGFILE}..."
+    rm ./logs/${LOGFILE}.log
+    mv ./logs/current_${LOGFILE}.log ./logs/${LOGFILE}.log
+  fi
+  echo "INF - Creation du fichier de logs ${LOGFILE} pour l'execution du bot en cours..."
+  touch ./logs/current_${LOGFILE}.log
+done
 
 # Gestion du delai de démarrage en cas de multiple reboot
 if [ ! -f ./nombre_redemmarage.txt ]; then
