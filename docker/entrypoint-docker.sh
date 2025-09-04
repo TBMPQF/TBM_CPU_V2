@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Affichage de la version en cours
-
-echo INF - "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
-echo INF - "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
+# Affichage de la version en cours, si le fichier est present
+if [ -f ./build-info.json ]; then
+  echo INF - "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
+  echo INF - "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
+fi
 
 # Gestion des fichiers .logs
 if [ ! -d "./logs" ]; then
