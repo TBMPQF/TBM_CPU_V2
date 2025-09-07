@@ -63,12 +63,12 @@ app.listen(PORT, () => {
 });
 
 // Dans votre événement ready existant
-client.once('ready', () => {
+bot.once('ready', () => {
     // ...existing ready event code...
     isBotReady = true;
 });
 
 // Dans votre gestion d'erreur ou événement disconnect
-client.on('disconnect', () => {
+bot.on('disconnect', () => {
     isBotReady = false;
 });
