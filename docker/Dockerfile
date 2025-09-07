@@ -34,3 +34,10 @@ RUN chmod +x ./entrypoint-docker.sh
 
 # Démarrer le code avec le script d'entrée
 ENTRYPOINT ["./entrypoint-docker.sh"]
+
+# Expose le port pour le health check
+EXPOSE 3000
+
+# Ajout du health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1

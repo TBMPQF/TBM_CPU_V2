@@ -35,3 +35,21 @@ bot.login(bot.config.token);
 require('./music')(bot);
 require("./handlers/loaders/loadCommands")(bot);
 require("./handlers/loaders/loadEvents")(bot);
+
+const express = require('express');
+const app = express();
+const PORT = process.env.HEALTH_PORT || 3000;
+
+// Endpoint de santé
+app.get('/health', (req, res) => {
+    // Vérifiez si le bot est connecté à Discord
+    if (client && client.ws.status === 0) {
+        res.status(200).send('OK');
+    } else {
+        res.status(500).send('Bot not ready');
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Health check endpoint listening on port ${PORT}`);
+});
