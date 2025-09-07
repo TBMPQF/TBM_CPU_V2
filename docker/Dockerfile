@@ -25,7 +25,8 @@ RUN apk add --no-cache \
     nano \
     pango-dev \
     pixman-dev \
-    py3-pip
+    py3-pip \
+    wget
 
 RUN npm install
 
@@ -39,5 +40,5 @@ ENTRYPOINT ["./entrypoint-docker.sh"]
 EXPOSE 3000
 
 # Ajout du health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
