@@ -36,14 +36,13 @@ require('./music')(bot);
 require("./handlers/loaders/loadCommands")(bot);
 require("./handlers/loaders/loadEvents")(bot);
 
+// Validation de santé pour docker 'Healthy'
 const express = require('express');
 const app = express();
-const PORT = process.env.HEALTH_PORT || 3000;
+const PORT = 3000;
 
-// Variable pour tracker l'état du bot
 let isBotReady = false;
 
-// Endpoint de santé
 app.get('/health', (req, res) => {
     try {
         if (isBotReady) {
@@ -64,7 +63,6 @@ app.listen(PORT, () => {
 
 // Dans votre événement ready existant
 bot.once('ready', () => {
-    // ...existing ready event code...
     isBotReady = true;
 });
 
