@@ -40,11 +40,13 @@ const express = require('express');
 const app = express();
 const PORT = process.env.HEALTH_PORT || 3000;
 
-// Démarrage du serveur Express pour le health check
+// Variable pour tracker l'état du bot
+let isBotReady = false;
+
+// Endpoint de santé
 app.get('/health', (req, res) => {
     try {
-        // Vérification plus sûre de l'état du bot
-        if (global.client && global.client.ws && global.client.ws.status === 0) {
+        if (isBotReady) {
             res.status(200).send('OK');
         } else {
             res.status(503).send('Bot not ready');
@@ -55,16 +57,18 @@ app.get('/health', (req, res) => {
     }
 });
 
-// Démarrer le serveur Express après l'initialisation du client Discord
-const startHealthServer = () => {
-    app.listen(PORT, () => {
-        console.log(`Health check endpoint listening on port ${PORT}`);
-    });
-};
+// Démarrer le serveur Express immédiatement
+app.listen(PORT, () => {
+    console.log(`Health check endpoint listening on port ${PORT}`);
+});
 
-// Appelez startHealthServer() après que le client Discord soit prêt
-// Par exemple, dans votre événement 'ready':
+// Dans votre événement ready existant
 client.once('ready', () => {
     // ...existing ready event code...
-    startHealthServer();
+    isBotReady = true;
+});
+
+// Dans votre gestion d'erreur ou événement disconnect
+client.on('disconnect', () => {
+    isBotReady = false;
 });
