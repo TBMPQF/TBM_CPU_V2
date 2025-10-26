@@ -38,6 +38,7 @@ require("./handlers/loaders/loadEvents")(bot);
 
 // Validation de santé pour docker 'Healthy'
 const express = require('express');
+const e = require("express");
 const app = express();
 const PORT = 3000;
 
@@ -46,19 +47,19 @@ let isBotReady = false;
 app.get('/health', (req, res) => {
     try {
         if (isBotReady) {
-            res.status(200).send('OK');
+            res.status(200).send('Le bot fonctionnel');
         } else {
-            res.status(503).send('Bot not ready');
+            res.status(503).send('Le bot n\'est pas prêt');
         }
     } catch (error) {
-        console.error('Health check error:', error);
+        console.error('Health check erreur:', error);
         res.status(500).send('Internal server error');
     }
 });
 
 // Démarrer le serveur Express immédiatement
 app.listen(PORT, () => {
-    console.log(`Health check endpoint listening on port ${PORT}`);
+    console.log(`Healthcheck dispo sur le port ${PORT}`);
 });
 
 // Dans votre événement ready existant
