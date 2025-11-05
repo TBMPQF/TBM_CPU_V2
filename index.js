@@ -36,7 +36,6 @@ require('./music')(bot);
 require("./handlers/loaders/loadCommands")(bot);
 require("./handlers/loaders/loadEvents")(bot);
 
-// Validation de santé pour docker 'Healthy'
 const express = require('express');
 const e = require("express");
 const app = express();
@@ -57,17 +56,14 @@ app.get('/health', (req, res) => {
     }
 });
 
-// Démarrer le serveur Express immédiatement
 app.listen(PORT, () => {
     console.log(`Healthcheck dispo sur le port ${PORT}`);
 });
 
-// Dans votre événement ready existant
 bot.once('ready', () => {
     isBotReady = true;
 });
 
-// Dans votre gestion d'erreur ou événement disconnect
 bot.on('disconnect', () => {
     isBotReady = false;
 });

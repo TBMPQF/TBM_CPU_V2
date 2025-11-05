@@ -253,21 +253,52 @@ async function renderRankCard({
   }
 
   // Rôle (petit rond + texte coloré)
-  const roleText = (roleName && roleName !== "@everyone") ? truncate(roleName, 22) : "";
-  if (roleText) {
-    const dotX = tailX + 14;
-    const dotY = 82 + SHIFT;
-    const dotR = 3.5;
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  function splitRoleGlyph(name) {
+  if (!name) return { glyph: null, rest: "" };
+  const trimmed = String(name).trimStart();
+  if (trimmed.startsWith("丨")) {
+    return { glyph: "丨", rest: trimmed.replace(/^丨\s*/, "") };
+  }
+  // ajoute ici d'autres variantes si tu en utilises : "┃", "❘", etc.
+  return { glyph: null, rest: trimmed };
+}
 
-    ctx.font = "600 18px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-    ctx.fillStyle = roleColor || theme.subtext;
-    ctx.fillText(roleText, dotX + 10, 88 + SHIFT);
+// Rôle (glyphe + texte dans la couleur du rôle)
+  const roleRawName = roleName && roleName !== "@everyone" ? roleName : "";
+  const { glyph, rest } = splitRoleGlyph(roleRawName);
+  const roleText = rest ? truncate(rest, 22) : ""; // ta fonction truncate existante
+  const color = roleColor || theme.subtext;
+
+  if (roleText || glyph) {
+    // position
+    const baseX = tailX + 16;
+    const baseY = 86 + SHIFT;
+
+    // 1) Glyphe du rôle (ex: "丨") — rendu en texte, donc pas de pixelisation/carré
+    if (glyph) {
+      ctx.save();
+      ctx.font = "900 22px Inter, Segoe UI, Arial, sans-serif"; // épais pour un beau trait
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = color;
+      ctx.fillText(glyph, baseX, baseY);
+      const gw = ctx.measureText(glyph).width;
+
+      // 2) Nom du rôle (sans le glyphe)
+      ctx.font = "600 18px Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = color;
+      ctx.fillText(roleText, baseX + gw + 8, baseY + 2); // +2 pour aligner optiquement
+      ctx.restore();
+    } else {
+      // Pas de glyphe au début du rôle → texte simple (comportement précédent)
+      ctx.save();
+      ctx.font = "600 18px Inter, Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = color;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(roleText, baseX, 88 + SHIFT);
+      ctx.restore();
+    }
   }
 
   // Lignes d'infos

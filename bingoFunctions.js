@@ -11,6 +11,7 @@ const ETAT_DB = {
 };
 const getAvatar = (user) => user?.displayAvatarURL?.({ size: 128, extension: 'png' }) ?? null;
 const MINUTES_MODE = false;
+const HOURS_BLOCKED = { start: 0, end: 7 };
 
 function intervalleAleatoire(min, max) {
   if (MINUTES_MODE) {
@@ -101,6 +102,20 @@ async function resolveBingoChannel(bot, guildId) {
 
   return channel;
 }
+function isHourBlocked(date = new Date()) {
+  const hour = date.getHours();
+  const { start, end } = HOURS_BLOCKED;
+
+  if (start < end) return hour >= start && hour < end;
+  return hour >= start || hour < end;
+}
+function generateNextAllowedBingo(minDays = 2, maxDays = 5) {
+  let next;
+  do {
+    next = new Date(Date.now() + intervalleAleatoire(minDays, maxDays));
+  } while (isHourBlocked(next)); 
+  return next;
+}
 
 const activeGuildRuns = new Set();
 
@@ -119,6 +134,22 @@ async function lancerJeuBingo(guildId, bot) {
   if (!channel) {
     console.warn(`[BINGO] Aucun salon configuré. Manche annulée pour ${guildId}.`);
     return;
+  }
+  try {
+    const fetched = await channel.messages.fetch({ limit: 100 });
+    const bingoMessages = fetched.filter(m => 
+      m.author.bot && m.embeds.length > 0 && (
+        m.embeds[0].title?.startsWith('🎉◟𝐁ingo 𝐓ime!') ||
+        m.embeds[0].title?.startsWith('⏳◟𝐁ingo 𝐓erminé') ||
+        m.embeds[0].author?.name?.includes('◟𝐁ingo 𝐆agné')
+      )
+    );
+
+    for (const [, msg] of bingoMessages) {
+      await msg.delete().catch(() => {});
+    }
+  } catch (e) {
+    console.warn(`[BINGO] Impossible de supprimer les anciens messages de bingo :`, e.message);
   }
 
   activeGuildRuns.add(guildId);
@@ -199,10 +230,7 @@ async function lancerJeuBingo(guildId, bot) {
       if (!Number.isFinite(guess)) return;
       numericMsgIds.add(message.id);
 
-      if (guess < 1 || guess > 500) {
-        setTimeout(() => message.delete().catch(() => {}), DELETE_GUESS_DELAY_MS);
-        return;
-      }
+      if (guess < 1 || guess > 500) return;
 
       const diff = Math.abs(guess - bingoNumber);
 
@@ -223,7 +251,6 @@ async function lancerJeuBingo(guildId, bot) {
         await channel.send({ embeds: [winEmbed] }).catch(() => {});
         collector.stop('found');
       } else {
-        setTimeout(() => message.delete().catch(() => {}), DELETE_GUESS_DELAY_MS);
 
         if (diff < closestGuessDifference) {
           closestGuess = guess;
@@ -271,7 +298,7 @@ async function lancerJeuBingo(guildId, bot) {
 
         const current = await Bingo.findOne({ serverID: guildId });
         if (current && (current.etat || '').trim() === ETAT_DB.ACTIF) {
-          const nextTs = new Date(Date.now() + intervalleAleatoire(2, 5));
+          const nextTs = generateNextAllowedBingo(2, 5);
           await Bingo.updateOne(
             { serverID: guildId },
             { $set: { lastBingoTime: new Date(), nextBingoTime: nextTs } },
@@ -316,7 +343,7 @@ async function verifierEtLancerJeuxBingo(bot) {
 
       if (due) {
         if (isFirstSchedulerSweep) {
-          const nextTs = new Date(Date.now() + intervalleAleatoire(2, 5));
+          const nextTs = generateNextAllowedBingo(2, 5);
           await Bingo.updateOne(
             { serverID: b.serverID },
             { $set: { nextBingoTime: nextTs } },
@@ -325,7 +352,7 @@ async function verifierEtLancerJeuxBingo(bot) {
           continue;
         }
 
-        const nextTs = new Date(Date.now() + intervalleAleatoire(2, 5));
+        const nextTs = generateNextAllowedBingo(2, 5);
         await Bingo.updateOne(
           { serverID: b.serverID },
           { $set: { nextBingoTime: nextTs } },
