@@ -4377,7 +4377,6 @@ module.exports = {
       const discordId = interaction.user.id;
       const server = interaction.guild?.name || 'N/A';
 
-      // upsert
       const user = await ApexStats.findOneAndUpdate(
         { discordId },
         { $set: { discordId, username: interaction.user.username, server, platform, gameUsername } },
@@ -4404,13 +4403,32 @@ module.exports = {
 
         const selectedLegend = stats?.legends?.selected?.LegendName ?? '—';
         const trackers = stats?.legends?.all?.[selectedLegend]?.data || [];
+        const legendBanner = stats?.legends?.selected?.ImgAssets?.banner ?? null;
 
         const rankName = stats?.global?.rank?.rankName ?? '—';
         const rankDiv  = stats?.global?.rank?.rankDiv ?? '';
         const rankScore = stats?.global?.rank?.rankScore ?? 0;
-        const legendBanner = stats?.legends?.selected?.ImgAssets?.banner ?? null;
         const rankThumb = getRankThumbnail(rankName);
 
+        const previousScore = user.lastRankScore ?? null;
+        let diffDisplay = "";
+        let embedColor = 0x2b2d31;
+
+        if (previousScore !== null) {
+          const diff = rankScore - previousScore;
+
+          if (diff > 0) {
+            diffDisplay = `\`+${formatFR(diff)} RP\``;
+            embedColor = 0x2ecc71;
+          } else if (diff < 0) {
+            diffDisplay = `\`${formatFR(diff)} RP\``;
+            embedColor = 0xe74c3c;
+          } else {
+            diffDisplay = "";
+            embedColor = 0x2b2d31;
+          }
+        }
+  
         let trackerInfo = '';
         for (let i = 0; i < Math.min(3, trackers.length); i++) {
           const t = trackers[i];
@@ -4425,28 +4443,65 @@ module.exports = {
             `**𝐏ersonnage** : **\`${selectedLegend}\`**\n\n` +
             `${trackerInfo}\n` +
             `**𝐑ang** : \`${rankName}${rankDiv ? ' ' + rankDiv : ''}\`\n` +
-            `**𝐒core** : \`${formatFR(rankScore)} / 1000 LP\``
+            `**𝐏oints classés** : \`${formatFR(rankScore)} RP\`${diffDisplay ? ' ' + diffDisplay : ''}`
           )
-          .setColor('Red')
+          .setColor(embedColor)
           .setFooter({ 
-            text: `Enregistre tes stats sur apexlegendsstatus.com`,
+            text: `Enregistre tes stats sur www.apexlegendsstatus.com`,
             iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
           });
+
+          const LadderRP = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("APEX_TOP_RP")
+              .setLabel("丨TP RP丨")
+              .setStyle(ButtonStyle.Secondary)
+              .setEmoji("🏆")
+          );
 
         if (legendBanner) embed.setImage(legendBanner);
         if (rankThumb) embed.setThumbnail(rankThumb);
 
+        user.lastRankScore = rankScore;
+        await user.save();
+
         const method = followUp ? 'followUp' : 'reply';
-        await interaction[method]({ embeds: [embed], ephemeral: true });
+        await interaction[method]({ embeds: [embed], components: [LadderRP], ephemeral: true });
+
       } catch (e) {
         console.error('[APEX] Fetch error:', e?.message);
         const method = followUp ? 'followUp' : 'reply';
         await interaction[method]({
-          content: "Impossible de récupérer tes stats pour le moment. Réessaie en enregistrant tes stats sur apexlegendsstatus.com.",
+          content: "Impossible de récupérer tes stats pour le moment. Réessaie en enregistrant tes stats sur www.apexlegendsstatus.com.",
           ephemeral: true
         });
       }
     }
+
+    if (interaction.customId === 'APEX_TOP_RP') {
+      const users = await ApexStats.find({}).sort({ lastRankScore: -1 }).limit(10);
+
+      if (!users.length)
+        return interaction.reply({ 
+          content: "Aucun joueur enregistré.", 
+          ephemeral: true 
+        });
+
+      const embed = new EmbedBuilder()
+        .setTitle("🏆丨𝐂lassement RP Apex Legends")
+        .setColor("#ffaa00");
+
+      users.forEach((u, i) => {
+        embed.addFields({
+          name: `${i+1} ◟${u.username}`,
+          value: `**${u.lastRankScore} 𝐑𝐏** (${u.dailyDiff >= 0 ? "+"+u.dailyDiff : u.dailyDiff})`,
+          inline: false
+        });
+      });
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
 
     // Bouton statistique Call of Duty
     if (interaction.customId === 'STATS_COD_BUTTON') {

@@ -43,15 +43,21 @@ async function ajouterXPUtilisateur(userId, guildId, xpAjouter, bot) {
     console.error("[XP BINGO] Erreur lors de l'ajout des XP :", error);
   }
 }
-async function ajouterFalconixUtilisateur(userId, guildId) {
+async function ajouterFalconixUtilisateur(userId, guildId, elapsedSeconds = 0, totalAttempts = 0) {
   try {
     const user = await User.findOne({ userID: userId, serverID: guildId });
     if (!user) return null;
-    const randomFalconix = Math.random() * (0.001 - 0.00025) + 0.00025;
-    const roundedFalconix = parseFloat(randomFalconix.toFixed(5));
-    user.falconix += roundedFalconix;
+
+    let base = 0.0005 + Math.random() * 0.001;
+    let speedBonus = Math.max(1, 2.5 - (elapsedSeconds / 90));
+    let attemptMalus = Math.max(0.6, 1.3 - totalAttempts / 70);
+    let finalFalconix = base * speedBonus * attemptMalus;
+    finalFalconix = Math.max(0.0004, Math.min(finalFalconix, 0.0035));
+
+    user.falconix += finalFalconix;
     await user.save();
-    return roundedFalconix;
+
+    return parseFloat(finalFalconix.toFixed(5));
   } catch (error) {
     console.error("Erreur lors de l'ajout des Falconix :", error);
     return null;
@@ -155,6 +161,7 @@ async function lancerJeuBingo(guildId, bot) {
   activeGuildRuns.add(guildId);
 
   const bingoNumber = Math.floor(Math.random() * 500) + 1;
+  const startTime = Date.now();
   let bingoWinner = null;
 
   const messagesGagnant = [
@@ -239,7 +246,13 @@ async function lancerJeuBingo(guildId, bot) {
         winnerMessageId = message.id;
         numericMsgIds.delete(message.id);
 
-        const falconix = await ajouterFalconixUtilisateur(bingoWinner.id, message.guild.id);
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        const falconix = await ajouterFalconixUtilisateur(
+          bingoWinner.id,
+          message.guild.id,
+          elapsedSeconds,
+          numericMsgIds.size
+        );
         const line = messagesGagnant[Math.floor(Math.random() * messagesGagnant.length)]
           .replace('X Falconix!', `**\`${falconix ?? 0}\` Falconix**!`);
 

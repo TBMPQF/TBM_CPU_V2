@@ -19,6 +19,8 @@ const fs = require('fs');
 const { startTwitchCheck } = require('../twitch');
 const { networkInterfaces, hostname } = require("os");
 const { startComplianceTicker } = require("../utils/complianceTicker");
+const ApexStats = require("../models/apexStats");
+const axios = require("axios");
 
 module.exports = {
   name: "ready",
@@ -868,3 +870,50 @@ async function updateVoiceChannelServer(guild) {
     onlineUpdateLocks.delete(guild.id);
   }
 }
+
+
+// Mise a jour des RP Apex Legends
+async function updateApexStatsAutomatically() {
+
+  const users = await ApexStats.find({});
+  if (!users.length) return;
+
+  for (const user of users) {
+    try {
+      const API_URL = `https://api.mozambiquehe.re/bridge?auth=${config.apex_api}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
+      const { data: stats } = await axios.get(API_URL, { timeout: 10_000 });
+
+      const rankScore = stats?.global?.rank?.rankScore ?? null;
+      if (rankScore === null) continue;
+
+      if (user.lastRankScore === null) {
+        user.lastRankScore = rankScore;
+        user.dailyDiff = 0;
+        await user.save();
+        continue;
+      }
+
+      const diff = rankScore - user.lastRankScore;
+
+      if (diff !== 0) {
+        user.dailyDiff += diff;
+        user.lastRankScore = rankScore;
+        await user.save();
+      }
+    } catch (err) {
+      console.error(`[APEX AUTO] Erreur lors de la mise à jour de ${user.username} :`, err.message || err);
+    }
+  }
+}
+
+setInterval(updateApexStatsAutomatically, 5 * 60 * 1000);
+async function resetDailyApexRP() {
+  const now = new Date();
+  if (now.getHours() === 2 && now.getMinutes() === 0) {
+    console.log("[APEX AUTO] Reset des gains journaliers...");
+    await ApexStats.updateMany({}, { dailyDiff: 0 });
+    console.log("[APEX AUTO] Reset terminé !");
+  }
+}
+
+setInterval(resetDailyApexRP, 60 * 1000);
