@@ -4168,18 +4168,14 @@ module.exports = {
       const isStaff  = interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages);
 
       if (!isAuthor && !isStaff) {
-        // on peut silencieusement ignorer, mais au moins on évite "This interaction failed"
         await interaction.deferUpdate().catch(() => {});
         return true;
       }
 
-      // Ack silencieux (pas de message envoyé)
       await interaction.deferUpdate().catch(() => {});
 
-      // Supprime le message cliqué
       try { await interaction.message.delete().catch(() => {}); } catch {}
 
-      // Supprime l’entrée BDD (par messageId ou par userId)
       await SearchMateMessage.deleteOne({ messageId: interaction.message.id }).catch(() => {});
       await SearchMateMessage.deleteOne({ userId: authorId, guildId: interaction.guild.id }).catch(() => {});
 
@@ -4361,7 +4357,6 @@ module.exports = {
       // Déjà enregistré → on fetch et on affiche
       await fetchAndReplyApexStats(interaction, user);
     }
-
     if (interaction.isModalSubmit() && interaction.customId === MODAL_CUSTOMID) {
       const platformRaw = interaction.fields.getTextInputValue(INPUT_PLATFORM);
       const gameUsername = interaction.fields.getTextInputValue(INPUT_USERNAME);
@@ -4390,13 +4385,38 @@ module.exports = {
 
       await fetchAndReplyApexStats(interaction, user, /*followUp=*/true);
     }
+    function shouldResetDaily(lastReset) {
+      const now = new Date();
+      if (!lastReset) return true;
+
+      const last = new Date(lastReset);
+      const today2h = new Date(now);
+      today2h.setHours(2, 0, 0, 0);
+
+      return now >= today2h && last < today2h;
+    }
+    function shouldResetWeekly(lastReset) {
+      const now = new Date();
+      if (!lastReset) return true;
+
+      const last = new Date(lastReset);
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      monday.setHours(2, 0, 0, 0);
+
+      return now >= monday && last < monday;
+    }
     async function fetchAndReplyApexStats(interaction, user, followUp = false) {
       try {
-        const APEX_API_KEY = config.apex_api;
-        const API_URL = `https://api.mozambiquehe.re/bridge?auth=${APEX_API_KEY}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
-        const { data: stats } = await axios.get(API_URL, { timeout: 12_000 });
+        const API_URL = `https://api.mozambiquehe.re/bridge?auth=${config.apex_api}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
+        const { data: stats } = await axios.get(API_URL, { timeout: 12000 });
 
+        // ===== DATA API =====
+        const rankScore = stats?.global?.rank?.rankScore ?? 0;
+        const rankName  = stats?.global?.rank?.rankName ?? '—';
+        const rankDiv   = stats?.global?.rank?.rankDiv ?? '';
         const playerName = stats?.global?.name ?? user.gameUsername;
+
         const level = stats?.global?.level ?? 0;
         const prestige = stats?.global?.levelPrestige ?? 0;
         const levelWithStars = prestige > 0 ? `${level} ${'⭐'.repeat(prestige)}` : String(level);
@@ -4404,31 +4424,44 @@ module.exports = {
         const selectedLegend = stats?.legends?.selected?.LegendName ?? '—';
         const trackers = stats?.legends?.all?.[selectedLegend]?.data || [];
         const legendBanner = stats?.legends?.selected?.ImgAssets?.banner ?? null;
-
-        const rankName = stats?.global?.rank?.rankName ?? '—';
-        const rankDiv  = stats?.global?.rank?.rankDiv ?? '';
-        const rankScore = stats?.global?.rank?.rankScore ?? 0;
         const rankThumb = getRankThumbnail(rankName);
 
-        const previousScore = user.lastRankScore ?? null;
+        // ===== RESET JOUR / SEMAINE =====
+        if (shouldResetDaily(user.dailyResetAt)) {
+          user.dailyRpGained = 0;
+          user.dailyResetAt = new Date();
+        }
+
+        if (shouldResetWeekly(user.weeklyResetAt)) {
+          user.weeklyRpGained = 0;
+          user.weeklyResetAt = new Date();
+        }
+
+        // ===== DIFF RP =====
+        const previousScore = user.lastRankScore;
+        let diff = 0;
+
+        if (previousScore !== null) {
+          diff = rankScore - previousScore;
+          user.dailyRpGained  += diff;
+          user.weeklyRpGained += diff;
+        }
+
+        // ===== AFFICHAGE DIFF =====
         let diffDisplay = "";
         let embedColor = 0x2b2d31;
 
         if (previousScore !== null) {
-          const diff = rankScore - previousScore;
-
           if (diff > 0) {
             diffDisplay = `\`+${formatFR(diff)} RP\``;
             embedColor = 0x2ecc71;
           } else if (diff < 0) {
             diffDisplay = `\`${formatFR(diff)} RP\``;
             embedColor = 0xe74c3c;
-          } else {
-            diffDisplay = "";
-            embedColor = 0x2b2d31;
           }
         }
-  
+
+        // ===== TRACKERS =====
         let trackerInfo = '';
         for (let i = 0; i < Math.min(3, trackers.length); i++) {
           const t = trackers[i];
@@ -4436,6 +4469,11 @@ module.exports = {
           trackerInfo += `**${stylizeFirstLetter(t.name)}** : \`${formatFR(t.value || 0)}\`\n`;
         }
 
+        // ===== SAVE =====
+        user.lastRankScore = rankScore;
+        await user.save();
+
+        // ===== EMBED =====
         const embed = new EmbedBuilder()
           .setTitle(`◟ **${playerName}**`)
           .setDescription(
@@ -4443,58 +4481,60 @@ module.exports = {
             `**𝐏ersonnage** : **\`${selectedLegend}\`**\n\n` +
             `${trackerInfo}\n` +
             `**𝐑ang** : \`${rankName}${rankDiv ? ' ' + rankDiv : ''}\`\n` +
-            `**𝐏oints classés** : \`${formatFR(rankScore)} RP\`${diffDisplay ? ' ' + diffDisplay : ''}`
+            `**𝐏oints classés** : \`${formatFR(rankScore)} RP\`${diffDisplay ? ' ' + diffDisplay : ''}\n\n` +
+            `🕒 **𝐆ains aujourd’hui** : \`${formatFR(user.dailyRpGained)} RP\`\n` +
+            `📆 **𝐆ains cette semaine** : \`${formatFR(user.weeklyRpGained)} RP\``
           )
           .setColor(embedColor)
-          .setFooter({ 
-            text: `Enregistre tes stats sur www.apexlegendsstatus.com`,
+          .setFooter({
+            text: `Reset journalier à 02h • Reset hebdo lundi 02h`,
             iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
           });
-
-          const LadderRP = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("APEX_TOP_RP")
-              .setLabel("丨TP RP丨")
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji("🏆")
-          );
 
         if (legendBanner) embed.setImage(legendBanner);
         if (rankThumb) embed.setThumbnail(rankThumb);
 
-        user.lastRankScore = rankScore;
-        await user.save();
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("APEX_TOP_RP")
+            .setLabel("丨TP RP丨")
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji("🏆")
+        );
 
-        const method = followUp ? 'followUp' : 'reply';
-        await interaction[method]({ embeds: [embed], components: [LadderRP], ephemeral: true });
+        await interaction[followUp ? 'followUp' : 'reply']({
+          embeds: [embed],
+          components: [row],
+          ephemeral: true
+        });
 
       } catch (e) {
-        console.error('[APEX] Fetch error:', e?.message);
-        const method = followUp ? 'followUp' : 'reply';
-        await interaction[method]({
-          content: "Impossible de récupérer tes stats pour le moment. Réessaie en enregistrant tes stats sur www.apexlegendsstatus.com.",
+        console.error('[APEX] Fetch error:', e);
+        await interaction.reply({
+          content: "❌ Impossible de récupérer tes stats Apex.",
           ephemeral: true
         });
       }
     }
-
     if (interaction.customId === 'APEX_TOP_RP') {
-      const users = await ApexStats.find({}).sort({ lastRankScore: -1 }).limit(10);
+      const users = await ApexStats
+        .find({})
+        .sort({ weeklyRpGained: -1 })
+        .limit(10);
 
       if (!users.length)
-        return interaction.reply({ 
-          content: "Aucun joueur enregistré.", 
-          ephemeral: true 
-        });
+        return interaction.reply({ content: "Aucun joueur classé.", ephemeral: true });
 
       const embed = new EmbedBuilder()
-        .setTitle("🏆丨𝐂lassement RP Apex Legends")
-        .setColor("#ffaa00");
+        .setTitle("🏆丨Top RP Hebdomadaire")
+        .setColor("#f1c40f")
+        .setThumbnail("https://media.contentapi.ea.com/content/dam/apex-legends/images/2023/01/apex-ranked-badges.jpg")
+        .setFooter({ text: "Classement basé sur les gains RP de la semaine" });
 
       users.forEach((u, i) => {
         embed.addFields({
-          name: `${i+1} ◟${u.username}`,
-          value: `**${u.lastRankScore} 𝐑𝐏** (${u.dailyDiff >= 0 ? "+"+u.dailyDiff : u.dailyDiff})`,
+          name: `${i + 1} ◟ ${u.username}`,
+          value: `📈 **${u.weeklyRpGained.toLocaleString('fr-FR')} RP**`,
           inline: false
         });
       });

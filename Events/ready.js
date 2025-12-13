@@ -20,7 +20,7 @@ const { startTwitchCheck } = require('../twitch');
 const { networkInterfaces, hostname } = require("os");
 const { startComplianceTicker } = require("../utils/complianceTicker");
 const ApexStats = require("../models/apexStats");
-const axios = require("axios");
+const { updateApexStatsAutomatically } = require("../utils/apexAuto");
 
 module.exports = {
   name: "ready",
@@ -412,7 +412,7 @@ module.exports = {
         .setColor("Purple")
         .setTitle("――――――――∈ `MUSIQUES` ∋――――――――")
         .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-        .setDescription("**𝐋a playlist est vide pour le moment**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.\n𝐔ne fois la playlist crée, n'oublie pas d'être dans le même salon que le BOT pour intéragir avec les différents boutons. (:")
+        .setDescription("**丨𝐋a playlist est vide pour le moment丨**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.\n𝐔ne fois la playlist crée, n'oublie pas d'être dans le même salon que le BOT pour intéragir avec les différents boutons. (:")
         .setFooter({
           text: `𝐂ordialement, l'équipe ${guild.name}`,
           iconURL: guild.iconURL(),
@@ -871,49 +871,53 @@ async function updateVoiceChannelServer(guild) {
   }
 }
 
-
-// Mise a jour des RP Apex Legends
-async function updateApexStatsAutomatically() {
-
-  const users = await ApexStats.find({});
-  if (!users.length) return;
-
-  for (const user of users) {
-    try {
-      const API_URL = `https://api.mozambiquehe.re/bridge?auth=${config.apex_api}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
-      const { data: stats } = await axios.get(API_URL, { timeout: 10_000 });
-
-      const rankScore = stats?.global?.rank?.rankScore ?? null;
-      if (rankScore === null) continue;
-
-      if (user.lastRankScore === null) {
-        user.lastRankScore = rankScore;
-        user.dailyDiff = 0;
-        await user.save();
-        continue;
-      }
-
-      const diff = rankScore - user.lastRankScore;
-
-      if (diff !== 0) {
-        user.dailyDiff += diff;
-        user.lastRankScore = rankScore;
-        await user.save();
-      }
-    } catch (err) {
-      console.error(`[APEX AUTO] Erreur lors de la mise à jour de ${user.username} :`, err.message || err);
-    }
-  }
+// Update RP d'Apex Legends toutes les 5 minutes
+function shouldResetDaily(lastReset) {
+    if (!lastReset) return true; // Reset if never reset before
+    const now = Date.now();
+    const lastResetTime = new Date(lastReset).getTime();
+    return (now - lastResetTime) >= 24 * 60 * 60 * 1000; // 24 hours in ms
 }
-
-setInterval(updateApexStatsAutomatically, 5 * 60 * 1000);
-async function resetDailyApexRP() {
-  const now = new Date();
-  if (now.getHours() === 2 && now.getMinutes() === 0) {
-    console.log("[APEX AUTO] Reset des gains journaliers...");
-    await ApexStats.updateMany({}, { dailyDiff: 0 });
-    console.log("[APEX AUTO] Reset terminé !");
-  }
+function shouldResetWeekly(lastReset) {
+    if (!lastReset) return true; // Reset if never reset before
+    const now = Date.now();
+    const lastResetTime = new Date(lastReset).getTime();
+    return (now - lastResetTime) >= 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 }
+setInterval(async () => {
+      try {
+        const users = await ApexStats.find({});
+        let dailyResets = 0;
+        let weeklyResets = 0;
+        
+        for (const user of users) {
+          let changed = false;
 
-setInterval(resetDailyApexRP, 60 * 1000);
+          if (shouldResetDaily(user.dailyResetAt)) {
+            user.dailyRpGained = 0;
+            user.dailyResetAt = new Date();
+            changed = true;
+            dailyResets++;
+          }
+
+          if (shouldResetWeekly(user.weeklyResetAt)) {
+            user.weeklyRpGained = 0;
+            user.weeklyResetAt = new Date();
+            changed = true;
+            weeklyResets++;
+          }
+
+          if (changed) await user.save();
+        }
+        
+        if (dailyResets > 0 || weeklyResets > 0) {
+          console.log(`[APEX RESET] Daily resets: ${dailyResets}, Weekly resets: ${weeklyResets}`);
+        }
+      } catch (error) {
+        console.error("[APEX RESET] Error during reset check:", error);
+      }
+    }, 3600000);
+
+    setInterval(() => {
+      updateApexStatsAutomatically().catch(console.error);
+    }, 5 * 60 * 1000);

@@ -25,7 +25,7 @@
     "discord-xp": "^1.1.16",
     "discord.js": "^14.15.3",
     "discord.js-commando": "^0.12.3",
-    "distube": "^5.0.2",
+    "distube": "^5.0.7",
     "dockerode": "^4.0.2",
     "dotenv": "^17.2.1",
     "ejs": "^3.1.10",

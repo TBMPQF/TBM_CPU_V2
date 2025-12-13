@@ -142,17 +142,46 @@ async function lancerJeuBingo(guildId, bot) {
     return;
   }
   try {
-    const fetched = await channel.messages.fetch({ limit: 100 });
-    const bingoMessages = fetched.filter(m => 
-      m.author.bot && m.embeds.length > 0 && (
-        m.embeds[0].title?.startsWith('🎉◟𝐁ingo 𝐓ime!') ||
-        m.embeds[0].title?.startsWith('⏳◟𝐁ingo 𝐓erminé') ||
-        m.embeds[0].author?.name?.includes('◟𝐁ingo 𝐆agné')
-      )
-    );
+    async function fetchAllBingoMessages(channel, maxMessages = 5000) {
+      let lastId = null;
+      const all = [];
 
-    for (const [, msg] of bingoMessages) {
-      await msg.delete().catch(() => {});
+      while (all.length < maxMessages) {
+        const fetchLimit = Math.min(100, maxMessages - all.length);
+
+        const fetched = await channel.messages.fetch({
+          limit: fetchLimit,
+          ...(lastId ? { before: lastId } : {})
+        }).catch(() => null);
+
+        if (!fetched || fetched.size === 0) break;
+
+        const filtered = fetched.filter(m =>
+          m.author.bot && m.embeds.length > 0 && (
+            m.embeds[0].title?.startsWith('🎉◟𝐁ingo 𝐓ime!') ||
+            m.embeds[0].title?.startsWith('⏳◟𝐁ingo 𝐓erminé') ||
+            m.embeds[0].author?.name?.includes('◟𝐁ingo 𝐆agné')
+          )
+        );
+
+        all.push(...filtered.values());
+
+        lastId = fetched.last().id;
+        if (!lastId) break;
+      }
+
+      return all;
+    }
+
+    try {
+      const bingoMessages = await fetchAllBingoMessages(channel, 5000);
+
+      for (const msg of bingoMessages) {
+        await msg.delete().catch(() => {});
+        await sleep(100);
+      }
+    } catch (e) {
+      console.warn(`[BINGO] Impossible de supprimer les anciens messages de bingo :`, e.message);
     }
   } catch (e) {
     console.warn(`[BINGO] Impossible de supprimer les anciens messages de bingo :`, e.message);
