@@ -55,7 +55,8 @@ cat << EOF > ./config.json
     "clientSecret": "$TWITCH_SECRET"
   },
   "apex_api": "$APEX_API",
-  "genius_api": "$GENIUS_API"
+  "genius_api": "$GENIUS_API",
+  "football_api": "$FOOTBALL_API"
 }
 EOF
 

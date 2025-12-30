@@ -21,6 +21,7 @@ const { networkInterfaces, hostname } = require("os");
 const { startComplianceTicker } = require("../utils/complianceTicker");
 const ApexStats = require("../models/apexStats");
 const { updateApexStatsAutomatically } = require("../utils/apexAuto");
+const axios = require("axios");
 
 module.exports = {
   name: "ready",
@@ -681,31 +682,123 @@ module.exports = {
     }, 43200000); // Toutes les 12 heures
 
     // Activité du bot
+    const API_FOOTBALL_KEY = config.football_api;
+    const PSG_TEAM_ID = 85;
+
+    const MATCH_CHECK_INTERVAL = 60 * 1000; // 1 min
+    const ROTATION_INTERVAL = 30 * 1000; // 30 sec
+    const END_MATCH_DELAY = 20 * 60 * 1000; // 20 min
+
+    let mode = "normal"; // normal | match
+    let matchEndTimeout = null;
+    let activityIndex = 0;
+
+
     const activities = [
-      { name: "𝐀pex 𝐋egends", type: ActivityType.Playing },
-      { name: ``, type: ActivityType.Listening }, // Ceci sera mis à jour dynamiquement avec le nombre de serveurs
-      { name: "le 𝐏aris 𝐒aint-𝐆ermain", type: ActivityType.Watching },
-      { name: ``, type: ActivityType.Listening }, // Ceci sera mis à jour dynamiquement avec le nombre total de membres
+      { name: "🎮 Joue à 𝐀pex 𝐋egends", type: ActivityType.Playing },
+      { name: "", type: ActivityType.Custom }, // serveurs
+      { name: "S'entraine au padel", type: ActivityType.Custom },
+      { name: "", type: ActivityType.Custom }, // membres
     ];
 
-    let i = 0;
-    setInterval(() => {
-      let activity = activities[i];
-    
-      if (activity.type === ActivityType.Listening && i === 1) {
-        activity.name = `丨${bot.guilds.cache.size}丨𝐒erveurs`;
-      } else if (activity.type === ActivityType.Listening && i === 3) {
-        const totalMembers = bot.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-        activity.name = `${totalMembers}丨𝐌embres`;
+    async function getPSGMatch() {
+      try {
+        const res = await axios.get(
+          "https://v3.football.api-sports.io/fixtures",
+          {
+            headers: {
+              "x-apisports-key": API_FOOTBALL_KEY,
+            },
+            params: {
+              team: PSG_TEAM_ID,
+              last: 1,
+            },
+          }
+        );
+
+        return res.data.response[0] || null;
+      } catch (err) {
+        console.error("❌ API-Football error :", err.message);
+        return null;
       }
-    
+    }
+
+    async function updateMatchPresence(bot) {
+      const match = await getPSGMatch();
+      if (!match) return;
+
+      const { fixture, teams, goals } = match;
+
+      const isPSGHome = teams.home.id === PSG_TEAM_ID;
+      const opponent = isPSGHome ? teams.away.name : teams.home.name;
+
+      const psgGoals = isPSGHome ? goals.home : goals.away;
+      const oppGoals = isPSGHome ? goals.away : goals.home;
+
+      const status = fixture.status.short;
+      const minute = fixture.status.elapsed;
+
+      let suffix = null;
+
+      if (status === "1H" || status === "2H") {
+        suffix = `${minute}'`;
+        mode = "match";
+      } else if (status === "HT") {
+        suffix = "MT";
+        mode = "match";
+      } else if (status === "FT") {
+        suffix = "FT";
+        mode = "match";
+
+        if (!matchEndTimeout) {
+          matchEndTimeout = setTimeout(() => {
+            mode = "normal";
+            matchEndTimeout = null;
+          }, END_MATCH_DELAY);
+        }
+      } else {
+        return;
+      }
+
+      bot.user.setPresence({
+        activities: [
+          {
+            name: `⚽丨PSG ${psgGoals} - ${oppGoals} ${opponent} (${suffix})`,
+            type: ActivityType.Custom,
+          },
+        ],
+        status: "dnd",
+      });
+    }
+
+    setInterval(() => {
+      if (mode !== "normal") return;
+
+      let activity = activities[activityIndex];
+
+      if (activityIndex === 1) {
+        activity.name = `🌐丨${bot.guilds.cache.size} 𝐒erveurs`;
+      }
+
+      if (activityIndex === 3) {
+        const totalMembers = bot.guilds.cache.reduce(
+          (acc, guild) => acc + guild.memberCount,
+          0
+        );
+        activity.name = `👥丨${totalMembers} 𝐌embres`;
+      }
+
       bot.user.setPresence({
         activities: [activity],
         status: "dnd",
       });
-    
-      i = (i + 1) % activities.length;
-    }, 30 * 1000);
+
+      activityIndex = (activityIndex + 1) % activities.length;
+    }, ROTATION_INTERVAL);
+
+    setInterval(() => {
+      updateMatchPresence(bot);
+    }, MATCH_CHECK_INTERVAL);
 
     // Même emoji lors d'un emoji react
     bot.on('messageReactionAdd', async (reaction, user) => {
@@ -872,52 +965,65 @@ async function updateVoiceChannelServer(guild) {
 }
 
 // Update RP d'Apex Legends toutes les 5 minutes
-function shouldResetDaily(lastReset) {
-    if (!lastReset) return true; // Reset if never reset before
-    const now = Date.now();
-    const lastResetTime = new Date(lastReset).getTime();
-    return (now - lastResetTime) >= 24 * 60 * 60 * 1000; // 24 hours in ms
+function getTodayAt4AM() {
+  const d = new Date();
+  d.setHours(4, 0, 0, 0);
+  return d;
 }
-function shouldResetWeekly(lastReset) {
-    if (!lastReset) return true; // Reset if never reset before
-    const now = Date.now();
-    const lastResetTime = new Date(lastReset).getTime();
-    return (now - lastResetTime) >= 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+function getMondayAt4AM() {
+  const d = new Date();
+  const day = d.getDay(); // 0 = dimanche, 1 = lundi
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(4, 0, 0, 0);
+  return d;
+}
+function shouldResetDaily(lastResetAt) {
+  const today4 = getTodayAt4AM();
+  if (Date.now() < today4.getTime()) return false; // pas encore 04h
+  if (!lastResetAt) return true;
+  return new Date(lastResetAt) < today4;
+}
+function shouldResetWeekly(lastResetAt) {
+  const monday4 = getMondayAt4AM();
+  if (Date.now() < monday4.getTime()) return false; // pas encore lundi 04h
+  if (!lastResetAt) return true;
+  return new Date(lastResetAt) < monday4;
 }
 setInterval(async () => {
-      try {
-        const users = await ApexStats.find({});
-        let dailyResets = 0;
-        let weeklyResets = 0;
-        
-        for (const user of users) {
-          let changed = false;
+  try {
+    const users = await ApexStats.find({});
+    let dailyResets = 0;
+    let weeklyResets = 0;
 
-          if (shouldResetDaily(user.dailyResetAt)) {
-            user.dailyRpGained = 0;
-            user.dailyResetAt = new Date();
-            changed = true;
-            dailyResets++;
-          }
+    for (const user of users) {
+      let changed = false;
 
-          if (shouldResetWeekly(user.weeklyResetAt)) {
-            user.weeklyRpGained = 0;
-            user.weeklyResetAt = new Date();
-            changed = true;
-            weeklyResets++;
-          }
-
-          if (changed) await user.save();
-        }
-        
-        if (dailyResets > 0 || weeklyResets > 0) {
-          console.log(`[APEX RESET] Daily resets: ${dailyResets}, Weekly resets: ${weeklyResets}`);
-        }
-      } catch (error) {
-        console.error("[APEX RESET] Error during reset check:", error);
+      if (shouldResetDaily(user.dailyResetAt)) {
+        user.dailyRpGained = 0;
+        user.dailyResetAt = new Date();
+        changed = true;
+        dailyResets++;
       }
-    }, 3600000);
 
-    setInterval(() => {
-      updateApexStatsAutomatically().catch(console.error);
-    }, 5 * 60 * 1000);
+      if (shouldResetWeekly(user.weeklyResetAt)) {
+        user.weeklyRpGained = 0;
+        user.weeklyResetAt = new Date();
+        changed = true;
+        weeklyResets++;
+      }
+
+      if (!user.server) {
+        user.server = user.server || "Unknown";
+      }
+      if (changed) await user.save();
+    }
+  } catch (err) {
+    console.error("[APEX RESET] Error:", err);
+  }
+}, 60 * 1000);
+setInterval(() => {
+  updateApexStatsAutomatically().catch(err =>
+    console.error("[APEX AUTO] Update error:", err)
+  );
+}, 5 * 60 * 1000);

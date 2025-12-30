@@ -34,6 +34,7 @@ const Suggestion = require('../models/suggestion');
 const TwitchStreamers = require("../models/TwitchStreamers")
 const messagesRandom = require('../models/messageRandom');
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
+
 const ETAT_DB = {
   ACTIF: '𝐀𝐂𝐓𝐈𝐅',
   INACTIF: '𝐈𝐍𝐀𝐂𝐓𝐈𝐅',
@@ -4287,11 +4288,32 @@ module.exports = {
     }
 
     // Bouton statistique d'Apex Legends
-    const STATS_BTN_ID   = 'STATS_APEX_BUTTON';
+    const STATS_BTN_ID    = 'STATS_APEX_BUTTON';
     const MODAL_CUSTOMID = 'APEX_REGISTER_MODAL';
     const INPUT_PLATFORM = 'platform';
     const INPUT_USERNAME = 'gameUsername';
+    const imageCache = new Map();
 
+    const CUSTOM_LEGEND_BACKGROUNDS = {
+      Alter: "https://i.postimg.cc/WbFwxWb2/602037c32b79-alter-is-already-causing-chaos-in-apex-legends.jpg",
+      Conduit: "https://i.postimg.cc/FsdVwWsK/Conduit-Apex-Legends-2.jpg",
+      Ballistic: "https://i.postimg.cc/BQLBRYQ6/1312497.jpg",
+      Catalyst: "https://i.postimg.cc/yYgy2QY1/images.jpg",
+      Sparrow: "https://i.postimg.cc/SN2fHTNx/120932295.avif"
+    };
+
+    function getRankColor(rank) {
+      switch ((rank || '').toLowerCase()) {
+        case 'bronze': return '#cd7f32';
+        case 'silver': return '#bdc3c7';
+        case 'gold': return '#f1c40f';
+        case 'platinum': return '#1abc9c';
+        case 'diamond': return '#3498db';
+        case 'master': return '#9b59b6';
+        case 'predator': return '#e74c3c';
+        default: return '#95a5a6';
+      }
+    }
     function normalizePlatform(raw) {
       const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
       if (['pc', 'steam', 'origin'].includes(s)) return 'PC';
@@ -4302,246 +4324,345 @@ module.exports = {
     }
     function getRankThumbnail(rankName = '') {
       switch (rankName.toLowerCase()) {
-        case 'rookie':    return 'https://i0.wp.com/www.alphr.com/wp-content/uploads/2022/02/BR_Unranked.png?resize=425%2C425&ssl=1';
-        case 'bronze':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_bronze_rs15.png';
-        case 'silver':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_silver_rs7.png';
-        case 'gold':      return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_gold_rs7.png';
-        case 'platinum':  return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_platinum_rs7.png';
-        case 'diamond':   return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_diamond_rs7.png';
-        case 'master':    return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_master_rs7.png';
-        case 'predator':  return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
-        default:          return null;
+        case 'bronze':   return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_bronze_rs15.png';
+        case 'silver':   return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_silver_rs7.png';
+        case 'gold':     return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_gold_rs7.png';
+        case 'platinum': return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_platinum_rs7.png';
+        case 'diamond':  return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_diamond_rs7.png';
+        case 'master':   return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_master_rs7.png';
+        case 'predator': return 'https://apexlegendsstatus.com/assets/badges/badges_new/you_re_tiering_me_apart_apex_predator_rs7.png';
+        default: return null;
       }
     }
-    function formatFR(n){ return Number(n||0).toLocaleString('fr-FR'); }
-    function stylizeFirstLetter(text=''){
-      const map = {'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙'};
+    function formatFR(n) {
+      return Number(n || 0).toLocaleString('fr-FR');
+    }
+    function stylizeFirstLetter(text = '') {
+      const map = { A:'𝐀',B:'𝐁',C:'𝐂',D:'𝐃',E:'𝐄',F:'𝐅',G:'𝐆',H:'𝐇',I:'𝐈',J:'𝐉',K:'𝐊',L:'𝐋',M:'𝐌',N:'𝐍',O:'𝐎',P:'𝐏',Q:'𝐐',R:'𝐑',S:'𝐒',T:'𝐓',U:'𝐔',V:'𝐕',W:'𝐖',X:'𝐗',Y:'𝐘',Z:'𝐙' };
       if (!text) return text;
-      const f = text[0].toUpperCase();
-      return map[f] ? text.replace(text[0], map[f]) : text;
+      return map[text[0].toUpperCase()]
+        ? map[text[0].toUpperCase()] + text.slice(1)
+        : text;
+    }
+    async function loadCachedImage(url) {
+      if (!url) return null;
+      if (imageCache.has(url)) return imageCache.get(url);
+
+      try {
+        const img = await loadImage(url);
+        imageCache.set(url, img);
+        return img;
+      } catch {
+        return null;
+      }
+    }
+    const DIVISION_STARTS = {
+      ROOKIE:    [0, 250, 500, 750],
+      BRONZE:    [250, 750, 1250, 1750],
+      SILVER:    [2250, 2750, 3250, 3750],
+      GOLD:      [3000, 3750, 4500, 5250],
+      PLATINUM:  [8500, 9250, 10000, 11000],
+      DIAMOND:   [12000, 13000, 14000, 15000],
+      MASTER:    [16000]
+    };
+    function getDivisionBounds(rankName, rankDiv) {
+      const key = rankName.toUpperCase();
+      const divIndex = { IV: 0, III: 1, II: 2, I: 3 }[rankDiv] ?? 0;
+
+      const starts = DIVISION_STARTS[key];
+      if (!starts) return null;
+
+      const start = starts[divIndex];
+      const end = starts[divIndex + 1] ?? (start + 1000);
+
+      return { start, size: end - start };
+    }
+    function drawStaticLightning(ctx, x, y, height, color) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+
+      const segments = 5 + Math.floor(Math.random() * 3);
+      let cx = x;
+      let cy = y;
+
+      for (let i = 0; i < segments; i++) {
+        cx += (Math.random() - 0.5) * 18;
+        cy += height / segments;
+        ctx.lineTo(cx, cy);
+      }
+
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    async function getLegendBackground(data) {
+      const assets = data?.legends?.selected?.ImgAssets || {};
+      const legendName = data?.legends?.selected?.LegendName;
+
+      const apiUrl =
+        assets.banner ||
+        assets.background ||
+        assets.card ||
+        assets.icon ||
+        null;
+
+      if (apiUrl) {
+        const img = await loadCachedImage(apiUrl);
+        if (img) return img;
+      }
+
+      if (legendName && CUSTOM_LEGEND_BACKGROUNDS[legendName]) {
+        const img = await loadCachedImage(
+          CUSTOM_LEGEND_BACKGROUNDS[legendName]
+        );
+        if (img) return img;
+      }
+
+      if (CUSTOM_LEGEND_BACKGROUNDS.default) {
+        return await loadCachedImage(CUSTOM_LEGEND_BACKGROUNDS.default);
+      }
+
+      return null;
     }
     if (interaction.isButton() && interaction.customId === STATS_BTN_ID) {
       const discordId = interaction.user.id;
-      let user = await ApexStats.findOne({ discordId });
+      const user = await ApexStats.findOne({ discordId });
 
       if (!user) {
-        // Affiche un modal (pas besoin d’écrire dans le salon)
         const modal = new ModalBuilder()
           .setCustomId(MODAL_CUSTOMID)
           .setTitle('Apex Legends — Enregistrement');
 
-        const platformInput = new TextInputBuilder()
-          .setCustomId(INPUT_PLATFORM)
-          .setLabel('Plateforme (PC / PS / XBOX / SWITCH)')
-          .setPlaceholder('Ex: PC')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setMaxLength(12);
-
-        const usernameInput = new TextInputBuilder()
-          .setCustomId(INPUT_USERNAME)
-          .setLabel('Identifiant en jeu')
-          .setPlaceholder('Ex: TBM_PQF')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setMaxLength(32);
-
         modal.addComponents(
-          new ActionRowBuilder().addComponents(platformInput),
-          new ActionRowBuilder().addComponents(usernameInput),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId(INPUT_PLATFORM)
+              .setLabel('Plateforme (PC / PS / XBOX / SWITCH)')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId(INPUT_USERNAME)
+              .setLabel('Identifiant en jeu')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          )
         );
 
         return interaction.showModal(modal);
       }
 
-      // Déjà enregistré → on fetch et on affiche
       await fetchAndReplyApexStats(interaction, user);
     }
-    if (interaction.isModalSubmit() && interaction.customId === MODAL_CUSTOMID) {
-      const platformRaw = interaction.fields.getTextInputValue(INPUT_PLATFORM);
-      const gameUsername = interaction.fields.getTextInputValue(INPUT_USERNAME);
 
-      const platform = normalizePlatform(platformRaw);
+    if (interaction.isModalSubmit() && interaction.customId === MODAL_CUSTOMID) {
+      const platform = normalizePlatform(
+        interaction.fields.getTextInputValue(INPUT_PLATFORM)
+      );
+
       if (!platform) {
-        return interaction.reply({ 
-          content: "Plateforme invalide. Utilise **PC**, **PS**, **XBOX** ou **SWITCH**.",
+        return interaction.reply({
+          content: "Plateforme invalide (**PC / PS / XBOX / SWITCH**)",
           ephemeral: true
         });
       }
 
-      const discordId = interaction.user.id;
-      const server = interaction.guild?.name || 'N/A';
-
       const user = await ApexStats.findOneAndUpdate(
-        { discordId },
-        { $set: { discordId, username: interaction.user.username, server, platform, gameUsername } },
-        { new: true, upsert: true }
+        { discordId: interaction.user.id },
+        {
+          $set: {
+            discordId: interaction.user.id,
+            username: interaction.user.username,
+            platform,
+            gameUsername: interaction.fields.getTextInputValue(INPUT_USERNAME)
+          }
+        },
+        { upsert: true, new: true }
       );
-
-      await interaction.reply({ 
-        content: `✅ Infos enregistrées ! Plateforme: **${platform}**, ID: **${gameUsername}**.\nJe récupère tes stats…`,
-        ephemeral: true 
-      });
-
-      await fetchAndReplyApexStats(interaction, user, /*followUp=*/true);
+      await fetchAndReplyApexStats(interaction, user);
     }
-    function shouldResetDaily(lastReset) {
-      const now = new Date();
-      if (!lastReset) return true;
 
-      const last = new Date(lastReset);
-      const today2h = new Date(now);
-      today2h.setHours(2, 0, 0, 0);
+    async function fetchAndReplyApexStats(interaction, user) {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ ephemeral: true });
+      }
 
-      return now >= today2h && last < today2h;
-    }
-    function shouldResetWeekly(lastReset) {
-      const now = new Date();
-      if (!lastReset) return true;
-
-      const last = new Date(lastReset);
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-      monday.setHours(2, 0, 0, 0);
-
-      return now >= monday && last < monday;
-    }
-    async function fetchAndReplyApexStats(interaction, user, followUp = false) {
       try {
-        const API_URL = `https://api.mozambiquehe.re/bridge?auth=${config.apex_api}&player=${encodeURIComponent(user.gameUsername)}&platform=${user.platform}`;
-        const { data: stats } = await axios.get(API_URL, { timeout: 12000 });
+        const { data } = await axios.get("https://api.mozambiquehe.re/bridge", {
+          params: {
+            auth: config.apex_api,
+            player: user.gameUsername,
+            platform: user.platform
+          },
+          timeout: 12000
+        });
 
-        // ===== DATA API =====
-        const rankScore = stats?.global?.rank?.rankScore ?? 0;
-        const rankName  = stats?.global?.rank?.rankName ?? '—';
-        const rankDiv   = stats?.global?.rank?.rankDiv ?? '';
-        const playerName = stats?.global?.name ?? user.gameUsername;
+        const rankData = data?.global?.rank || {};
+        const rankScore = Number(rankData.rankScore) || 0;
+        const rankName  = rankData.rankName || "Unranked";
+        const rankDiv   = Number(rankData.rankDiv);
+        const legend    = data?.legends?.selected?.LegendName ?? "—";
+        const legendImg = await getLegendBackground(data);
 
-        const level = stats?.global?.level ?? 0;
-        const prestige = stats?.global?.levelPrestige ?? 0;
-        const levelWithStars = prestige > 0 ? `${level} ${'⭐'.repeat(prestige)}` : String(level);
+        const RANK_TABLE = {
+          Rookie:   { base: 0,    step: 250,  divs: 4 },
+          Bronze:   { base: 1500, step: 500,  divs: 4 },
+          Silver:   { base: 3500, step: 500,  divs: 4 },
+          Gold:     { base: 5500, step: 750,  divs: 4 },
+          Platinum: { base: 8500, step: [750, 750, 1000, 1000] },
+          Diamond:  { base: 12000,step: 1000, divs: 4 },
+          Master:   { base: 16000,step: null },
+        };
 
-        const selectedLegend = stats?.legends?.selected?.LegendName ?? '—';
-        const trackers = stats?.legends?.all?.[selectedLegend]?.data || [];
-        const legendBanner = stats?.legends?.selected?.ImgAssets?.banner ?? null;
-        const rankThumb = getRankThumbnail(rankName);
+        const rankCfg = RANK_TABLE[rankName];
+        let divisionBase = 0;
+        let divisionSize = 1;
 
-        // ===== RESET JOUR / SEMAINE =====
-        if (shouldResetDaily(user.dailyResetAt)) {
-          user.dailyRpGained = 0;
-          user.dailyResetAt = new Date();
+        if (rankCfg && rankDiv) {
+          if (Array.isArray(rankCfg.step)) {
+            divisionBase = rankCfg.base;
+            for (let i = 4; i > rankDiv; i--) {
+              divisionBase += rankCfg.step[4 - i];
+            }
+            divisionSize = rankCfg.step[4 - rankDiv];
+          } else {
+            divisionBase = rankCfg.base + (4 - rankDiv) * rankCfg.step;
+            divisionSize = rankCfg.step;
+          }
         }
 
-        if (shouldResetWeekly(user.weeklyResetAt)) {
-          user.weeklyRpGained = 0;
-          user.weeklyResetAt = new Date();
-        }
+        const rpInDiv = Math.max(0, rankScore - divisionBase);
+        const progress = Math.min(rpInDiv / divisionSize, 1);
 
-        // ===== DIFF RP =====
-        const previousScore = user.lastRankScore;
+        const now = new Date();
+        const resetDaily = new Date(now);
+        resetDaily.setHours(4,0,0,0);
+        if (now < resetDaily) resetDaily.setDate(resetDaily.getDate() - 1);
+
         let diff = 0;
+        if (user.lastRankScore !== null) {
+          diff = rankScore - user.lastRankScore;
 
-        if (previousScore !== null) {
-          diff = rankScore - previousScore;
+          if (!user.dailyResetAt || user.dailyResetAt < resetDaily) {
+            user.dailyRpGained = 0;
+            user.dailyResetAt = now;
+          }
+
           user.dailyRpGained  += diff;
           user.weeklyRpGained += diff;
         }
 
-        // ===== AFFICHAGE DIFF =====
-        let diffDisplay = "";
-        let embedColor = 0x2b2d31;
+        user.lastRankScore = rankScore;
+        user.lastActivityAt = now;
+        user.server ||= interaction.guild?.name || "Unknown";
+        await user.save();
 
-        if (previousScore !== null) {
-          if (diff > 0) {
-            diffDisplay = `\`+${formatFR(diff)} RP\``;
-            embedColor = 0x2ecc71;
-          } else if (diff < 0) {
-            diffDisplay = `\`${formatFR(diff)} RP\``;
-            embedColor = 0xe74c3c;
+        /* ================= CANVAS ================= */
+
+        const badgeImg = await loadCachedImage(getRankThumbnail(rankName));
+
+        const canvas = createCanvas(1100, 280);
+        const ctx = canvas.getContext("2d");
+
+        if (legendImg) {
+          ctx.filter = "blur(4px)";
+          ctx.drawImage(legendImg, 0, 0, 1100, 280);
+          ctx.filter = "none";
+        } else {
+          ctx.fillStyle = "#0e1116";
+          ctx.fillRect(0,0,1100,280);
+        }
+
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0,0,1100,280);
+
+        ctx.font = "bold 36px FalconMath";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(stylizeFirstLetter(user.gameUsername), 50, 55);
+
+        ctx.font = "22px FalconMath";
+        ctx.fillStyle = "#e0e6f0";
+        ctx.fillText(`𝐋égende : ${stylizeFirstLetter(legend)}`, 50, 100);
+        ctx.fillText(`𝐑ang : ${rankName} ${rankDiv}`, 50, 135);
+        ctx.fillText(`𝐑𝐏 : ${rankScore.toLocaleString("fr-FR")}`, 50, 170);
+
+        if (diff !== 0) {
+          ctx.fillStyle = diff > 0 ? "#2ecc71" : "#e74c3c";
+          ctx.fillText(
+            `${diff > 0 ? "+" : ""}${diff.toLocaleString("fr-FR")} RP aujourd’hui`,
+            50,
+            200
+          );
+        }
+
+        /* ===== BARRE ===== */
+
+        const barX = 50, barY = 230, barW = 520, barH = 22;
+
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(barX, barY, barW, barH);
+
+        ctx.fillStyle = getRankColor(rankName);
+        ctx.fillRect(barX, barY, barW * progress, barH);
+
+        for (let i = 0; i < 4; i++) {
+          const x = barX + Math.random() * (barW * progress);
+          drawStaticLightning(
+            ctx,
+            x,
+            barY + 2,
+            barH - 4,
+            "rgba(255,255,255,0.8)"
+          );
+        }
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "18px FalconMath";
+        ctx.fillText(
+          `${rpInDiv.toLocaleString("fr-FR")} / ${divisionSize.toLocaleString("fr-FR")} RP`,
+          barX,
+          barY + barH + 28
+        );
+
+        /* ===== BADGE + HEBDO ===== */
+
+        if (badgeImg) {
+          ctx.drawImage(badgeImg, 920, 42, 140, 140);
+
+          if (user.weeklyRpGained !== 0) {
+            ctx.font = "18px FalconMath";
+            ctx.fillStyle = user.weeklyRpGained > 0 ? "#2ecc71" : "#e74c3c";
+            ctx.textAlign = "center";
+            ctx.fillText(
+              `${user.weeklyRpGained > 0 ? "+" : ""}${user.weeklyRpGained.toLocaleString("fr-FR")} RP semaine`,
+              990,
+              205
+            );
+            ctx.textAlign = "left";
           }
         }
 
-        // ===== TRACKERS =====
-        let trackerInfo = '';
-        for (let i = 0; i < Math.min(3, trackers.length); i++) {
-          const t = trackers[i];
-          if (!t?.name) continue;
-          trackerInfo += `**${stylizeFirstLetter(t.name)}** : \`${formatFR(t.value || 0)}\`\n`;
-        }
-
-        // ===== SAVE =====
-        user.lastRankScore = rankScore;
-        await user.save();
-
-        // ===== EMBED =====
-        const embed = new EmbedBuilder()
-          .setTitle(`◟ **${playerName}**`)
-          .setDescription(
-            `\n**𝐍iveau** : \`${levelWithStars}\`\n` +
-            `**𝐏ersonnage** : **\`${selectedLegend}\`**\n\n` +
-            `${trackerInfo}\n` +
-            `**𝐑ang** : \`${rankName}${rankDiv ? ' ' + rankDiv : ''}\`\n` +
-            `**𝐏oints classés** : \`${formatFR(rankScore)} RP\`${diffDisplay ? ' ' + diffDisplay : ''}\n\n` +
-            `🕒 **𝐆ains aujourd’hui** : \`${formatFR(user.dailyRpGained)} RP\`\n` +
-            `📆 **𝐆ains cette semaine** : \`${formatFR(user.weeklyRpGained)} RP\``
-          )
-          .setColor(embedColor)
-          .setFooter({
-            text: `Reset journalier à 02h • Reset hebdo lundi 02h`,
-            iconURL: `https://1000logos.net/wp-content/uploads/2021/06/logo-Apex-Legends.png`,
-          });
-
-        if (legendBanner) embed.setImage(legendBanner);
-        if (rankThumb) embed.setThumbnail(rankThumb);
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("APEX_TOP_RP")
-            .setLabel("丨TP RP丨")
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji("🏆")
-        );
-
-        await interaction[followUp ? 'followUp' : 'reply']({
-          embeds: [embed],
-          components: [row],
-          ephemeral: true
+        await interaction.editReply({
+          files: [
+            {
+              attachment: canvas.toBuffer("image/png"),
+              name: "apex-rank.png"
+            }
+          ]
         });
 
-      } catch (e) {
-        console.error('[APEX] Fetch error:', e);
-        await interaction.reply({
-          content: "❌ Impossible de récupérer tes stats Apex.",
-          ephemeral: true
+      } catch (err) {
+        console.error("[APEX PNG]", err);
+        await interaction.editReply({
+          content: "❌ Erreur lors de la récupération des stats Apex."
         });
       }
     }
-    if (interaction.customId === 'APEX_TOP_RP') {
-      const users = await ApexStats
-        .find({})
-        .sort({ weeklyRpGained: -1 })
-        .limit(10);
-
-      if (!users.length)
-        return interaction.reply({ content: "Aucun joueur classé.", ephemeral: true });
-
-      const embed = new EmbedBuilder()
-        .setTitle("🏆丨Top RP Hebdomadaire")
-        .setColor("#f1c40f")
-        .setThumbnail("https://media.contentapi.ea.com/content/dam/apex-legends/images/2023/01/apex-ranked-badges.jpg")
-        .setFooter({ text: "Classement basé sur les gains RP de la semaine" });
-
-      users.forEach((u, i) => {
-        embed.addFields({
-          name: `${i + 1} ◟ ${u.username}`,
-          value: `📈 **${u.weeklyRpGained.toLocaleString('fr-FR')} RP**`,
-          inline: false
-        });
-      });
-
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-
 
     // Bouton statistique Call of Duty
     if (interaction.customId === 'STATS_COD_BUTTON') {

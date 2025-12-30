@@ -73,10 +73,6 @@ async function updateApexStatsAutomatically() {
       console.error(`[APEX AUTO] ${user.username}:`, e.message);
     }
   }
-
-  if (!someoneActive) {
-    console.log("[APEX AUTO] Aucun joueur actif → API Apex mise en pause");
-  }
 }
 
 module.exports = { updateApexStatsAutomatically };
