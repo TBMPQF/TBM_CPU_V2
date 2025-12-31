@@ -1,17 +1,21 @@
-const fs = require(`fs`);
+const fs = require("fs");
 
-const successIcon = '\x1b[32m\u2714\x1b[0m';
-const eventColor = '\x1b[35m';
-const resetColor = '\x1b[0m';
-const lineSeparator = `${resetColor}------------------------------------------------`;
+const C = {
+  gray: s => `\x1b[90m${s}\x1b[0m`,
+  green: s => `\x1b[32m${s}\x1b[0m`,
+  purple: s => `\x1b[35m${s}\x1b[0m`,
+};
+
+const successIcon = C.green("✔");
+const lineSeparator = C.gray("------------------------------------------------");
 
 module.exports = async (bot) => {
   let totalEvents = 0;
 
   const eventFiles = fs
-    .readdirSync(`./Events/`)
-    .filter((f) => f.endsWith(`.js`));
-    
+    .readdirSync("./Events/")
+    .filter(f => f.endsWith(".js"));
+
   for (const file of eventFiles) {
     const event = require(`../../Events/${file}`);
     totalEvents++;
@@ -24,15 +28,15 @@ module.exports = async (bot) => {
   }
 
   const eventSubFolders = fs
-    .readdirSync(`./Events/`)
-    .filter((f) => !f.endsWith(`.js`));
-    
-  eventSubFolders.forEach((folder) => {
-    const commandFiles = fs
-      .readdirSync(`./Events/${folder}/`)
-      .filter((f) => f.endsWith(`.js`));
+    .readdirSync("./Events/")
+    .filter(f => !f.endsWith(".js"));
 
-    for (const file of commandFiles) {
+  for (const folder of eventSubFolders) {
+    const eventFiles = fs
+      .readdirSync(`./Events/${folder}/`)
+      .filter(f => f.endsWith(".js"));
+
+    for (const file of eventFiles) {
       const event = require(`../../Events/${folder}/${file}`);
       totalEvents++;
 
@@ -42,8 +46,10 @@ module.exports = async (bot) => {
         bot.on(event.name, (...args) => event.execute(...args, bot));
       }
     }
-  });
+  }
 
-  console.log(`| ${successIcon} ${eventColor}${totalEvents}${resetColor} événements ont été chargés avec succès ! |`);
+  console.log(
+    `| ${successIcon} ${C.purple(totalEvents)} événements ont été chargés avec succès ! |`
+  );
   console.log(lineSeparator);
 };

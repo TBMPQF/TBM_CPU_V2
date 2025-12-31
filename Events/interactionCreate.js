@@ -4353,14 +4353,11 @@ module.exports = {
         return null;
       }
     }
-    const DIVISION_STARTS = {
-      ROOKIE:    [0, 250, 500, 750],
-      BRONZE:    [250, 750, 1250, 1750],
-      SILVER:    [2250, 2750, 3250, 3750],
-      GOLD:      [3000, 3750, 4500, 5250],
-      PLATINUM:  [8500, 9250, 10000, 11000],
-      DIAMOND:   [12000, 13000, 14000, 15000],
-      MASTER:    [16000]
+    const ROMAN_DIV = {
+      1: "I",
+      2: "II",
+      3: "III",
+      4: "IV"
     };
     function drawStaticLightning(ctx, x, y, height, baseColor) {
       function lightenColor(hex, percent = 60) {
@@ -4636,7 +4633,11 @@ module.exports = {
         ctx.font = "22px FalconMath";
         ctx.fillStyle = "#e0e6f0";
         ctx.fillText(`𝐋égende : ${stylizeFirstLetter(legend)}`, 50, 100);
-        ctx.fillText(`𝐑ang : ${rankName} ${rankDiv}`, 50, 135);
+        ctx.fillText(
+          `𝐑ang : ${rankName}${rankDiv ? ` ${ROMAN_DIV[rankDiv] || rankDiv}` : ""}`,
+          50,
+          135
+        );
         ctx.fillText(`𝐑𝐏 : ${currentRp.toLocaleString("fr-FR")}`, 50, 170);
 
         if (user.dailyRpGained !== 0) {
