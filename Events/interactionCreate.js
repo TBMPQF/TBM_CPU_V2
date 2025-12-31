@@ -4334,9 +4334,6 @@ module.exports = {
         default: return null;
       }
     }
-    function formatFR(n) {
-      return Number(n || 0).toLocaleString('fr-FR');
-    }
     function stylizeFirstLetter(text = '') {
       const map = { A:'𝐀',B:'𝐁',C:'𝐂',D:'𝐃',E:'𝐄',F:'𝐅',G:'𝐆',H:'𝐇',I:'𝐈',J:'𝐉',K:'𝐊',L:'𝐋',M:'𝐌',N:'𝐍',O:'𝐎',P:'𝐏',Q:'𝐐',R:'𝐑',S:'𝐒',T:'𝐓',U:'𝐔',V:'𝐕',W:'𝐖',X:'𝐗',Y:'𝐘',Z:'𝐙' };
       if (!text) return text;
@@ -4365,38 +4362,46 @@ module.exports = {
       DIAMOND:   [12000, 13000, 14000, 15000],
       MASTER:    [16000]
     };
-    function getDivisionBounds(rankName, rankDiv) {
-      const key = rankName.toUpperCase();
-      const divIndex = { IV: 0, III: 1, II: 2, I: 3 }[rankDiv] ?? 0;
+    function drawStaticLightning(ctx, x, y, height, baseColor) {
+      function lightenColor(hex, percent = 60) {
+        const num = parseInt(hex.replace("#", ""), 16);
+        let r = (num >> 16) + percent;
+        let g = ((num >> 8) & 0xff) + percent;
+        let b = (num & 0xff) + percent;
 
-      const starts = DIVISION_STARTS[key];
-      if (!starts) return null;
+        r = Math.min(255, r);
+        g = Math.min(255, g);
+        b = Math.min(255, b);
 
-      const start = starts[divIndex];
-      const end = starts[divIndex + 1] ?? (start + 1000);
+        return `rgb(${r},${g},${b})`;
+      }
 
-      return { start, size: end - start };
-    }
-    function drawStaticLightning(ctx, x, y, height, color) {
+      const color = baseColor.startsWith("#")
+        ? lightenColor(baseColor)
+        : baseColor;
+
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.4 + Math.random() * 0.6;
       ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
 
       ctx.beginPath();
-      ctx.moveTo(x, y);
 
-      const segments = 5 + Math.floor(Math.random() * 3);
       let cx = x;
       let cy = y;
+      ctx.moveTo(cx, cy);
+
+      const segments = 6 + Math.floor(Math.random() * 3);
+      const maxOffset = 12;
 
       for (let i = 0; i < segments; i++) {
-        cx += (Math.random() - 0.5) * 18;
+        cx += (Math.random() - 0.5) * maxOffset;
         cy += height / segments;
         ctx.lineTo(cx, cy);
       }
 
       ctx.stroke();
+
       ctx.shadowBlur = 0;
     }
     async function getLegendBackground(data) {
@@ -4493,35 +4498,79 @@ module.exports = {
       }
 
       try {
-        const { data } = await axios.get("https://api.mozambiquehe.re/bridge", {
-          params: {
-            auth: config.apex_api,
-            player: user.gameUsername,
-            platform: user.platform
-          },
-          timeout: 12000
-        });
+        const { data } = await axios.get(
+          "https://api.mozambiquehe.re/bridge",
+          {
+            params: {
+              auth: config.apex_api,
+              player: user.gameUsername,
+              platform: user.platform
+            },
+            timeout: 12000
+          }
+        );
 
         const rankData = data?.global?.rank || {};
-        const rankScore = Number(rankData.rankScore) || 0;
+        const currentRp = Number(rankData.rankScore) || 0;
         const rankName  = rankData.rankName || "Unranked";
-        const rankDiv   = Number(rankData.rankDiv);
+        const rankDiv   = Number(rankData.rankDiv) || null;
         const legend    = data?.legends?.selected?.LegendName ?? "—";
         const legendImg = await getLegendBackground(data);
 
+        const avatarURL = interaction.user.displayAvatarURL({
+          extension: "png",
+          size: 64
+        });
+        const avatarImg = await loadCachedImage(avatarURL);
+
+        const now = new Date();
+
+        const dailyReset = new Date(now);
+        dailyReset.setHours(4, 0, 0, 0);
+        if (now < dailyReset) dailyReset.setDate(dailyReset.getDate() - 1);
+
+        if (!user.dailyResetAt || user.dailyResetAt < dailyReset) {
+          user.dailyRpGained = 0;
+          user.dailyResetAt = now;
+        }
+
+        const weeklyReset = new Date(dailyReset);
+        weeklyReset.setDate(weeklyReset.getDate() - weeklyReset.getDay() + 1);
+
+        if (!user.weeklyResetAt || user.weeklyResetAt < weeklyReset) {
+          user.weeklyRpGained = 0;
+          user.weeklyResetAt = now;
+        }
+
+        let diff = 0;
+        if (typeof user.lastRankScore === "number") {
+          diff = currentRp - user.lastRankScore;
+          if (Math.abs(diff) > 3000) diff = 0;
+        }
+
+        if (diff !== 0) {
+          user.dailyRpGained  += diff;
+          user.weeklyRpGained += diff;
+        }
+
+        user.lastRankScore  = currentRp;
+        user.lastActivityAt = now;
+        user.server ||= interaction.guild?.name || "Unknown";
+        await user.save();
+
         const RANK_TABLE = {
-          Rookie:   { base: 0,    step: 250,  divs: 4 },
-          Bronze:   { base: 1500, step: 500,  divs: 4 },
-          Silver:   { base: 3500, step: 500,  divs: 4 },
-          Gold:     { base: 5500, step: 750,  divs: 4 },
+          Rookie:   { base: 0,    step: 250 },
+          Bronze:   { base: 1000, step: 500 },
+          Silver:   { base: 3250, step: [500, 500, 500, 750] },
+          Gold:     { base: 5500, step: 750 },
           Platinum: { base: 8500, step: [750, 750, 1000, 1000] },
-          Diamond:  { base: 12000,step: 1000, divs: 4 },
-          Master:   { base: 16000,step: null },
+          Diamond:  { base: 12000,step: 1000 },
+          Master:   { base: 16000,step: null }
         };
 
-        const rankCfg = RANK_TABLE[rankName];
         let divisionBase = 0;
         let divisionSize = 1;
+        const rankCfg = RANK_TABLE[rankName];
 
         if (rankCfg && rankDiv) {
           if (Array.isArray(rankCfg.step)) {
@@ -4536,33 +4585,8 @@ module.exports = {
           }
         }
 
-        const rpInDiv = Math.max(0, rankScore - divisionBase);
+        const rpInDiv  = Math.max(0, currentRp - divisionBase);
         const progress = Math.min(rpInDiv / divisionSize, 1);
-
-        const now = new Date();
-        const resetDaily = new Date(now);
-        resetDaily.setHours(4,0,0,0);
-        if (now < resetDaily) resetDaily.setDate(resetDaily.getDate() - 1);
-
-        let diff = 0;
-        if (user.lastRankScore !== null) {
-          diff = rankScore - user.lastRankScore;
-
-          if (!user.dailyResetAt || user.dailyResetAt < resetDaily) {
-            user.dailyRpGained = 0;
-            user.dailyResetAt = now;
-          }
-
-          user.dailyRpGained  += diff;
-          user.weeklyRpGained += diff;
-        }
-
-        user.lastRankScore = rankScore;
-        user.lastActivityAt = now;
-        user.server ||= interaction.guild?.name || "Unknown";
-        await user.save();
-
-        /* ================= CANVAS ================= */
 
         const badgeImg = await loadCachedImage(getRankThumbnail(rankName));
 
@@ -4575,85 +4599,126 @@ module.exports = {
           ctx.filter = "none";
         } else {
           ctx.fillStyle = "#0e1116";
-          ctx.fillRect(0,0,1100,280);
+          ctx.fillRect(0, 0, 1100, 280);
         }
 
         ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(0,0,1100,280);
+        ctx.fillRect(0, 0, 1100, 280);
+
+        const avatarSize = 32;
+        const avatarX = 50;
+        const avatarY = 30;
+
+        if (avatarImg) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(
+            avatarX + avatarSize / 2,
+            avatarY + avatarSize / 2,
+            avatarSize / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
+          ctx.restore();
+        }
 
         ctx.font = "bold 36px FalconMath";
         ctx.fillStyle = "#fff";
-        ctx.fillText(stylizeFirstLetter(user.gameUsername), 50, 55);
+        ctx.fillText(
+          stylizeFirstLetter(user.gameUsername),
+          avatarX + avatarSize + 12,
+          55
+        );
 
         ctx.font = "22px FalconMath";
         ctx.fillStyle = "#e0e6f0";
         ctx.fillText(`𝐋égende : ${stylizeFirstLetter(legend)}`, 50, 100);
         ctx.fillText(`𝐑ang : ${rankName} ${rankDiv}`, 50, 135);
-        ctx.fillText(`𝐑𝐏 : ${rankScore.toLocaleString("fr-FR")}`, 50, 170);
+        ctx.fillText(`𝐑𝐏 : ${currentRp.toLocaleString("fr-FR")}`, 50, 170);
 
-        if (diff !== 0) {
-          ctx.fillStyle = diff > 0 ? "#2ecc71" : "#e74c3c";
+        if (user.dailyRpGained !== 0) {
+          ctx.fillStyle = user.dailyRpGained > 0 ? "#2ecc71" : "#e74c3c";
           ctx.fillText(
-            `${diff > 0 ? "+" : ""}${diff.toLocaleString("fr-FR")} RP aujourd’hui`,
+            `${user.dailyRpGained > 0 ? "+" : ""}${user.dailyRpGained.toLocaleString("fr-FR")} RP aujourd’hui`,
             50,
             200
           );
         }
 
-        /* ===== BARRE ===== */
-
         const barX = 50, barY = 230, barW = 520, barH = 22;
 
         ctx.fillStyle = "rgba(255,255,255,0.15)";
-        ctx.fillRect(barX, barY, barW, barH);
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barW, barH, barH / 2);
+        ctx.fill();
 
-        ctx.fillStyle = getRankColor(rankName);
-        ctx.fillRect(barX, barY, barW * progress, barH);
-
-        for (let i = 0; i < 4; i++) {
-          const x = barX + Math.random() * (barW * progress);
-          drawStaticLightning(
-            ctx,
-            x,
-            barY + 2,
-            barH - 4,
-            "rgba(255,255,255,0.8)"
+        if (progress > 0) {
+          ctx.fillStyle = getRankColor(rankName);
+          ctx.beginPath();
+          ctx.roundRect(
+            barX,
+            barY,
+            Math.max(barH, barW * progress),
+            barH,
+            barH / 2
           );
+          ctx.fill();
         }
 
-        ctx.fillStyle = "#fff";
-        ctx.font = "18px FalconMath";
-        ctx.fillText(
-          `${rpInDiv.toLocaleString("fr-FR")} / ${divisionSize.toLocaleString("fr-FR")} RP`,
-          barX,
-          barY + barH + 28
-        );
+        if (rpInDiv > 0 && progress > 0) {
+          const lightningCount = Math.min(10, Math.max(1, Math.ceil(progress * 10)));
+          const usableWidth = barW * progress;
 
-        /* ===== BADGE + HEBDO ===== */
-
-        if (badgeImg) {
-          ctx.drawImage(badgeImg, 920, 42, 140, 140);
-
-          if (user.weeklyRpGained !== 0) {
-            ctx.font = "18px FalconMath";
-            ctx.fillStyle = user.weeklyRpGained > 0 ? "#2ecc71" : "#e74c3c";
-            ctx.textAlign = "center";
-            ctx.fillText(
-              `${user.weeklyRpGained > 0 ? "+" : ""}${user.weeklyRpGained.toLocaleString("fr-FR")} RP semaine`,
-              990,
-              205
+          for (let i = 0; i < lightningCount; i++) {
+            const x = barX + 10 + Math.random() * (usableWidth - 20);
+            drawStaticLightning(
+              ctx,
+              x,
+              barY + 3,
+              barH - 6,
+              getRankColor(rankName)
             );
-            ctx.textAlign = "left";
           }
         }
 
+        ctx.font = "16px FalconMath";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0,0,0,0.6)";
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(
+          `${rpInDiv.toLocaleString("fr-FR")} / ${divisionSize.toLocaleString("fr-FR")} RP`,
+          barX + barW - 12,
+          barY + barH / 2
+        );
+        ctx.shadowBlur = 0;
+        ctx.textAlign = "left";
+
+        if (badgeImg) {
+          ctx.drawImage(badgeImg, 920, 42, 140, 140);
+        }
+
+        if (user.weeklyRpGained !== 0) {
+          ctx.font = "18px FalconMath";
+          ctx.fillStyle = user.weeklyRpGained > 0 ? "#2ecc71" : "#e74c3c";
+          ctx.textAlign = "center";
+          ctx.shadowColor = "rgba(0,0,0,0.6)";
+          ctx.shadowBlur = 6;
+          ctx.fillText(
+            `${user.weeklyRpGained > 0 ? "+" : ""}${user.weeklyRpGained.toLocaleString("fr-FR")} RP semaine`,
+            990,
+            205
+          );
+          ctx.shadowBlur = 0;
+          ctx.textAlign = "left";
+        }
+
         await interaction.editReply({
-          files: [
-            {
-              attachment: canvas.toBuffer("image/png"),
-              name: "apex-rank.png"
-            }
-          ]
+          files: [{ attachment: canvas.toBuffer("image/png"), name: "apex-rank.png" }]
         });
 
       } catch (err) {
