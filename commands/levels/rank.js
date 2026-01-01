@@ -4,7 +4,6 @@ const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
 const User = require("../../models/experience");
 const { longDescription } = require("../modération/setconfig");
 
-// Twemoji
 const MEDAL_GOLD_PNG   = "https://twemoji.maxcdn.com/v/latest/72x72/1f947.png";
 const MEDAL_SILVER_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/1f948.png";
 const MEDAL_BRONZE_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/1f949.png";
@@ -12,7 +11,6 @@ const MIC_PNG          = "https://twemoji.maxcdn.com/v/latest/72x72/1f3a4.png";
 const FLAME_PNG        = "https://twemoji.maxcdn.com/v/latest/72x72/1f525.png";
 const MSG_PNG          = "https://twemoji.maxcdn.com/v/latest/72x72/1f4ac.png";
 
-// Police pour glyphes 𝐀…𝐙
 try {
   const fontPath = path.resolve(__dirname, "../../utils/NotoSansMath-Regular.ttf");
   if (GlobalFonts?.registerFromPath) GlobalFonts.registerFromPath(fontPath, "FalconMath");
@@ -21,11 +19,9 @@ try {
   console.warn("[rank] Impossible d’enregistrer la police:", e?.message);
 }
 
-// Images
 const FALCON_BG_URL = "https://i.postimg.cc/Zn88HV3f/Falcon23.png";
 const FALCONIX_EMOJI_URL = "https://cdn.discordapp.com/emojis/1186719745106513971.png?size=64&quality=lossless";
 
-// Badges Prestige (index 0 = prestige 1, etc.)
 const PRESTIGE_BADGES = [
   "https://i.postimg.cc/mZpjd60n/p1.png",
   "https://i.postimg.cc/ZK1cmvYF/p2.png",
@@ -40,7 +36,6 @@ const PRESTIGE_BADGES = [
 ];
 const PRESTIGE_ICON_URL = PRESTIGE_BADGES[0] || "https://i.postimg.cc/Zn88HV3f/Falcon23.png";
 
-// Thème
 const theme = {
   bg: "#0f1216",
   card: "#1b2028",
@@ -50,7 +45,7 @@ const theme = {
   track: "rgba(255,255,255,0.12)",
   text: "#ffffff",
   subtext: "#c9d2e3",
-  ring: "#F5C243",
+  ring: "#ffffffff",
 };
 
 module.exports = {
@@ -82,25 +77,20 @@ module.exports = {
 
     await interaction.deferReply({ ephemeral: false });
 
-    // Classement (prestige puis xp)
     const allUsers = await User.find({ serverID: guild.id }).sort({ prestige: -1, xp: -1 });
     const position = allUsers.findIndex((u) => u.userID === target.id) + 1;
 
-    // Facteur de prestige (plus dur à chaque prestige)
     const prestigeFactor = (p) => 1 + 0.15 * Math.max(0, p || 0);
     const pf = prestigeFactor(user.prestige || 0);
 
-    // Seuils XP dépendants du prestige
     const xpReq = (lvl) => Math.pow(lvl / 0.1, 2) * pf;
 
-    // Données barre
     const nextLevel = user.level + 1;
     const xpRequiredForNextLevel = xpReq(nextLevel);
     const xpAtCurrentLevel = xpReq(user.level);
     const currentLevelXP = Math.max(0, (user.xp || 0) - xpAtCurrentLevel);
     const xpRequiredForCurrentLevel = Math.max(1, xpRequiredForNextLevel - xpAtCurrentLevel);
 
-    // Total carrière
     const totalXP = Number.isFinite(user.careerXP)
       ? user.careerXP
       : (() => {
@@ -111,14 +101,12 @@ module.exports = {
           return Math.round(total + Math.max(0, user.xp || 0));
         })();
 
-    // Voice time (sec -> ms)
     const voiceSec = Number(user.voiceTime ?? 0);
     const voiceMs  = Number.isFinite(voiceSec) ? voiceSec * 1000 : 0;
 
     const falconix = user.falconix ?? user.wallet ?? user.coins ?? 0;
     const msgCount = Number(user.messageCount ?? 0);
 
-    // Rôle affiché (couleur + nom)
     const member = interaction.member ?? (await guild.members.fetch(target.id).catch(() => null));
     let roleName = "";
     let roleColor = theme.subtext;
@@ -132,7 +120,6 @@ module.exports = {
       }
     }
 
-    // Génération
     const buffer = await renderRankCard({
       tag: target.tag ?? target.username,
       avatarURL: target.displayAvatarURL({ extension: "png", size: 256, forceStatic: true }),
@@ -165,6 +152,88 @@ async function renderRankCard({
   const W = 920, H = 270;
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext("2d");
+
+  function drawStaticLightning(ctx, x, y, h, color) {
+      ctx.save();
+
+      // éclair plus clair que la barre
+      function lighten(hex, amount = 60) {
+        const n = parseInt(hex.replace("#", ""), 16);
+        let r = Math.min(255, (n >> 16) + amount);
+        let g = Math.min(255, ((n >> 8) & 255) + amount);
+        let b = Math.min(255, (n & 255) + amount);
+        return `rgb(${r},${g},${b})`;
+      }
+
+      const glow = lighten(color, 80);
+      const core = lighten(color, 40);
+
+      let cx = x;
+      let cy = y;
+
+      const segments = 6 + Math.floor(Math.random() * 3);
+      const maxOffset = 10;
+
+      // --- GLOW ---
+      ctx.strokeStyle = glow;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 14;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      for (let i = 0; i < segments; i++) {
+        cx += (Math.random() - 0.5) * maxOffset;
+        cy += h / segments;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+
+      // --- CORE ---
+      cx = x;
+      cy = y;
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = core;
+      ctx.lineWidth = 1.4;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      for (let i = 0; i < segments; i++) {
+        cx += (Math.random() - 0.5) * maxOffset;
+        cy += h / segments;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+  }
+  function splitRoleGlyph(name) {
+    if (!name) return { hasBar: false, rest: "" };
+    const trimmed = String(name).trimStart();
+    if (trimmed.startsWith("丨")) {
+      return { hasBar: true, rest: trimmed.replace(/^丨\s*/, "") };
+    }
+    return { hasBar: false, rest: trimmed };
+  }
+  function normalizeMathBold(str = "") {
+    return Array.from(str).map(ch => {
+      const cp = ch.codePointAt(0);
+
+      // A–Z
+      if (cp >= 0x1D400 && cp <= 0x1D419)
+        return String.fromCharCode(0x41 + (cp - 0x1D400));
+
+      // a–z
+      if (cp >= 0x1D41A && cp <= 0x1D433)
+        return String.fromCharCode(0x61 + (cp - 0x1D41A));
+
+      // 0–9
+      if (cp >= 0x1D7CE && cp <= 0x1D7D7)
+        return String.fromCharCode(0x30 + (cp - 0x1D7CE));
+
+      return ch;
+    }).join("");
+  }
 
   // ===== FOND arrondi =====
   ctx.save();
@@ -212,7 +281,7 @@ async function renderRankCard({
 
   // Anneau doré
   ctx.lineWidth = 6;
-  ctx.strokeStyle = theme.ring;
+  ctx.strokeStyle = roleColor || theme.ring;
   ctx.beginPath();
   ctx.arc(ax + AVA / 2, ay + AVA / 2, AVA / 2 + 3, 0, Math.PI * 2);
   ctx.stroke();
@@ -223,7 +292,7 @@ async function renderRankCard({
   ctx.shadowBlur = 10;
 
   // Pseudo
-  ctx.font = "600 30px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+  ctx.font = "900 22px FalconMath, Arial, sans-serif";
   const name = firstMathBold(truncate(tag, 28));
   ctx.fillText(name, 170, 88 + SHIFT);
 
@@ -231,7 +300,7 @@ async function renderRankCard({
   const nameWidth = ctx.measureText(name).width;
   const posX = 170 + nameWidth + 12;
   const posLabel = ordinalAbbrevFR(position);
-  ctx.font = "600 22px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+  ctx.font = "900 22px FalconMath, Arial, sans-serif";
   ctx.fillStyle = theme.subtext;
   ctx.fillText(posLabel, posX, 88 + SHIFT);
 
@@ -265,59 +334,80 @@ async function renderRankCard({
 
 // Rôle (glyphe + texte dans la couleur du rôle)
   const roleRawName = roleName && roleName !== "@everyone" ? roleName : "";
-  const { glyph, rest } = splitRoleGlyph(roleRawName);
-  const roleText = rest ? truncate(rest, 22) : ""; // ta fonction truncate existante
+  const { hasBar, rest } = splitRoleGlyph(roleRawName);
+  const roleText = rest
+    ? truncate(normalizeMathBold(rest), 22)
+    : "";
   const color = roleColor || theme.subtext;
 
-  if (roleText || glyph) {
-    // position
+  if (roleText || hasBar) {
     const baseX = tailX + 16;
     const baseY = 86 + SHIFT;
 
-    // 1) Glyphe du rôle (ex: "丨") — rendu en texte, donc pas de pixelisation/carré
-    if (glyph) {
-      ctx.save();
-      ctx.font = "900 22px Inter, Segoe UI, Arial, sans-serif"; // épais pour un beau trait
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = color;
-      ctx.fillText(glyph, baseX, baseY);
-      const gw = ctx.measureText(glyph).width;
+    ctx.save();
 
-      // 2) Nom du rôle (sans le glyphe)
-      ctx.font = "600 18px Inter, Segoe UI, Arial, sans-serif";
+    let textX = baseX;
+
+    if (hasBar) {
+      const barH = 18;
+      const barW = 3;
+
       ctx.fillStyle = color;
-      ctx.fillText(roleText, baseX + gw + 8, baseY + 2); // +2 pour aligner optiquement
-      ctx.restore();
-    } else {
-      // Pas de glyphe au début du rôle → texte simple (comportement précédent)
-      ctx.save();
-      ctx.font = "600 18px Inter, Segoe UI, Arial, sans-serif";
-      ctx.fillStyle = color;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(roleText, baseX, 88 + SHIFT);
-      ctx.restore();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 6;
+
+      ctx.fillRect(
+        baseX,
+        baseY - barH / 2 + 1,
+        barW,
+        barH
+      );
+
+      ctx.shadowBlur = 0;
+      textX += barW + 10;
     }
+
+    ctx.font = "600 18px Inter, Segoe UI, Arial, sans-serif";
+    ctx.fillStyle = color;
+    ctx.textBaseline = "middle";
+    ctx.fillText(roleText, textX, baseY);
+
+    ctx.restore();
   }
 
-  // Lignes d'infos
   ctx.shadowBlur = 0;
   ctx.fillStyle = theme.subtext;
-  ctx.font = "500 18px FalconMath, Inter, Segoe UI, Arial, sans-serif";
+  ctx.font = "600 18px FalconMath, Arial, sans-serif";
   ctx.fillText(`${firstMathBold("Level")} : ${level}`, 170, 118 + SHIFT);
   ctx.fillText(`${firstMathBold("XP")} : ${k(xp)} / ${k(nextLevelXP)}    ${firstMathBold("Total")} : ${k(totalXP)}`, 170, 144 + SHIFT);
 
-  // Barre XP
   const barX = 170, barY = 172 + SHIFT, barW = W - barX - 36, barH = 30;
   fillRoundRect(ctx, barX, barY, barW, barH, barH / 2, theme.track);
   const pct = Math.max(0, Math.min(1, !neededLevelXP ? 1 : currentLevelXP / neededLevelXP));
   const grad = ctx.createLinearGradient(barX, barY, barX + Math.max(barH, barW * pct), barY);
-  grad.addColorStop(0, theme.accentGold);
-  grad.addColorStop(1, theme.accentGoldDark);
+  grad.addColorStop(0, roleColor);
+  grad.addColorStop(1, roleColor);
   fillRoundRect(ctx, barX, barY, Math.max(barH, barW * pct), barH, barH / 2, grad);
+  if (pct > 0.05) {
+    const lightningCount = Math.max(
+      1,
+      Math.floor(pct * 8)
+    );
 
-  // ===== Badges Prestige entre barre d'XP et pills =====
+    const usableWidth = barW * pct;
+
+    for (let i = 0; i < lightningCount; i++) {
+      const lx = barX + 10 + Math.random() * (usableWidth - 20);
+      drawStaticLightning(
+        ctx,
+        lx,
+        barY + 4,
+        barH - 8,
+        roleColor
+      );
+    }
+  }
+
   const prestigeCount = Math.max(0, Number(prestige) || 0);
   if (prestigeCount > 0) {
     const badgesSize = 30;
@@ -329,19 +419,17 @@ async function renderRankCard({
 
     await drawPrestigeBadges(ctx, {
       count: prestigeCount,
-      right: PANEL.x + PANEL.w - 14, // aligné au bord droit du panneau
+      right: PANEL.x + PANEL.w - 14,
       y: badgesY,
       size: badgesSize,
       gap: 8,
     });
   }
 
-  /* ===== RANGÉE DES PILLS ===== */
   const pillH2 = 36;
   const pillY2 = H - 22 - pillH2;
   const PILL_GAP = 12;
 
-  // Labels/valeurs
   const vocalLabel = firstMathBold("Vocal");
   const vocalValue = formatVoiceJHMS(voiceMs);
 
@@ -351,7 +439,6 @@ async function renderRankCard({
   const falcLabel  = firstMathBold("Falconix");
   const falcValue  = formatFalconix(falconix);
 
-  // Largeurs “au plus juste”
   const pillX1 = 36;
   const vocalW = Math.ceil(measurePillWidth(ctx, vocalLabel, vocalValue, { divider: true }));
 
@@ -363,7 +450,6 @@ async function renderRankCard({
   const availableForFalc = Math.max(0, (W - 18) - pillX3 - PILL_GAP);
   const falcW = Math.ceil(Math.min(falcWDesired, availableForFalc));
 
-  // Dessin des pills
   await drawPillWithIcon(ctx, pillX1, pillY2, vocalW, pillH2, MIC_PNG,  vocalLabel, vocalValue, { divider: true });
   await drawPillWithIcon(ctx, pillX2, pillY2, msgW,   pillH2, MSG_PNG,  msgLabel,   msgValue,   { divider: true });
   if (falcW > 0) {
@@ -372,8 +458,6 @@ async function renderRankCard({
 
   return canvas.toBuffer("image/png");
 }
-
-/* ============== Helpers ============== */
 
 async function drawPillWithIcon(ctx, x, y, w, h, iconUrl, label, value, opts = {}) {
   const { divider = false } = opts;
@@ -408,7 +492,6 @@ async function drawPillWithIcon(ctx, x, y, w, h, iconUrl, label, value, opts = {
   ctx.fillText(value, x + w - vw - 14, y + h / 2 + 5);
 }
 
-// Badges prestige : 1 à droite → vers la gauche
 async function drawPrestigeBadges(ctx, { count, right, y, size = 30, gap = 8 }) {
   if (!Number.isFinite(count) || count <= 0) return;
 
@@ -455,7 +538,6 @@ function k(n) {
   return `${Math.floor(n)}`;
 }
 
-// largeur “au plus juste” d’un pill
 function measurePillWidth(ctx, label, value, { divider = false } = {}) {
   const prev = ctx.font;
   ctx.font = "600 14px FalconMath, Inter, Segoe UI, Arial, sans-serif";
@@ -468,13 +550,11 @@ function measurePillWidth(ctx, label, value, { divider = false } = {}) {
   return leftPad + icon + gapIcon + dividerSpace + lw + midGap + vw + rightPad;
 }
 
-// 5 décimales pour falconix
 function formatFalconix(n) {
   const num = Number(n) || 0;
   return num.toLocaleString("fr-FR", { minimumFractionDigits: 5, maximumFractionDigits: 5 });
 }
 
-// j h m s sans unités nulles
 function formatVoiceJHMS(ms = 0) {
   if (!ms || ms < 0) ms = 0;
   const totalSec = Math.floor(ms / 1000);
@@ -490,7 +570,6 @@ function formatVoiceJHMS(ms = 0) {
   return parts.length ? parts.join(" ") : "0s";
 }
 
-// Style "première lettre" en math bold
 function toMathBold(ch) {
   const cp = ch.codePointAt(0);
   if (cp >= 0x41 && cp <= 0x5A) return String.fromCodePoint(0x1D400 + (cp - 0x41));
@@ -507,7 +586,6 @@ function firstMathBold(label) {
 }
 function ordinalAbbrevFR(n) { return n === 1 ? "1er" : `${n}e`; }
 
-// chemin d’un rect arrondi pour clip
 function roundRectPath(ctx, x, y, w, h, r = 0) {
   const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
   ctx.beginPath();
@@ -519,7 +597,6 @@ function roundRectPath(ctx, x, y, w, h, r = 0) {
   ctx.closePath();
 }
 
-// Flamme maxDaily (taille auto + nombre complet)
 function computeFlameSizeForValue(ctx, rawNum, {
   base = 36,
   step = 3,

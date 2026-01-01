@@ -478,10 +478,25 @@ module.exports = {
 
 
     const activities = [
-      { name: "🎮 Joue à 𝐀pex 𝐋egends", type: ActivityType.Playing },
-      { name: "", type: ActivityType.Custom }, // serveurs
+      { name: "🎮 𝐀pex 𝐋egends", type: ActivityType.Playing },
+      { name: "", type: ActivityType.Custom },
       { name: "S'entraine au padel", type: ActivityType.Custom },
-      { name: "", type: ActivityType.Custom }, // membres
+      { name: "Cuit des pâtes", type: ActivityType.Custom },
+      { name: "Cherche le bouton mute", type: ActivityType.Custom },
+      { name: "Carry son équipe", type: ActivityType.Custom },
+      { name: "Spam des émotes", type: ActivityType.Custom },
+      { name: "Perd un duel qu'il maîtrisait", type: ActivityType.Custom },
+      { name: "Fait semblant de travailler", type: ActivityType.Custom },
+      { name: "Oublie pourquoi il est là", type: ActivityType.Custom },
+      { name: "Lag mentalement", type: ActivityType.Custom },
+      { name: "Rage silencieusement", type: ActivityType.Custom },
+      { name: "Attend que ça passe", type: ActivityType.Custom },
+      { name: "Réfléchit trop longtemps", type: ActivityType.Custom },
+      { name: "Gagne de l'XP imaginaire", type: ActivityType.Custom },
+      { name: "Écrit puis efface son message", type: ActivityType.Custom },
+      { name: "Regarde le chat sans répondre", type: ActivityType.Custom },
+      { name: "A une idée géniale (presque)", type: ActivityType.Custom },
+      { name: "", type: ActivityType.Custom },
     ];
 
     async function getPSGMatch() {
@@ -563,7 +578,7 @@ module.exports = {
         activity.name = `🌐丨${bot.guilds.cache.size} 𝐒erveurs`;
       }
 
-      if (activityIndex === 3) {
+      if (activityIndex === 18) {
         const totalMembers = bot.guilds.cache.reduce(
           (acc, guild) => acc + guild.memberCount,
           0

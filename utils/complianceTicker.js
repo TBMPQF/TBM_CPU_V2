@@ -58,26 +58,59 @@ function hasCompliantRoles(member, cfg, gameRoleIDs) {
   return { ok: reglementOk && gameOk, reglementOk, gameOk };
 }
 async function sendKickLog(guild, member, sc, doc, state) {
-  const logChannel = sc?.logChannelID ? guild.channels.cache.get(sc.logChannelID) : null;
+  const logChannel = sc?.logChannelID
+    ? guild.channels.cache.get(sc.logChannelID)
+    : null;
   if (!logChannel) return;
 
   const missing = [];
-  if (!state.reglementOk) missing.push("rôle règlement");
-  if (!state.gameOk)      missing.push("≥ 1 rôle de jeu");
+  if (!state.reglementOk) missing.push("📜 Règlement");
+  if (!state.gameOk)      missing.push("🎮 Rôle de jeu");
+
+  const formatTs = (d) =>
+    d ? `<t:${Math.floor(new Date(d).getTime() / 1000)}:f>` : "—";
 
   const embed = new EmbedBuilder()
-    .setColor("Red")
-    .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
-    .setTitle("Expulsion pour non conformité")
-    .setDescription([
-      `**Membre :** <@${member.id}> (${member.id})`,
-      `**Raison :** Non conformité après échéance : manque ${missing.join(" + ")}.`
-    ].join("\n"))
-    .addFields(
-      { name: "Arrivé",   value: doc?.joinedAt   ? `<t:${Math.floor(new Date(doc.joinedAt).getTime()/1000)}:f>`   : "—", inline: true },
-      { name: "Rappel",   value: doc?.remindAt   ? `<t:${Math.floor(new Date(doc.remindAt).getTime()/1000)}:f>`   : "—", inline: true },
-      { name: "Échéance", value: doc?.deadlineAt ? `<t:${Math.floor(new Date(doc.deadlineAt).getTime()/1000)}:f>` : "—", inline: true },
+    .setColor(0xE74C3C)
+    .setAuthor({
+      name: `${member.user.tag}`,
+      iconURL: member.user.displayAvatarURL({ dynamic: true })
+    })
+    .setTitle("🚫 Expulsion automatique")
+    .setDescription(
+      [
+        `**Membre concerné**`,
+        `<@${member.id}> \`${member.id}\``,
+        ``,
+        `**Motif**`,
+        `Non conformité après délai imparti.`,
+      ].join("\n")
     )
+    .addFields(
+      {
+        name: "❌ Éléments manquants",
+        value: missing.length ? missing.join("\n") : "—",
+        inline: false
+      },
+      {
+        name: "📅 Arrivée",
+        value: formatTs(doc?.joinedAt),
+        inline: true
+      },
+      {
+        name: "⏰ Rappel envoyé",
+        value: formatTs(doc?.remindAt),
+        inline: true
+      },
+      {
+        name: "⌛ Échéance",
+        value: formatTs(doc?.deadlineAt),
+        inline: true
+      }
+    )
+    .setFooter({
+      text: "Système de conformité automatique"
+    })
     .setTimestamp();
 
   await logChannel.send({ embeds: [embed] }).catch(() => {});

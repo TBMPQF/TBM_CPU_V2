@@ -916,17 +916,6 @@ module.exports = {
     const FALCONIX_EMOJI_URL = "https://cdn.discordapp.com/emojis/1186719745106513971.png?size=64&quality=lossless";
     const FLAME_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/1f525.png";
 
-    const THEME = {
-      bg: "#0f1216",
-      card: "#1b2028",
-      text: "#ffffff",
-      sub: "#c9d2e3",
-      ring: "#F5C243",
-      accentGold: "#F5C243",
-      accentGoldDark: "#E3A923",
-      track: "rgba(255,255,255,0.12)",
-    };
-
     const XP_BLOCK = Math.pow(51 / 0.1, 2);
     const pf = (p) => 1 + 0.15 * Math.max(0, p || 0);
     const levelFrom = (xp, p) =>
@@ -987,8 +976,6 @@ module.exports = {
       ctx.arcTo(x, y, x + w, y, rr);
       ctx.closePath();
     }
-    function fillRR(ctx, x, y, w, h, r, style) { rrPath(ctx, x, y, w, h, r); ctx.fillStyle = style; ctx.fill(); }
-    function toFr(n) { return Number(n || 0).toLocaleString("fr-FR"); }
     function computeFlameSizeForValue(ctx, rawNum, {
       base = 36, step = 3, min = 45, max = 70, ratio = 0.70, fontScale = 0.38,
     } = {}) {
@@ -1012,82 +999,67 @@ module.exports = {
       }
       return { size, fontSize, label };
     }
-    async function drawPill(ctx, { x, y, w, h, iconUrl = null, label, value, divider = true }) {
-      fillRR(ctx, x, y, w, h, h / 2, "rgba(255,255,255,0.06)");
-      const s = 20;
-      const ix = x + 10;
-      const iy = y + (h - s) / 2;
+    const member = interaction.member;
+    const highestRoleColor =
+      member?.roles?.cache
+        ?.filter(r => r.color !== 0 && !r.managed)
+        ?.sort((a, b) => b.position - a.position)
+        ?.first()?.hexColor || "#ffffffff";
 
-      if (iconUrl) {
-        try {
-          const img = await loadImage(iconUrl);
-          ctx.drawImage(img, ix, iy, s, s);
-        } catch {}
-      }
-      let tx = iconUrl ? ix + s + 10 : x + 12;
-
-      if (divider) {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(tx - 6, y + 6, 2, h - 12);
-        ctx.restore();
-      }
-
-      ctx.font = "600 14px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-      ctx.fillStyle = THEME.sub;
-      ctx.fillText(label, tx, y + h / 2 + 5);
-
-      ctx.font = "700 16px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-      ctx.fillStyle = THEME.text;
-      const vw = ctx.measureText(value).width;
-      ctx.fillText(value, x + w - vw - 14, y + h / 2 + 5);
-    }
     async function renderDailyRecoveryCardRankStyle({
-      username,          // (non affiché)
       avatarURL,
-      streak,            // lostConsecutiveDaily
-      costCareer,        // coût en XP (ex-careerXP)
-      balanceCareer,     // solde XP (ex-careerXP)
-      balanceFalconix,   // solde Falconix
-      preview,           // { prestige, level } ou null
+      username,
+      prestige,
+      level,
+      roleColor,
+      streak,
+      costCareer,
+      balanceCareer,
+      balanceFalconix,
+      preview,
     }) {
-      const W = 920, H = 270;
+      const W = 920;
+      const H = 260;
       const canvas = createCanvas(W, H);
       const ctx = canvas.getContext("2d");
 
-      // fond & panneau
-      ctx.save();
-      rrPath(ctx, 0, 0, W, H, 26);
-      ctx.clip();
       const bg = ctx.createLinearGradient(0, 0, W, H);
-      bg.addColorStop(0, THEME.bg);
-      bg.addColorStop(1, "#131821");
+      bg.addColorStop(0, "#0c0f14");
+      bg.addColorStop(1, "#141a23");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
-      ctx.restore();
 
-      const PANEL = { x: 14, y: 14, w: W - 28, h: H - 28, r: 20 };
-      fillRR(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r, THEME.card);
+      rrPath(ctx, 14, 14, W - 28, H - 28, 22);
+      ctx.fillStyle = "#1c2330";
+      ctx.fill();
 
-      // watermark
       try {
         const falcon = await loadImage(FALCON_BG_URL);
+
         const fw = Math.min(W * 0.55, falcon.width);
         const fh = fw * (falcon.height / falcon.width);
+
         ctx.save();
-        rrPath(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, PANEL.r);
+        rrPath(ctx, 14, 14, W - 28, H - 28, 22);
         ctx.clip();
-        ctx.globalAlpha = 0.14;
-        ctx.drawImage(falcon, W - fw - 30, (H - fh) / 2, fw, fh);
+
+        ctx.globalAlpha = 0.12;
+        ctx.drawImage(
+          falcon,
+          W - fw - 40,
+          (H - fh) / 2,
+          fw,
+          fh
+        );
+
         ctx.globalAlpha = 1;
         ctx.restore();
       } catch {}
 
-      // avatar + titre
-      const AVA = 52;
-      const ax = PANEL.x + 22;
-      const ay = PANEL.y + 18;
+      const AVA = 56;
+      const ax = 36;
+      const ay = 30;
+
       try {
         const avatar = await loadImage(avatarURL);
         ctx.save();
@@ -1096,92 +1068,99 @@ module.exports = {
         ctx.clip();
         ctx.drawImage(avatar, ax, ay, AVA, AVA);
         ctx.restore();
+
         ctx.lineWidth = 3;
-        ctx.strokeStyle = THEME.ring;
+        ctx.strokeStyle = roleColor;
         ctx.beginPath();
         ctx.arc(ax + AVA / 2, ay + AVA / 2, AVA / 2 + 1.5, 0, Math.PI * 2);
         ctx.stroke();
       } catch {}
 
-      const left = ax + AVA + 14;
-      const titleY = ay + 26;
+      const textX = ax + AVA + 18;
 
-      ctx.fillStyle = THEME.text;
-      ctx.shadowColor = "rgba(0,0,0,0.35)";
-      ctx.shadowBlur = 10;
-      ctx.font = "800 26px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-      ctx.fillText("Rattraper le Daily manqué ?", left, titleY);
-      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 22px FalconMath, Inter, Arial";
+      ctx.fillText(username, textX, ay + 24);
 
-      const pad = 14;
-      const { size: flameSize, fontSize, label } = computeFlameSizeForValue(ctx, streak);
-      const flameX = PANEL.x + PANEL.w - pad - flameSize;
-      const flameY = PANEL.y + pad;
+      ctx.font = "500 15px FalconMath, Inter, Arial";
+      ctx.fillStyle = "#c9d2e3";
+      ctx.fillText(
+        prestige > 0
+          ? `Prestige ${prestige} • Niveau ${level}`
+          : `Niveau ${level}`,
+        textX,
+        ay + 44
+      );
+
+      const { size: flameSize, fontSize, label } =
+        computeFlameSizeForValue(ctx, streak, {
+          base: 36,
+          step: 4,
+          min: 48,
+          max: 74,
+          ratio: 0.72,
+          fontScale: 0.4,
+        });
+
+      const fx = W - 36 - flameSize;
+      const fy = 26;
+
       try {
-        const img = await loadImage(FLAME_PNG);
-        ctx.globalAlpha = 0.88;
-        ctx.drawImage(img, flameX, flameY, flameSize, flameSize);
-        ctx.globalAlpha = 1;
+        const flame = await loadImage(FLAME_PNG);
+        ctx.drawImage(flame, fx, fy, flameSize, flameSize);
       } catch {}
-      const cx = flameX + flameSize / 2;
-      const cy = flameY + flameSize * 0.66;
+
+      const cx = fx + flameSize / 2;
+      const cy = fy + flameSize * 0.65;
 
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${fontSize}px FalconMath, Inter, Segoe UI, Arial, sans-serif`;
-      ctx.lineWidth = Math.max(1.5, fontSize / 7);
-      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.font = `800 ${fontSize}px FalconMath, Inter, Arial`;
+      ctx.lineWidth = Math.max(2, fontSize / 7);
+      ctx.strokeStyle = "rgba(0,0,0,0.75)";
       ctx.strokeText(label, cx, cy);
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = "#ffffff";
       ctx.fillText(label, cx, cy);
 
-      ctx.font = "700 16px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-      ctx.fillStyle = THEME.sub;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText("Série manquée", PANEL.x + PANEL.w - pad, flameY + flameSize + 22);
-
       ctx.textAlign = "left";
-      let infoX = left;
-      let infoY = titleY + 36;
+      ctx.font = "500 14px FalconMath";
+      ctx.fillStyle = "#c9d2e3";
+      ctx.fillText("Série perdue", fx - 6, fy + flameSize + 18);
 
-      if (preview) {
-        ctx.fillStyle = THEME.sub;
-        ctx.font = "600 18px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-        ctx.fillText("Après paiement", infoX, infoY);
-        infoY += 28;
+      const midY = 120;
 
-        ctx.fillStyle = THEME.text;
-        ctx.font = "500 20px FalconMath, Inter, Segoe UI, Arial, sans-serif";
-        ctx.fillText(`Tu deviendras ➜ Prestige ${preview.prestige} • Niveau ${preview.level}`, infoX, infoY);
+      ctx.font = "600 18px FalconMath";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("Conséquences du rattrapage", 36, midY);
+
+      ctx.fillStyle = "rgba(255,255,255,0.1)";
+      ctx.fillRect(36, midY + 8, W - 72, 1);
+
+      const statY = midY + 36;
+
+      function stat(label, value, x) {
+        ctx.font = "500 14px FalconMath";
+        ctx.fillStyle = "#9aa4b2";
+        ctx.fillText(label, x, statY);
+
+        ctx.font = "700 18px FalconMath";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(value, x, statY + 22);
       }
 
-      const pillH = 36;
-      const pillY = H - 22 - pillH;
-      const gap  = 12;
-      const pW   = Math.floor((W - 60) / 3);
+      stat("Coût XP", `-${costCareer.toLocaleString("fr-FR")} XP`, 36);
+      stat("XP disponible", balanceCareer.toLocaleString("fr-FR"), 260);
+      stat("Falconix", balanceFalconix.toString(), 520);
 
-      await drawPill(ctx, {
-        x: 36 + (pW + gap) * 0, y: pillY, w: pW, h: pillH,
-        iconUrl: null,
-        label: "Coût",
-        value: `${Number(costCareer).toLocaleString("fr-FR")} XP`,
-        divider: true,
-      });
-      await drawPill(ctx, {
-        x: 36 + (pW + gap) * 1, y: pillY, w: pW, h: pillH,
-        iconUrl: null,
-        label: "XP DISPONIBLE",
-        value: Number(balanceCareer).toLocaleString("fr-FR"),
-        divider: true,
-      });
-      await drawPill(ctx, {
-        x: 36 + (pW + gap) * 2, y: pillY, w: pW, h: pillH,
-        iconUrl: FALCONIX_EMOJI_URL,
-        label: "Falconix",
-        value: String(balanceFalconix),
-        divider: true,
-      });
+      if (preview) {
+        ctx.font = "600 16px FalconMath";
+        ctx.fillStyle = "#F5C243";
+        ctx.fillText(
+          `Après paiement → Prestige ${preview.prestige} • Niveau ${preview.level}`,
+          36,
+          H - 42
+        );
+      }
 
       return canvas.toBuffer("image/png");
     }
@@ -1266,13 +1245,20 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
 
       const buffer = await renderDailyRecoveryCardRankStyle({
+        avatarURL: interaction.user.displayAvatarURL({
+          extension: "png",
+          size: 128,
+          forceStatic: true
+        }),
         username: interaction.user.username,
-        avatarURL: interaction.user.displayAvatarURL({ extension: "png", size: 128, forceStatic: true }),
+        prestige: user.prestige,
+        level: user.level,
+        roleColor: highestRoleColor,
         streak: streakMiss,
         costCareer: costXP,
         balanceCareer: currentCareer,
         balanceFalconix: Number(user.falconix) || 0,
-        preview,
+        preview
       });
 
       const file = new AttachmentBuilder(buffer, { name: "recupdaily.png" });
@@ -4488,7 +4474,6 @@ module.exports = {
       );
       await fetchAndReplyApexStats(interaction, user);
     }
-
     async function fetchAndReplyApexStats(interaction, user) {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ ephemeral: true });
@@ -4514,10 +4499,7 @@ module.exports = {
         const legend    = data?.legends?.selected?.LegendName ?? "—";
         const legendImg = await getLegendBackground(data);
 
-        const avatarURL = interaction.user.displayAvatarURL({
-          extension: "png",
-          size: 64
-        });
+        const avatarURL = interaction.user.displayAvatarURL({ extension: "png", size: 64 });
         const avatarImg = await loadCachedImage(avatarURL);
 
         const now = new Date();
@@ -4586,6 +4568,7 @@ module.exports = {
         const progress = Math.min(rpInDiv / divisionSize, 1);
 
         const badgeImg = await loadCachedImage(getRankThumbnail(rankName));
+        const rankColor = getRankColor(rankName);
 
         const canvas = createCanvas(1100, 280);
         const ctx = canvas.getContext("2d");
@@ -4599,7 +4582,10 @@ module.exports = {
           ctx.fillRect(0, 0, 1100, 280);
         }
 
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        const vignette = ctx.createRadialGradient(550, 140, 180, 550, 140, 520);
+        vignette.addColorStop(0, "rgba(0,0,0,0.25)");
+        vignette.addColorStop(1, "rgba(0,0,0,0.75)");
+        ctx.fillStyle = vignette;
         ctx.fillRect(0, 0, 1100, 280);
 
         const avatarSize = 32;
@@ -4609,36 +4595,38 @@ module.exports = {
         if (avatarImg) {
           ctx.save();
           ctx.beginPath();
-          ctx.arc(
-            avatarX + avatarSize / 2,
-            avatarY + avatarSize / 2,
-            avatarSize / 2,
-            0,
-            Math.PI * 2
-          );
+          ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
           ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
           ctx.restore();
+
+          ctx.strokeStyle = rankColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+          ctx.stroke();
         }
 
         ctx.font = "bold 36px FalconMath";
-        ctx.fillStyle = "#fff";
-        ctx.fillText(
-          stylizeFirstLetter(user.gameUsername),
-          avatarX + avatarSize + 12,
-          55
-        );
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(stylizeFirstLetter(user.gameUsername), avatarX + avatarSize + 14, 55);
 
         ctx.font = "22px FalconMath";
         ctx.fillStyle = "#e0e6f0";
         ctx.fillText(`𝐋égende : ${stylizeFirstLetter(legend)}`, 50, 100);
+
+        ctx.font = "bold 26px FalconMath";
+        ctx.fillStyle = rankColor;
         ctx.fillText(
-          `𝐑ang : ${rankName}${rankDiv ? ` ${ROMAN_DIV[rankDiv] || rankDiv}` : ""}`,
+          `${rankName}${rankDiv ? ` ${ROMAN_DIV[rankDiv]}` : ""}`,
           50,
-          135
+          138
         );
-        ctx.fillText(`𝐑𝐏 : ${currentRp.toLocaleString("fr-FR")}`, 50, 170);
+
+        ctx.font = "20px FalconMath";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(`RP : ${currentRp.toLocaleString("fr-FR")}`, 50, 170);
 
         if (user.dailyRpGained !== 0) {
           ctx.fillStyle = user.dailyRpGained > 0 ? "#2ecc71" : "#e74c3c";
@@ -4651,45 +4639,37 @@ module.exports = {
 
         const barX = 50, barY = 230, barW = 520, barH = 22;
 
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
         ctx.beginPath();
         ctx.roundRect(barX, barY, barW, barH, barH / 2);
         ctx.fill();
 
         if (progress > 0) {
-          ctx.fillStyle = getRankColor(rankName);
+          const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+          grad.addColorStop(0, rankColor);
+          grad.addColorStop(1, "rgba(255,255,255,0.85)");
+
+          ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.roundRect(
-            barX,
-            barY,
-            Math.max(barH, barW * progress),
-            barH,
-            barH / 2
-          );
+          ctx.roundRect(barX, barY, Math.max(barH, barW * progress), barH, barH / 2);
           ctx.fill();
         }
 
         if (rpInDiv > 0 && progress > 0) {
-          const lightningCount = Math.min(10, Math.max(1, Math.ceil(progress * 10)));
-          const usableWidth = barW * progress;
+          const count = Math.min(10, Math.max(1, Math.ceil(progress * 10)));
+          const usable = barW * progress;
 
-          for (let i = 0; i < lightningCount; i++) {
-            const x = barX + 10 + Math.random() * (usableWidth - 20);
-            drawStaticLightning(
-              ctx,
-              x,
-              barY + 3,
-              barH - 6,
-              getRankColor(rankName)
-            );
+          for (let i = 0; i < count; i++) {
+            const x = barX + 10 + Math.random() * (usable - 20);
+            drawStaticLightning(ctx, x, barY + 3, barH - 6, rankColor);
           }
         }
 
         ctx.font = "16px FalconMath";
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,0,0,0.6)";
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = "rgba(0,0,0,0.7)";
+        ctx.shadowBlur = 6;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(
           `${rpInDiv.toLocaleString("fr-FR")} / ${divisionSize.toLocaleString("fr-FR")} RP`,
@@ -4700,7 +4680,11 @@ module.exports = {
         ctx.textAlign = "left";
 
         if (badgeImg) {
+          ctx.save();
+          ctx.shadowColor = rankColor;
+          ctx.shadowBlur = 28;
           ctx.drawImage(badgeImg, 920, 42, 140, 140);
+          ctx.restore();
         }
 
         if (user.weeklyRpGained !== 0) {
