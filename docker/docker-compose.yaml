@@ -7,6 +7,7 @@ services:
     environment:
       APEX_API: ${APEX_API:?required}
       BDD_URL: ${BDD_URL:?required}
+      FOOTBALL_API: ${FOOTBALL_API:?required}
       GENIUS_API: ${GENIUS_API:?required}
       MINECRAFT_SERVER_URL: ${MINECRAFT_SERVER_URL:?required}
       TOKEN: ${TOKEN:?required}
@@ -14,7 +15,7 @@ services:
       TWITCH_SECRET: ${TWITCH_SECRET:?required}
       TZ: Europe/Paris
     env_file:
-      - stack.env
+      stack.env
     volumes:
       - tbm-cpu-v2:/data/logs
     networks:
