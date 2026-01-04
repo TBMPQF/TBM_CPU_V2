@@ -45,6 +45,7 @@ bot.login(bot.config.token);
 require("./music")(bot);
 require("./handlers/loaders/loadCommands")(bot);
 require("./handlers/loaders/loadEvents")(bot);
+require("./utils/apexResetAuto");
 
 const app = express();
 const PORT = 3000;

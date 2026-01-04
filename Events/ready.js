@@ -20,7 +20,6 @@ const { startTwitchCheck } = require('../twitch');
 const { networkInterfaces, hostname } = require("os");
 const { startComplianceTicker } = require("../utils/complianceTicker");
 const ApexStats = require("../models/apexStats");
-const { updateApexStatsAutomatically } = require("../utils/apexAuto");
 const axios = require("axios");
 
 module.exports = {
@@ -762,66 +761,45 @@ async function updateVoiceChannelServer(guild) {
   }
 }
 
-// Update RP d'Apex Legends toutes les 5 minutes
-function getTodayAt4AM() {
-  const d = new Date();
-  d.setHours(4, 0, 0, 0);
-  return d;
-}
-function getMondayAt4AM() {
-  const d = new Date();
-  const day = d.getDay(); // 0 = dimanche, 1 = lundi
+// Check sécurité pour les resets Apex Legends
+async function safetyCheckApexResets() {
+  const now = new Date();
+
+  // Aujourd'hui à 04h
+  const today4h = new Date(now);
+  today4h.setHours(4, 0, 0, 0);
+  if (now < today4h) today4h.setDate(today4h.getDate() - 1);
+
+  // Lundi à 04h
+  const monday4h = new Date(today4h);
+  const day = monday4h.getDay(); // 0 = dimanche
   const diff = (day === 0 ? -6 : 1) - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(4, 0, 0, 0);
-  return d;
-}
-function shouldResetDaily(lastResetAt) {
-  const today4 = getTodayAt4AM();
-  if (Date.now() < today4.getTime()) return false; // pas encore 04h
-  if (!lastResetAt) return true;
-  return new Date(lastResetAt) < today4;
-}
-function shouldResetWeekly(lastResetAt) {
-  const monday4 = getMondayAt4AM();
-  if (Date.now() < monday4.getTime()) return false; // pas encore lundi 04h
-  if (!lastResetAt) return true;
-  return new Date(lastResetAt) < monday4;
-}
-setInterval(async () => {
-  try {
-    const users = await ApexStats.find({});
-    let dailyResets = 0;
-    let weeklyResets = 0;
+  monday4h.setDate(monday4h.getDate() + diff);
+  monday4h.setHours(4, 0, 0, 0);
 
-    for (const user of users) {
-      let changed = false;
+  const users = await ApexStats.find({});
 
-      if (shouldResetDaily(user.dailyResetAt)) {
-        user.dailyRpGained = 0;
-        user.dailyResetAt = new Date();
-        changed = true;
-        dailyResets++;
-      }
+  let dailyFixed = 0;
+  let weeklyFixed = 0;
 
-      if (shouldResetWeekly(user.weeklyResetAt)) {
-        user.weeklyRpGained = 0;
-        user.weeklyResetAt = new Date();
-        changed = true;
-        weeklyResets++;
-      }
+  for (const user of users) {
+    let changed = false;
 
-      if (!user.server) {
-        user.server = user.server || "Unknown";
-      }
-      if (changed) await user.save();
+    if (!user.dailyResetAt || user.dailyResetAt < today4h) {
+      user.dailyRpGained = 0;
+      user.dailyResetAt = today4h;
+      changed = true;
+      dailyFixed++;
     }
-  } catch (err) {
-    console.error("[APEX RESET] Error:", err);
+
+    if (!user.weeklyResetAt || user.weeklyResetAt < monday4h) {
+      user.weeklyRpGained = 0;
+      user.weeklyResetAt = monday4h;
+      changed = true;
+      weeklyFixed++;
+    }
+
+    if (changed) await user.save();
   }
-}, 60 * 1000);
-setInterval(() => {
-  updateApexStatsAutomatically().catch(err =>
-    console.error("[APEX AUTO] Update error:", err)
-  );
-}, 5 * 60 * 1000);
+}
+safetyCheckApexResets();

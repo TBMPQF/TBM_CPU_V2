@@ -4504,23 +4504,6 @@ module.exports = {
 
         const now = new Date();
 
-        const dailyReset = new Date(now);
-        dailyReset.setHours(4, 0, 0, 0);
-        if (now < dailyReset) dailyReset.setDate(dailyReset.getDate() - 1);
-
-        if (!user.dailyResetAt || user.dailyResetAt < dailyReset) {
-          user.dailyRpGained = 0;
-          user.dailyResetAt = now;
-        }
-
-        const weeklyReset = new Date(dailyReset);
-        weeklyReset.setDate(weeklyReset.getDate() - weeklyReset.getDay() + 1);
-
-        if (!user.weeklyResetAt || user.weeklyResetAt < weeklyReset) {
-          user.weeklyRpGained = 0;
-          user.weeklyResetAt = now;
-        }
-
         let diff = 0;
         if (typeof user.lastRankScore === "number") {
           diff = currentRp - user.lastRankScore;
