@@ -4,6 +4,7 @@
 if [ -f ./build-info.json ]; then
   echo INF - "Version du code en cours : $(cat ./build-info.json | jq -r .tag)"
   echo INF - "Commit du code en cours : $(cat ./build-info.json | jq -r .sha)"
+  echo INF - "Date de construction de l'image : $(cat ./build-info.json | jq -r .date)"
 fi
 
 # Gestion des fichiers .logs

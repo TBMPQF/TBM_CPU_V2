@@ -34,7 +34,7 @@ jobs:
 
       - name: Génération du fichier de version build-info.json
         run: |
-          echo "{\"tag\": \"${{ github.event.inputs.version || env.BRANCH_NAME }}\", \"sha\": \"${{ github.sha }}\"}" > build-info.json
+          echo "{\"tag\": \"${{ github.event.inputs.version || env.BRANCH_NAME }}\", \"sha\": \"${{ github.sha }}\", \"date\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\"}" > build-info.json
 
       - name: Application du TAG sur l'image Docker, si présent
         if: github.event.inputs.version != ''
