@@ -123,7 +123,7 @@ module.exports = {
 
             📌 **𝐒alon actuel** : \`${serverConfig.logChannelName}\``
           )
-          .setThumbnail("https://images.emojiterra.com/google/android-12l/512px/1f4dd.png")
+          .setThumbnail("https://i.postimg.cc/ZKGSMjhv/Capture.png")
           .setColor("#b3c7ff");
 
         const rowLog = new ActionRowBuilder().addComponents(
@@ -136,106 +136,140 @@ module.exports = {
 
       /* ========= TWITCH ========= */
       case "TWITCH": {
-        const embed = new EmbedBuilder()
+        const embedTwitch = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐓witch丨`")
           .setDescription(
-            `🔴丨𝐌ise en avant des streamers du serveur.
-            𝐏ermet d’envoyer automatiquement un message quand un membre lance un live Twitch.
-            __𝐓u peux configurer__ :
+          `🎥丨**𝐋e projecteur braqué sur tes streamers !**
 
-            ◟𝐋e salon d’annonce,
-            ◟𝐋e rôle Streamer attribué pendant le live.
+          - **𝐔n live ?** 𝐓out le serveur est prévenu 🔔
+          - **𝐑ôle streamer ?** 𝐀ttribué automatiquement 🎮
+          - **𝐏lus de viewers ?** 𝐂lairement oui 📈
 
-            𝐒alon actuel : \`${serverConfig.TwitchChannelName}\`
-            𝐑ole __Streamer__ actuel : \`${serverConfig.TwitchRoleName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.TwitchChannelName}\`
+          🎭丨**𝐑ôle streamer** : \`${serverConfig.TwitchRoleName}\``
           )
-          .setThumbnail("https://cdn.pixabay.com/photo/2021/12/10/16/38/twitch-6860918_1280.png")
+          .setThumbnail("https://i.postimg.cc/63xsHQJW/image-2026-01-04-221014147.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowTwitch = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("TWITCH_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("TWITCH_LISTE").setEmoji("📅").setLabel("𝐋iste 𝐒treamers").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("TWITCH_ROLE").setEmoji("👮‍♂️").setLabel("𝐒treamer 𝐑ôle").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("TWITCH_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedTwitch], components: [rowTwitch, buildBaseSelectMenuRow("after")] });
       }
 
       /* ========= REGLEMENT ========= */
       case "REGLEMENT": {
-        const embed = new EmbedBuilder()
+        const hasChannel = Boolean(serverConfig.reglementChannelName);
+
+        const embedReglement = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐑èglement丨`")
           .setDescription(
-            `⚖️丨𝐋e pilier du serveur.
-              𝐒alon dédié à l’affichage du règlement officiel.
-              __𝐓u peux configurer__ :
+        `📜丨**𝐋a loi sacrée du serveur (promis, c’est pas si chiant)**
 
-              ◟𝐃éfinir le salon,
-              ◟𝐂hoisir le rôle attribué après validation,
-              ◟𝐑envoyer le règlement à tout moment.
+        - **𝐋es règles ?** 𝐏our que tout le monde joue fair-play ⚖️
+        - **𝐔n clic, une validation** et c’est réglé ✔️
+        - **𝐑ôle automatique ?** 𝐎ui, pour les bons élèves 😇
 
-            ✔️ pour envoyé le 𝐑èglement dans ton salon !
-
-            𝐒alon actuel : \`${serverConfig.reglementChannelName}\`
-            𝐑ôle actuel : \`${serverConfig.roleReglementName}\``
+        📌丨**𝐒alon actuel** : \`${serverConfig.reglementChannelName ?? "non défini"}\`
+        🎭丨**𝐑ôle donné** : \`${serverConfig.roleReglementName ?? "non défini"}\``
           )
-          .setThumbnail("https://exalto-park.com/wp-content/uploads/2022/11/Reglement-interieur.png")
+          .setThumbnail("https://i.postimg.cc/c49Vphyw/Capture.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("REGL_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId("REGL_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId("REGL_ROLE").setEmoji("🕵").setLabel("𝐌odifier 𝐑ôles").setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId("REGL_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
+        const rowReglement = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("REGL_PUSH")
+            .setEmoji("✔️")
+            .setLabel("𝐄nvoyer")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(!hasChannel),
+
+          new ButtonBuilder()
+            .setCustomId("REGL_BUTTON")
+            .setEmoji("📝")
+            .setLabel("𝐌odifier 𝐒alons")
+            .setStyle(ButtonStyle.Primary),
+
+          new ButtonBuilder()
+            .setCustomId("REGL_ROLE")
+            .setEmoji("🕵")
+            .setLabel("𝐌odifier 𝐑ôles")
+            .setStyle(ButtonStyle.Primary),
+
+          new ButtonBuilder()
+            .setCustomId("REGL_DESAC")
+            .setEmoji("❌")
+            .setLabel("𝐑éinitialiser")
+            .setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({
+          embeds: [embedReglement],
+          components: [rowReglement, buildBaseSelectMenuRow("after")]
+        });
       }
 
       /* ========= BINGO ========= */
       case "BINGO": {
         const bingoDoc = await Bingo.findOne({ serverID }).lean();
 
-        let embed = new EmbedBuilder()
+        let embedBingo = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration du 𝐁ingo丨`")
           .setDescription(buildBingoConfigDescription(serverConfig, bingoDoc))
-          .setThumbnail("https://png.pngtree.com/png-clipart/20210311/original/pngtree-colorful-bingo-words-hand-drawing-png-image_6006005.png")
+          .setThumbnail("https://i.postimg.cc/kXX65JVy/image-2026-01-04-214848313.png")
           .setColor("#b3c7ff");
 
-        embed = applyNextBingoFooter(embed, bingoDoc);
+        embedBingo = applyNextBingoFooter(embedBingo, bingoDoc);
 
         const isActive = ((bingoDoc?.etat || "").trim() === ETAT_DB.ACTIF);
 
-        const row = new ActionRowBuilder().addComponents(
+        const mainBtn = new ButtonBuilder()
+          .setCustomId(isActive ? "BINGO_DISABLE" : "BINGO_PUSH")
+          .setLabel(isActive ? "𝐃ésactiver" : "𝐀ctiver")
+          .setStyle(isActive ? ButtonStyle.Danger : ButtonStyle.Primary);
+
+        if (!isActive) {
+          mainBtn.setEmoji("✔️");
+        }
+
+        const rowBingo = new ActionRowBuilder().addComponents(
+          mainBtn,
           new ButtonBuilder()
-            .setCustomId(isActive ? "BINGO_DISABLE" : "BINGO_PUSH")
-            .setLabel(isActive ? "𝐃ésactiver" : "𝐀ctiver")
-            .setStyle(isActive ? ButtonStyle.Danger : ButtonStyle.Primary)
-            .setEmoji(isActive ? null : "✔️"),
-          new ButtonBuilder().setCustomId("BINGO_BUTTON").setLabel("𝐌odifier 𝐒alon").setEmoji("📝").setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId("BINGO_DESAC").setLabel("𝐑éinitialiser").setEmoji("❌").setStyle(ButtonStyle.Danger),
+            .setCustomId("BINGO_BUTTON")
+            .setLabel("𝐌odifier 𝐒alon")
+            .setEmoji("📝")
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId("BINGO_DESAC")
+            .setLabel("𝐑éinitialiser")
+            .setEmoji("❌")
+            .setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({
+          embeds: [embedBingo],
+          components: [rowBingo, buildBaseSelectMenuRow("after")]
+        });
       }
 
       case "TICKET": {
         const embedTicket = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐓icket丨`")
           .setDescription(
-            `🛠️丨𝐒upport privé et modération.
-            𝐒ystème de tickets permettant aux membres de contacter le staff en privé.
-            __𝐓u peux configurer__ :
+          `🎫丨**𝐋e service après-vente du serveur !**
 
-            ◟𝐒alon de création,
-            ◟𝐑ôle administrateur,
-            ◟𝐌essage initial.
+          - **𝐔n souci ?** 𝐎uvre un ticket 🆘
+          - **𝐒alon privé ?** 𝐌odos only 👮
+          - **𝐓out est tracé**, rien ne se perd
 
-            𝐒alon actuel : \`${serverConfig.ticketChannelName}\`
-            𝐑ôle admin : \`${serverConfig.ticketAdminRoleName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.ticketChannelName}\`
+          👮丨**𝐑ôle admin** : \`${serverConfig.ticketAdminRoleName}\``
           )
-          .setThumbnail("https://www.pngall.com/wp-content/uploads/12/Ticket-PNG-Free-Image.png")
+          .setThumbnail("https://i.postimg.cc/MGxXhz8j/dddd.png")
           .setColor("#b3c7ff");
 
         const rowTicket = new ActionRowBuilder().addComponents(
@@ -245,158 +279,150 @@ module.exports = {
           new ButtonBuilder().setCustomId("TICKET_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embedTicket], components: [rowTicket, baseMenu] });
+        return interaction.update({ embeds: [embedTicket], components: [rowTicket, buildBaseSelectMenuRow("after")] });
       }
 
       case "ROLES": {
-        const embed = new EmbedBuilder()
+        const embedRoles = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration des 𝐑ôles pour niveaux丨`")
           .setDescription(
-            `📈丨𝐑écompenses par progression.
-            𝐋es rôles sont attribués automatiquement en fonction du niveau atteint par le membre.
-            𝐋e service comprends **12 niveaux** de rôles personnalisables, sur **10 prestiges** maximum. Le niveau à l'arrivée est 0 et va jusqu'à 50 inclus.
-            𝐆estion fine et évolutive pour structurer la progression.`
+          `🧪丨**𝐋a progression visible, niveau par niveau !**
+
+          - **𝐌ontée en niveau ?** 𝐑ôle automatique 👑
+          - **𝐏aliers clés ?** 1, 2, 5, 10… 15… jusqu’à 50 !
+          - **𝐏restige ?** 𝐎ui -> 10, on aime quand ça brille ✨
+
+          ◟ 𝐔tilise **Liste** pour voir, **Modifier** pour ajuster`
           )
-          .setThumbnail("https://cdn-icons-png.flaticon.com/512/33/33056.png")
+          .setThumbnail("https://i.postimg.cc/XqTYxb8N/dddqq.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowRoles = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("ROLE_LISTE").setEmoji("📅").setLabel("𝐋iste").setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId("ROLES_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedRoles], components: [rowRoles, buildBaseSelectMenuRow("after")] });
       }
 
       case "DAILY": {
-        const embed = new EmbedBuilder()
+        const embedDaily = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration du 𝐃aily丨`")
           .setDescription(
-            `🔥丨𝐁onus quotidien d’expérience.
-            𝐋es membres peuvent récupérer leur Daily XP toutes les **23 heures**.
-            𝐒ystème cumulatif pour encourager la régularité.
-            __𝐓u peux configurer__ :
+          `💵丨**𝐋a petite récompense qui fait plaisir !**
 
-            ◟𝐋e salon,
-            ◟𝐋e message,
-            ◟𝐋’activation/désactivation.
+          - **𝐔ne fois par jour ?** 𝐎ui, faut revenir 😏 (toute les 23h)
+          - **𝐁onus cumulatif ?** 𝐋es fidèles sont récompensés 🔥
+          - **𝐗𝐏 gratuit ?** 𝐂lairement oui.
 
-            𝐒alon actuel : \`${serverConfig.dailyChannelName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.dailyChannelName}\``
           )
-          .setThumbnail("https://papycha.fr/wp-content/uploads/2019/08/84863418061.png")
+          .setThumbnail("https://i.postimg.cc/7h7fFhbY/qsdqqq.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowDaily = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("DAILY_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId("DAILY_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("DAILY_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedDaily], components: [rowDaily, buildBaseSelectMenuRow("after")] });
       }
 
       case "SUGGESTION": {
-        const embed = new EmbedBuilder()
+        const embedSuggestion = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐒uggestions丨`")
           .setDescription(
-            `💬丨𝐁oîte à idées communautaire.
-            𝐂haque message posté devient automatiquement une suggestion avec boutons de réaction.
-            𝐏arfait pour :
+          `💡丨**𝐋e laboratoire d’idées du serveur !**
 
-            ◟𝐑écolter des idées,
-            ◟𝐈mpliquer les membres dans l’évolution du serveur.
+          - **𝐔ne idée géniale ?** 𝐁alance-la ici 🧠
+          - **𝐔n message = une suggestion** (magie ✨)
+          - **𝐕otes & réactions ?** 𝐓out est prêt !
 
-            𝐒alon actuel : \`${serverConfig.suggestionsChannelName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.suggestionsChannelName}\``
           )
-          .setThumbnail("https://cdn-icons-png.flaticon.com/512/2118/2118247.png")
+          .setThumbnail("https://i.postimg.cc/HLZc5FfM/qsdqsd.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowSuggestion = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("IDEE_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("SUGG_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedSuggestion], components: [rowSuggestion, buildBaseSelectMenuRow("after")] });
       }
 
       case "IMPLICATION": {
-        const embed = new EmbedBuilder()
+        const embedImplication = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐈mplications丨`")
           .setDescription(
-              `📢丨𝐀nnonces de progression.
-              𝐀ffiche un message quand un membre :
+          `🏆丨**𝐋e tableau d’honneur du serveur !**
 
-              ◟𝐌onte de niveau,
-              ◟𝐏rogresse dans l’expérience,
-              ◟𝐁ump le serveur.
+          - **𝐍ouveau niveau ?** 𝐓out le monde est au courant 🎉
+          - **𝐅lex discret ?** 𝐈ci, on félicite proprement 😌
+          - **𝐌otivation ?** 𝐑ien de mieux qu’un petit message public !
 
-              𝐈déal pour motiver la communauté et mettre en avant l’activité.
-
-              𝐒alon actuel : \`${serverConfig.implicationsChannelName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.implicationsChannelName}\``
           )
-          .setThumbnail("https://supermonday.io/wp-content/uploads/2023/01/brain-g13f32aaed_1920.png")
+          .setThumbnail("https://i.postimg.cc/2STVRPjc/qsd.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowImplication = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("IMPLICATION_BUTTON").setEmoji("📝").setLabel("𝐌odifier Salons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("IMPLICATION_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedImplication], components: [rowImplication, buildBaseSelectMenuRow("after")] });
       }
 
       case "WELCOME": {
-        const embed = new EmbedBuilder()
+        const embedWelcome = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐖elcome丨`")
           .setDescription(
-            `🎉丨𝐀ccueil des nouveaux membres.
-              𝐌essage automatique envoyé lorsqu’un membre rejoint le serveur.
-              __𝐓u peux configurer__ :
+          `👋丨**𝐋e tapis rouge pour les nouveaux arrivants !**
 
-              ◟𝐒alon de bienvenue,
-              ◟𝐑ôle donné à l’arrivée,
-              ◟𝐃ésactivation complète si besoin.
+          - **𝐍ouveau membre ?** 𝐀ccueil chaleureux garanti ✨
+          - **𝐑ôle automatique ?** 𝐎ui, oui, on s’en occupe 🤝
+          - **𝐏remière impression ?** 𝐀utant qu’elle soit bonne !
 
-            𝐒alon actuel : \`${serverConfig.welcomeChannelName}\`
-            𝐑ôle actuel : \`${serverConfig.roleWelcomeName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.welcomeChannelName}\`
+          🎭丨**𝐑ôle donné** : \`${serverConfig.roleWelcomeName}\``
           )
-          .setThumbnail("https://cdn.pixabay.com/photo/2016/03/31/21/33/greeting-1296493_1280.png")
+          .setThumbnail("https://i.postimg.cc/gkXwhMDY/Capturefqdsfsdq.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowWelcome = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("WELCOME_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("WELCOME_ROLE").setEmoji("🕵").setLabel("𝐌odifier 𝐑ôles").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("WELCOME_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedWelcome], components: [rowWelcome, buildBaseSelectMenuRow("after")] });
       }
 
       case "ROLECHANNEL": {
-        const embed = new EmbedBuilder()
+        const embedRoleChannel = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration du salon 𝐑ôles丨`")
           .setDescription(
-            `🎮丨𝐆estion des rôles en libre-service.
-            𝐏ermet aux membres de choisir leurs rôles (jeux, activités, etc.) via un menu interactif.
-            __𝐓u peux configurer__ :
+          `🎭丨**𝐋e dressing officiel du serveur !**
 
-            ◟𝐀jouter / retirer des rôles,
-            ◟𝐂hanger le salon,
-            ◟𝐄nvoyer ou réinitialiser le menu
+          - **𝐑ôles de jeux ?** 𝐄n libre-service 🎮
+          - **𝐔n clic = un rôle** (simple et efficace)
+          - **𝐌odifiable à volonté** sans prise de tête
 
-            𝐒alon actuel : \`${serverConfig.roleChannelName}\``
+          📌丨**𝐒alon actuel** : \`${serverConfig.roleChannelName}\``
           )
-          .setThumbnail("https://www.numerama.com/wp-content/uploads/2020/03/role-playing-game-2536016_1920.jpg")
+          .setThumbnail("https://i.postimg.cc/tCkXYF0h/qqsssq.png")
           .setColor("#b3c7ff");
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowRoleChannel = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("ROLECHANNEL_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId("ROLECHANNEL_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("ROLECHANNEL_LISTE").setEmoji("🕵").setLabel("𝐀fficher 𝐑ôles").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("ROLECHANNEL_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
 
-        return interaction.update({ embeds: [embed], components: [row, baseMenu] });
+        return interaction.update({ embeds: [embedRoleChannel], components: [rowRoleChannel, buildBaseSelectMenuRow("after")] });
       }
 
       default:

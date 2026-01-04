@@ -467,7 +467,7 @@ module.exports = {
     const API_FOOTBALL_KEY = config.football_api;
     const PSG_TEAM_ID = 85;
 
-    const MATCH_CHECK_INTERVAL = 60 * 1000; // 1 min
+    const MATCH_CHECK_INTERVAL = 100 * 1000; // 1 min 40 sec
     const ROTATION_INTERVAL = 30 * 1000; // 30 sec
     const END_MATCH_DELAY = 20 * 60 * 1000; // 20 min
 
@@ -508,12 +508,16 @@ module.exports = {
             },
             params: {
               team: PSG_TEAM_ID,
-              last: 1,
+              live: "all",
             },
           }
         );
 
-        return res.data.response[0] || null;
+        if (res.data.response.length > 0) {
+          return res.data.response[0];
+        }
+
+        return null;
       } catch (err) {
         console.error("❌ API-Football error :", err.message);
         return null;
@@ -537,7 +541,7 @@ module.exports = {
 
       let suffix = null;
 
-      if (status === "1H" || status === "2H") {
+      if (["1H", "2H", "ET", "P"].includes(status)) {
         suffix = `${minute}'`;
         mode = "match";
       } else if (status === "HT") {
