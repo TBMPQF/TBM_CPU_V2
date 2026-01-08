@@ -1,11 +1,19 @@
-const Discord = require("discord.js");
+// ✨ Commande Chifoumi – IA Adaptative + Anti-spam
+// 🎨 RÉPONSE IMAGE via @napi-rs/canvas (SANS EMBED)
+
+const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const { AttachmentBuilder } = require("discord.js");
 const User = require("../../models/experience");
 const levelUp = require("../../models/levelUp");
 
+const COOLDOWN = 10_000;
+const cooldowns = new Map();
+const iaMemory = new Map();
+
 const images = {
-  "pierre": "https://zupimages.net/up/22/44/u8vr.png",
-  "ciseaux": "https://zupimages.net/up/22/44/u9gk.png",
-  "feuille": "https://zupimages.net/up/22/44/wkqx.png"
+  pierre: "https://zupimages.net/up/22/44/u8vr.png",
+  feuille: "https://zupimages.net/up/22/44/wkqx.png",
+  ciseaux: "https://zupimages.net/up/22/44/u9gk.png"
 };
 
 module.exports = {
@@ -30,94 +38,70 @@ module.exports = {
   ],
 
   async execute(interaction) {
-    let joueursH = interaction.options.getString("choix").toLowerCase();
-    let mise = interaction.options.getInteger("mise");
+    const userId = interaction.user.id;
+    const serverId = interaction.guild.id;
 
-    if (!["pierre", "feuille", "ciseaux"].includes(joueursH)) {
-      return await interaction.reply({
-        content: "𝐓u as cru pouvoir gagner comme ça.. ? 𝐉oue uniquement : **pierre**, **feuille** ou **ciseaux**.",
-        ephemeral: true
-      });
+    const last = cooldowns.get(userId);
+    if (last && Date.now() - last < COOLDOWN) {
+      return interaction.reply({ content: "⏳丨Doucement…", ephemeral: true });
     }
+    cooldowns.set(userId, Date.now());
 
-    if (mise < 5 || mise > 1000) {
-      return await interaction.reply({
-        content: "𝐋a mise doit être entre \`5\` et \`1000\` XP.",
-        ephemeral: true
-      });
-    }
+    const joueursH = interaction.options.getString("choix").toLowerCase();
+    const mise = interaction.options.getInteger("mise");
 
-    let joueursB;
-    if (Math.random() < 0.6) { //Plus c'est haut, plus le bot gagne !
-      switch (joueursH) {
-        case "pierre":
-          joueursB = "feuille";
-          break;
-        case "feuille":
-          joueursB = "ciseaux";
-          break;
-        case "ciseaux":
-          joueursB = "pierre";
-          break;
-      }
-    } else {
-      let joueursB1 = ["pierre", "feuille", "ciseaux"];
-      let punchradom = Math.floor(Math.random() * joueursB1.length);
-      joueursB = joueursB1[punchradom];
-    }
-
-    let thumbUrl = images[joueursB];
+    if (!images[joueursH]) return interaction.reply({ content: "❌ Choix invalide", ephemeral: true });
 
     await interaction.deferReply();
 
-    let user = await User.findOne({ userID: interaction.user.id, serverID: interaction.guild.id });
-    if (!user) {
-      user = new User({ userID: interaction.user.id, serverID: interaction.guild.id, username: interaction.user.username });
+    if (!iaMemory.has(userId)) iaMemory.set(userId, { pierre: 0, feuille: 0, ciseaux: 0 });
+    iaMemory.get(userId)[joueursH]++;
+
+    const favorite = Object.entries(iaMemory.get(userId)).sort((a,b)=>b[1]-a[1])[0][0];
+    const counter = { pierre: "feuille", feuille: "ciseaux", ciseaux: "pierre" };
+
+    const joueursB = Math.random() < 0.7 ? counter[favorite] : Object.keys(images)[Math.floor(Math.random()*3)];
+
+    let user = await User.findOne({ userID: userId, serverID: serverId });
+    if (!user) user = new User({ userID: userId, serverID: serverId, xp: 0 });
+
+    if (user.xp < mise) return interaction.editReply("🚫 XP insuffisant");
+
+    let result = "ÉGALITÉ", xpChange = 0;
+    if (joueursH !== joueursB) {
+      if (counter[joueursB] === joueursH) { result = "GAGNÉ"; xpChange = mise; }
+      else { result = "PERDU"; xpChange = -mise; }
     }
 
-    if (user.xp < mise) {
-      return await interaction.editReply(`:no_entry_sign: **𝐓u n'as pas assez d'__XP__ pour cette mise.**\n𝐓u as seulement ${user.xp.toLocaleString()} XP disponible.`);
-    }
-
-    let Embed = new Discord.EmbedBuilder();
-
-    let gameResult;
-    let color;
-    let xpChange = 0;
-
-    if (joueursH === joueursB) {
-      gameResult = "É-GA-LI-TÉ";
-      color = "Grey";
-    } else if (
-      (joueursH === "pierre" && joueursB === "ciseaux") ||
-      (joueursH === "feuille" && joueursB === "pierre") ||
-      (joueursH === "ciseaux" && joueursB === "feuille")
-    ) {
-      gameResult = "𝐆AGNÉ";
-      color = "Green";
-      xpChange = mise;
-    } else {
-      gameResult = "𝐏ERDU";
-      color = "Red";
-      xpChange = -mise;
-    }
+    if (xpChange > 0 && Math.random() < 0.05) xpChange *= 3;
 
     user.xp += xpChange;
+    await user.save();
     await levelUp(interaction, user, user.xp);
 
-    Embed.setColor(color)
-      .setDescription(
-        `${gameResult === "É-GA-LI-TÉ" ? "𝐀rf, on est connecté" : gameResult === "GAGNÉ" ? "𝐁ien joué" : "Désolé"} \`${interaction.user.username}\` ${xpChange=== 0 ? "" : xpChange > 0 ? `! \`+${xpChange} XP.\`` : `... \`-${-xpChange} XP.\``}\n\n𝐓u as joué \*\*${joueursH}\*\* donc tu as \`${gameResult}\`.`
-      )
-      .setThumbnail(thumbUrl)
-      .setFooter({
-        text: `𝐓u as maintenant : ${user.xp.toLocaleString()} XP.`,
-        iconURL: interaction.user.displayAvatarURL({
-          dynamic: true,
-          size: 512,
-        })
-      })
-      const sentMessage = await interaction.editReply({ embeds: [Embed] });
-      setTimeout(() => sentMessage.delete(), 30000);
-  },
+    // 🎨 CANVAS
+    const canvas = createCanvas(900, 300);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 32px Sans";
+    ctx.fillText("CHIFOUMI – IA ADAPTATIVE", 30, 50);
+
+    ctx.font = "24px Sans";
+    ctx.fillText(`Joueur : ${interaction.user.username}`, 30, 100);
+    ctx.fillText(`Résultat : ${result}`, 30, 140);
+    ctx.fillText(`XP : ${xpChange >= 0 ? "+" : ""}${xpChange}`, 30, 180);
+    ctx.fillText(`XP total : ${user.xp}`, 30, 220);
+
+    const imgBot = await loadImage(images[joueursB]);
+    ctx.drawImage(imgBot, 650, 80, 180, 180);
+
+    const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: "chifoumi.png" });
+
+    const msg = await interaction.editReply({ files: [attachment] });
+    setTimeout(() => msg.delete().catch(() => {}), 30_000);
+  }
 };

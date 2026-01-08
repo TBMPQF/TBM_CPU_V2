@@ -435,7 +435,7 @@ module.exports = {
 
     // Interval de messages pour le Daily.
     const channelId = "818640158693392405";
-    const messageIdToKeep = "1193673840782483496"; // Message à ne pas supprimer
+    const messageIdToKeep = "1458777365319651328"; // Message à ne pas supprimer
     setInterval(() => {
       const channelDaily = bot.channels.cache.get(channelId);
       if (!channelDaily) return;
@@ -466,15 +466,13 @@ module.exports = {
     // Activité du bot
     const API_FOOTBALL_KEY = config.football_api;
     const PSG_TEAM_ID = 85;
-
     const MATCH_CHECK_INTERVAL = 100 * 1000; // 1 min 40 sec
     const ROTATION_INTERVAL = 30 * 1000; // 30 sec
     const END_MATCH_DELAY = 20 * 60 * 1000; // 20 min
 
-    let mode = "normal"; // normal | match
+    let mode = "normal";
     let matchEndTimeout = null;
     let activityIndex = 0;
-
 
     const activities = [
       { name: "🎮 𝐀pex 𝐋egends", type: ActivityType.Playing },
@@ -523,7 +521,6 @@ module.exports = {
         return null;
       }
     }
-
     async function updateMatchPresence(bot) {
       const match = await getPSGMatch();
       if (!match) return;
@@ -571,7 +568,6 @@ module.exports = {
         status: "dnd",
       });
     }
-
     setInterval(() => {
       if (mode !== "normal") return;
 
@@ -596,7 +592,6 @@ module.exports = {
 
       activityIndex = (activityIndex + 1) % activities.length;
     }, ROTATION_INTERVAL);
-
     setInterval(() => {
       updateMatchPresence(bot);
     }, MATCH_CHECK_INTERVAL);
