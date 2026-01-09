@@ -62,5 +62,9 @@ cat << EOF > ./config.json
 EOF
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
+if [!(cat ./build-info.json | jq -r .tag | grep -q "main")]; then
+  echo WAR - "Version BETA détectée, affichage d'une variable d'environnement supplémentaire dans les logs."
+  echo $MINECRAFT_SERVER_URL
+fi
 echo INF - "Démarrage du bot..."
 node /data/index.js > >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_output.log) 2> >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_error.log >&2)
