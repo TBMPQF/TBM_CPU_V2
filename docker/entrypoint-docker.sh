@@ -46,7 +46,7 @@ sleep $delai
 
 # Creation du fichier de configuration
 echo INF - "Création du fichier de configuration..."
-./create-config.sh
+sh ./create-config.sh
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
 if ! jq -r .tag ./build-info.json | grep -q "main"; then
