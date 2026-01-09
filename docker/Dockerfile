@@ -18,6 +18,7 @@ RUN apk add --no-cache \
     build-base \
     cairo-dev \
     ffmpeg \
+    fontconfig  \
     gawk \
     giflib-dev \
     jpeg-dev \
@@ -28,7 +29,13 @@ RUN apk add --no-cache \
     py3-pip \
     wget
 
+    # Installation des dépendances nodejs
 RUN npm install
+
+# Installation des polices d'écritures
+RUN mkdir -p /usr/share/fonts/truetype/noto && \
+    for font in /data/utils/*.ttf; do cp "$font" /usr/share/fonts/truetype/noto/; done && \
+    fc-cache -f -v
 
 # Rendre executable le script de démarrage
 RUN chmod +x ./entrypoint-docker.sh
