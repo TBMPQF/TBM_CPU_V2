@@ -49,9 +49,5 @@ echo INF - "Création du fichier de configuration..."
 sh ./create-config.sh
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
-if ! jq -r .tag ./build-info.json | grep -q "main"; then
-  echo WAR - "Version BETA détectée, affichage d'une variable d'environnement supplémentaire dans les logs."
-  echo COMMIT_REF: $COMMIT_REF
-fi
 echo INF - "Démarrage du bot..."
 node ./index.js > >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_output.log) 2> >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_error.log >&2)
