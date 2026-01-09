@@ -29,7 +29,7 @@ RUN apk add --no-cache \
     py3-pip \
     wget
 
-    # Installation des dépendances nodejs
+# Installation des dépendances nodejs
 RUN npm install
 
 # Installation des polices d'écritures
