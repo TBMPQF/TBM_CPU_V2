@@ -5,6 +5,14 @@ services:
     container_name: tbm-cpu-v2
     hostname: tbm-cpu-v2
     environment:
+      APEX_API: ${APEX_API:?required}
+      BDD_URL: ${BDD_URL:?required}
+      FOOTBALL_API: ${FOOTBALL_API:?required}
+      GENIUS_API: ${GENIUS_API:?required}
+      MINECRAFT_SERVER_URL: ${MINECRAFT_SERVER_URL:?required}
+      TOKEN: ${TOKEN:?required}
+      TWITCH_ID: ${TWITCH_ID:?required}
+      TWITCH_SECRET: ${TWITCH_SECRET:?required}
       TZ: Europe/Paris
     env_file:
       - stack.env
