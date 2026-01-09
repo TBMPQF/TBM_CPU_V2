@@ -62,7 +62,7 @@ cat << EOF > ./config.json
 EOF
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
-if [!(cat ./build-info.json | jq -r .tag | grep -q "main")]; then
+if ! jq -r .tag ./build-info.json | grep -q "main"; then
   echo WAR - "Version BETA détectée, affichage d'une variable d'environnement supplémentaire dans les logs."
   echo COMMI_REF: $COMMIT_REF
 fi
