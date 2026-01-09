@@ -10,17 +10,8 @@ services:
       stack.env
     volumes:
       - tbm-cpu-v2:/data/logs
-      - ./stack.env:/data/stack.env:ro
     networks:
       - tbm_cpu
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-          set -a
-          . ./stack.env
-          set +a
-          exec ./entrypoint-docker.sh
 
 volumes:
   tbm-cpu-v2:
