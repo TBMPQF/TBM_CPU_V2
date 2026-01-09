@@ -16,7 +16,7 @@ on:
         type: string
 
 jobs:
-  construct-and-push-docker-image:
+  construct-image-docker:
     runs-on: ubuntu-latest
 
     permissions:
