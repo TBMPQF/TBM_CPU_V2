@@ -46,20 +46,7 @@ sleep $delai
 
 # Creation du fichier de configuration
 echo INF - "Création du fichier de configuration..."
-cat << EOF > ./config.json
-{
-  "token": "$TOKEN",
-  "mongourl": "$BDD_URL",
-  "serveurMinecraftDOMAIN": "$MINECRAFT_SERVER_URL",
-  "twitch": {
-    "clientId": "$TWITCH_ID",
-    "clientSecret": "$TWITCH_SECRET"
-  },
-  "apex_api": "$APEX_API",
-  "genius_api": "$GENIUS_API",
-  "football_api": "$FOOTBALL_API"
-}
-EOF
+./create-config.sh
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
 if ! jq -r .tag ./build-info.json | grep -q "main"; then

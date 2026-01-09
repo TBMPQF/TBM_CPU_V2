@@ -37,14 +37,17 @@ RUN mkdir -p /usr/share/fonts/truetype/noto && \
     for font in /data/utils/*.ttf; do cp "$font" /usr/share/fonts/truetype/noto/; done && \
     fc-cache -f -v
 
-# Rendre executable le script de démarrage
-RUN chmod +x ./entrypoint-docker.sh
+# Rendre executable les scripts de démarrage
+RUN chmod +x ./*.sh
 
 # Démarrer le code avec le script d'entrée
 ENTRYPOINT ["./entrypoint-docker.sh"]
 
 # Expose le port pour le health check
 EXPOSE 3000
+
+# Déclation du volume pour les logs pour les conserver au reboot du conteneur
+VOLUME [ "/data/logs" ]
 
 # Ajout du health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
