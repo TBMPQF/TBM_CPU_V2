@@ -257,6 +257,7 @@ module.exports = {
       }
 
       case "TICKET": {
+        const hasChannel = Boolean(serverConfig.ticketChannelName);
         const embedTicket = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐓icket丨`")
           .setDescription(
@@ -273,7 +274,7 @@ module.exports = {
           .setColor("#b3c7ff");
 
         const rowTicket = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("TICKET_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("TICKET_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Secondary).setDisabled(!hasChannel),
           new ButtonBuilder().setCustomId("TICKET_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("TICKET_ROLE").setEmoji("👮‍♂️").setLabel("𝐀dministrateur 𝐑ôle").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("TICKET_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
@@ -306,6 +307,7 @@ module.exports = {
       }
 
       case "DAILY": {
+        const hasChannel = Boolean(serverConfig.dailyChannelName);
         const embedDaily = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration du 𝐃aily丨`")
           .setDescription(
@@ -321,7 +323,7 @@ module.exports = {
           .setColor("#b3c7ff");
 
         const rowDaily = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("DAILY_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("DAILY_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success).setDisabled(!hasChannel),
           new ButtonBuilder().setCustomId("DAILY_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("DAILY_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
         );
@@ -401,6 +403,8 @@ module.exports = {
       }
 
       case "ROLECHANNEL": {
+        const hasChannel = Boolean(serverConfig.roleChannelName);
+
         const embedRoleChannel = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration du salon 𝐑ôles丨`")
           .setDescription(
@@ -416,7 +420,7 @@ module.exports = {
           .setColor("#b3c7ff");
 
         const rowRoleChannel = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("ROLECHANNEL_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("ROLECHANNEL_PUSH").setEmoji("✔️").setLabel("𝐄nvoyer").setStyle(ButtonStyle.Success).setDisabled(!hasChannel),
           new ButtonBuilder().setCustomId("ROLECHANNEL_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("ROLECHANNEL_LISTE").setEmoji("🕵").setLabel("𝐀fficher 𝐑ôles").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("ROLECHANNEL_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),

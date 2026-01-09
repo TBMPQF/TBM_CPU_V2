@@ -34,6 +34,7 @@ const Suggestion = require('../models/suggestion');
 const TwitchStreamers = require("../models/TwitchStreamers")
 const messagesRandom = require('../models/messageRandom');
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const { updateConfigEmbed } = require("../utils/updateconfigEmbed");
 
 const ETAT_DB = {
   ACTIF: '𝐀𝐂𝐓𝐈𝐅',
@@ -1652,89 +1653,76 @@ module.exports = {
     }
 
     //Gestion du SetConfig
-    if (interaction.customId === "LOG_BUTTON") { //OK
+    if (interaction.customId === "LOG_BUTTON") {
       let secondsRemaining = 60;
-      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐋og` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
-  
+      const originalContent =
+        "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐋og` désiré.";
+
       const replyMessage = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
+        content: `${originalContent} ***${secondsRemaining}s***`,
+        fetchReply: true
       });
-  
+
       let followUpMessages = [];
       let messageDeleted = false;
-  
+
       const interval = setInterval(() => {
-          if (messageDeleted) {
-              clearInterval(interval);
-              return;
-          }
-  
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  if (error.code === 10008) {
-                      messageDeleted = true;
-                      clearInterval(interval);
-                  } else {
-                      console.error('Erreur lors de la mise à jour du message :', error);
-                  }
-              });
-          } else {
-              clearInterval(interval);
-          }
+        if (messageDeleted) return clearInterval(interval);
+
+        secondsRemaining--;
+        if (secondsRemaining > 0) {
+          replyMessage.edit(
+            `${originalContent} ***${secondsRemaining}s***`
+          ).catch(() => {});
+        } else clearInterval(interval);
       }, 1000);
-  
+
       const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 60000,
-          max: 1
+        filter: m => m.author.id === interaction.user.id,
+        time: 60000,
+        max: 1
       });
-  
+
       collector.on("collect", async (m) => {
-          clearInterval(interval);
-          followUpMessages.push(m);
-  
-          const channelId = m.content.trim();
-          const channel = interaction.guild.channels.cache.get(channelId);
-          if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
-              followUpMessages.push(errorMsg);
-              return;
-          }
-          await ServerConfig.findOneAndUpdate(
-              { serverID: interaction.guild.id },
-              {
-                  logChannelID: channelId,
-                  logChannelName: channel.name
-              },
-              { upsert: true, new: true }
-          );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐋ogs\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
-          followUpMessages.push(successMsg);
-      });
-  
-      collector.on("end", async (collected, reason) => {
-          if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a découvert de nouvelles planètes depuis.", ephemeral: true });
-              followUpMessages.push(timeoutMsg);
-          }
-          replyMessage.delete().catch(error => {
-              if (error.code === 10008) {
-                  messageDeleted = true;
-              } else {
-                  console.error('Erreur lors de la suppression du message initial :', error);
-              }
+        clearInterval(interval);
+
+        const channelId = m.content.trim();
+        const channel = interaction.guild.channels.cache.get(channelId);
+
+        if (!channel) {
+          return interaction.followUp({
+            content: "😵丨𝐒alon invalide.",
+            ephemeral: true
           });
-          setTimeout(() => {
-              followUpMessages.forEach(msg => {
-                  msg.delete().catch(error => {
-                      if (error.code !== 10008) {
-                          console.error('Erreur lors de la suppression du message de suivi :', error);
-                      }
-                  });
-              });
-          }, 1000);
+        }
+
+        await ServerConfig.findOneAndUpdate(
+          { serverID: interaction.guild.id },
+          {
+            logChannelID: channelId,
+            logChannelName: channel.name
+          },
+          { upsert: true }
+        );
+
+        // 🔥 MAJ EMBED EN LIVE
+        await updateConfigEmbed(interaction, "𝐒alon actuel", channel.name);
+
+        await interaction.followUp({
+          content: `🤘丨Salon des logs défini sur **${channel.name}**.`,
+          ephemeral: true
+        });
+      });
+
+      collector.on("end", async (_, reason) => {
+        if (reason === "time") {
+          await interaction.followUp({
+            content: "⏳丨Temps écoulé.",
+            ephemeral: true
+          });
+        }
+
+        replyMessage.delete().catch(() => {});
       });
     }
     if (interaction.customId === "ROLE_LISTE") {
@@ -1873,7 +1861,6 @@ module.exports = {
         ephemeral: true,
       });
     }
-
     if (interaction.customId === "WELCOME_BUTTON") { // OK
       let secondsRemaining = 60;
       const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐁ienvenue` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
@@ -3108,6 +3095,7 @@ module.exports = {
           }
       }
     }
+    // DESACTIVATION BOUTON 
     if (interaction.customId === 'ROLECHANNEL_REMOVE') {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
   
@@ -3881,23 +3869,20 @@ module.exports = {
       }
     }
     if (interaction.customId === "LOG_DESAC") {
-      const serverID = interaction.guild.id;
-      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
-    
-      if (!serverConfig) {
-        console.error('ServerConfig not found for server ID:', serverID);
-        return;
-      }
-    
-      serverConfig.logChannelID = null;
-      serverConfig.logChannelName = null;
-    
-      try {
-        await serverConfig.save();
-        await interaction.reply('Le __salon__ des 𝐋og a été réinitialisé avec succès !');
-      } catch (error) {
-        console.error('Error updating ServerConfig:', error);
-      }
+      await ServerConfig.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          logChannelID: null,
+          logChannelName: "𝐀ucun"
+        }
+      );
+
+      await updateConfigEmbed(interaction, "𝐒alon actuel", "𝐀ucun");
+
+      await interaction.reply({
+        content: 'Le __salon__ des 𝐋og a été réinitialisé avec succès !',
+        ephemeral: true
+      });
     }
     if (interaction.customId === "ROLECHANNEL_DESAC") {
       const serverID = interaction.guild.id;
