@@ -6,7 +6,6 @@ on:
       - '.gitignore'
       - 'docker/*.yaml'
       - 'docker/*.env'
-      - 'logs/**'
       - 'README.md'
   workflow_dispatch:
     inputs:
