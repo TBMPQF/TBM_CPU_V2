@@ -7,7 +7,7 @@ services:
     environment:
       TZ: Europe/Paris
     env_file:
-      stack.env
+      - stack.env
     volumes:
       - tbm-cpu-v2:/data/logs
     networks:
