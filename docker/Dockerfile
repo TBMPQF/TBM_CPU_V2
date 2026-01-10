@@ -1,4 +1,4 @@
-FROM node:22.6.0-alpine
+FROM node:24.12.0-alpine
 
 # Etiquette de l'image
 LABEL maintainer="TBMPQF"
