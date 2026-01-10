@@ -36,10 +36,10 @@ RUN mkdir -p /usr/share/fonts/truetype/noto && \
     fc-cache -f -v
 
 # Rendre executable les scripts de démarrage
-RUN chmod +x ./*.sh
+RUN chmod +x ./docker/*.sh
 
 # Démarrer le code avec le script d'entrée
-ENTRYPOINT ["./entrypoint-docker.sh"]
+ENTRYPOINT ["./docker/entrypoint-docker.sh"]
 
 # Expose le port pour le health check
 EXPOSE 3000
