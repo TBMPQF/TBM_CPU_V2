@@ -10,8 +10,6 @@ WORKDIR /data
 
 # Copie des fichiers locaux dans l'image
 COPY . .
-COPY docker/*.sh .
-COPY build-info.json ./build-info.json
 
 # Installation des dépendances système
 RUN apk add --no-cache \
