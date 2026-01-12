@@ -46,21 +46,8 @@ sleep $delai
 
 # Creation du fichier de configuration
 echo INF - "Création du fichier de configuration..."
-cat << EOF > ./config.json
-{
-  "token": "$TOKEN",
-  "mongourl": "$BDD_URL",
-  "serveurMinecraftDOMAIN": "$MINECRAFT_SERVER_URL",
-  "twitch": {
-    "clientId": "$TWITCH_ID",
-    "clientSecret": "$TWITCH_SECRET"
-  },
-  "apex_api": "$APEX_API",
-  "genius_api": "$GENIUS_API",
-  "football_api": "$FOOTBALL_API"
-}
-EOF
+sh ./docker/create-config.sh
 
 # Démarrage du code avec Gestion des logs dans les fichiers et les traces de l'image docker en même temps
 echo INF - "Démarrage du bot..."
-node /data/index.js > >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_output.log) 2> >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_error.log >&2)
+node ./index.js > >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_output.log) 2> >(awk '{ print strftime("%d/%m_%Hh%Mm%Ss"), $0; fflush(); }' | tee -a ./logs/current_error.log >&2)

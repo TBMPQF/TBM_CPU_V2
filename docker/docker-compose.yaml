@@ -14,8 +14,6 @@ services:
       TWITCH_ID: ${TWITCH_ID:?required}
       TWITCH_SECRET: ${TWITCH_SECRET:?required}
       TZ: Europe/Paris
-    env_file:
-      stack.env
     volumes:
       - tbm-cpu-v2:/data/logs
     networks:

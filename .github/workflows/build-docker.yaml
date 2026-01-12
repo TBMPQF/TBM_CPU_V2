@@ -6,7 +6,6 @@ on:
       - '.gitignore'
       - 'docker/*.yaml'
       - 'docker/*.env'
-      - 'logs/**'
       - 'README.md'
   workflow_dispatch:
     inputs:
@@ -16,7 +15,7 @@ on:
         type: string
 
 jobs:
-  build:
+  construction-image-docker:
     runs-on: ubuntu-latest
 
     permissions:
