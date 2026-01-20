@@ -10,11 +10,11 @@ const TWITCH_BASE_API  = 'https://api.twitch.tv/helix';
 const CHECK_INTERVAL   = 60 * 1000;
 
 const SPECIAL_STREAMERS = {
-  "tbmpqf": "717117472355909693", // → ID du salon spécifique
+  "tbmpqf": "717117472355909693",
 };
 
 let twitchHeaders = null;
-let bootUpCheck   = true;
+let isFirstScan   = true;
 
 async function getTwitchAccessToken() {
   try {
@@ -26,6 +26,7 @@ async function getTwitchAccessToken() {
     return null;
   }
 }
+
 async function initializeTwitchHeaders() {
   const accessToken = await getTwitchAccessToken();
   if (!accessToken) {
@@ -41,7 +42,8 @@ async function initializeTwitchHeaders() {
     timeout: 10_000,
   };
 }
-async function twitchGet(endpoint, params = {}, retries = 1) {
+
+async function twitchGet(endpoint, params = {}, retries = 2) {
   if (!twitchHeaders) await initializeTwitchHeaders();
 
   try {
@@ -51,26 +53,45 @@ async function twitchGet(endpoint, params = {}, retries = 1) {
     return res?.data?.data || [];
   } catch (err) {
     const status = err?.response?.status;
+    const code   = err?.code;
+
     if (status === 401 && retries > 0) {
       await initializeTwitchHeaders();
       return twitchGet(endpoint, params, retries - 1);
     }
-    if (status === 503 && retries > 0) {
+
+    if ((status === 503 || status === 502) && retries > 0) {
       await new Promise(r => setTimeout(r, 1500));
       return twitchGet(endpoint, params, retries - 1);
     }
-    console.error(`[TWITCH] GET ${endpoint} erreur:`, status, err?.response?.data || err.message);
+
+    if ((code === 'EAI_AGAIN' || code === 'ENOTFOUND') && retries > 0) {
+      await new Promise(r => setTimeout(r, 2000));
+      return twitchGet(endpoint, params, retries - 1);
+    }
+
+    console.error(
+      `[TWITCH] GET ${endpoint} erreur:`,
+      status ?? code,
+      err?.response?.data || err.message
+    );
+
     return [];
   }
 }
+
+/* ================= HELPERS ================= */
+
 async function getUserID(username) {
   const data = await twitchGet('users', { login: username });
   return data?.[0]?.id || null;
 }
+
 async function getUserProfilePic(username) {
   const data = await twitchGet('users', { login: username });
   return data?.[0]?.profile_image_url || null;
 }
+
 async function getLiveStreamThumbnailByUsername(username) {
   const userId = await getUserID(username);
   if (!userId) return null;
@@ -122,6 +143,7 @@ async function resolveLiveRole(guild, serverConfig) {
     return null;
   }
 }
+
 async function setLiveRole(member, role, shouldHave) {
   if (!member || !role) return;
   if (shouldHave) {
@@ -134,6 +156,7 @@ async function setLiveRole(member, role, shouldHave) {
     }
   }
 }
+
 async function initializeStreamers(serverID) {
   const streamersFromDB = await TwitchStreamers.find({ serverID });
   return streamersFromDB.map(s => ({
@@ -146,6 +169,7 @@ async function initializeStreamers(serverID) {
     twitchChannelID: s.TwitchChannelID,
   }));
 }
+
 async function handleStreamerLive(streamData, streamerEntry, member, channel, data, bot, serverConfig) {
   try {
     const [pp, gameName, gameThumb, liveThumb] = await Promise.all([
@@ -201,6 +225,7 @@ async function handleStreamerLive(streamData, streamerEntry, member, channel, da
     console.error(`[TWITCH] handleStreamerLive erreur:`, error?.message);
   }
 }
+
 async function handleStreamerOffline(streamerEntry, member, channel, data, bot, serverConfig) {
   try {
     const duration = getStreamDuration(data.startedAt);
@@ -246,6 +271,7 @@ async function handleStreamerOffline(streamerEntry, member, channel, data, bot, 
     console.error(`[TWITCH] handleStreamerOffline erreur:`, error?.message);
   }
 }
+
 async function updateLiveStreamInfo(streamData, streamerEntry, channel, data) {
   try {
     const streamTitle   = streamData.title || '';
@@ -292,6 +318,7 @@ async function updateLiveStreamInfo(streamData, streamerEntry, channel, data) {
     console.error(`[TWITCH] updateLiveStreamInfo erreur:`, error?.message);
   }
 }
+
 async function checkMultipleStreamers(bot, serverID) {
   const streamers = await initializeStreamers(serverID);
   if (!streamers?.length) return;
@@ -319,36 +346,43 @@ async function checkMultipleStreamers(bot, serverID) {
     let streams = [];
     try {
       streams = await twitchGet('streams', { user_login: twitchUsername }, 1);
-    } catch (e) {
-      console.error(`[TWITCH] Erreur API pour ${twitchUsername}:`, e?.message);
+    } catch {
       continue;
     }
 
     const streamData = streams?.[0];
 
     if (!streamData) {
-
       if (streamerData.isLive) {
         await handleStreamerOffline(streamerEntry, member, channel, streamerData, bot, serverConfig);
       }
       continue;
     }
 
-    if (!streamerData.isLive || bootUpCheck) {
-      await handleStreamerLive(streamData, streamerEntry, member, channel, streamerData, bot, serverConfig);
+    if (!streamerData.isLive) {
+      if (!isFirstScan) {
+        await handleStreamerLive(streamData, streamerEntry, member, channel, streamerData, bot, serverConfig);
+      } else {
+        streamerEntry.isLive = true;
+        streamerEntry.startedAt = new Date(streamData.started_at);
+        await streamerEntry.save();
+      }
     } else {
       await updateLiveStreamInfo(streamData, streamerEntry, channel, streamerData);
     }
   }
-
-  bootUpCheck = false;
 }
+
 async function startTwitchCheck(bot) {
-  await initializeTwitchHeaders();
+  initializeTwitchHeaders().catch(() => {});
 
   bot.guilds.cache.forEach(g => {
     checkMultipleStreamers(bot, g.id);
   });
+
+  setTimeout(() => {
+    isFirstScan = false;
+  }, 5000);
 
   setInterval(() => {
     bot.guilds.cache.forEach(g => {

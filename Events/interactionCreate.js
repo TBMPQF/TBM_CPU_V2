@@ -1652,79 +1652,389 @@ module.exports = {
       await interaction.guild.channels.delete(interaction.channel);
     }
 
-    //Gestion du SetConfig
-    if (interaction.customId === "LOG_BUTTON") {
-      let secondsRemaining = 60;
-      const originalContent =
-        "🙏🏻丨𝐌erci de répondre l'**ID** du salon pour les `𝐋og` désiré.";
-
-      const replyMessage = await interaction.reply({
-        content: `${originalContent} ***${secondsRemaining}s***`,
-        fetchReply: true
-      });
-
-      let followUpMessages = [];
-      let messageDeleted = false;
-
-      const interval = setInterval(() => {
-        if (messageDeleted) return clearInterval(interval);
-
-        secondsRemaining--;
-        if (secondsRemaining > 0) {
-          replyMessage.edit(
-            `${originalContent} ***${secondsRemaining}s***`
-          ).catch(() => {});
-        } else clearInterval(interval);
-      }, 1000);
-
-      const collector = interaction.channel.createMessageCollector({
-        filter: m => m.author.id === interaction.user.id,
-        time: 60000,
-        max: 1
-      });
-
-      collector.on("collect", async (m) => {
-        clearInterval(interval);
-
-        const channelId = m.content.trim();
-        const channel = interaction.guild.channels.cache.get(channelId);
-
-        if (!channel) {
-          return interaction.followUp({
-            content: "😵丨𝐒alon invalide.",
-            ephemeral: true
-          });
-        }
-
-        await ServerConfig.findOneAndUpdate(
-          { serverID: interaction.guild.id },
-          {
-            logChannelID: channelId,
-            logChannelName: channel.name
-          },
-          { upsert: true }
+    function disableComponents(components) {
+      return components.map(row => {
+        const newRow = ActionRowBuilder.from(row);
+        newRow.components = row.components.map(c =>
+          c.data
+            ? ButtonBuilder.from(c).setDisabled(true)
+            : StringSelectMenuBuilder.from(c).setDisabled(true)
         );
-
-        // 🔥 MAJ EMBED EN LIVE
-        await updateConfigEmbed(interaction, "𝐒alon actuel", channel.name);
-
-        await interaction.followUp({
-          content: `🤘丨Salon des logs défini sur **${channel.name}**.`,
-          ephemeral: true
-        });
-      });
-
-      collector.on("end", async (_, reason) => {
-        if (reason === "time") {
-          await interaction.followUp({
-            content: "⏳丨Temps écoulé.",
-            ephemeral: true
-          });
-        }
-
-        replyMessage.delete().catch(() => {});
+        return newRow;
       });
     }
+
+    //Gestion du SetConfig
+    if (interaction.customId === "LOG_BUTTON") { // Bouton pour ajouter/modifier le salon des logs
+      const textChannels = interaction.guild.channels.cache
+        .filter(c => c.type === ChannelType.GuildText)
+        .map(c => ({
+          label: c.name,
+          value: c.id
+        }))
+        .slice(0, 25);
+
+      if (!textChannels.length) return;
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("LOG_SELECT_CHANNEL")
+        .setPlaceholder("丨𝐒électionne le salon des logs")
+        .addOptions(textChannels);
+
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+      const disabledRows = disableComponents(interaction.message.components);
+      const buttonsRow = disabledRows[0];
+
+      await interaction.update({
+        components: [buttonsRow, selectRow]
+      });
+    }
+    if (interaction.customId === "LOG_DESAC") { // Bouton pour réinitialiser le salon des logs
+      function buildBaseSelectMenuRow() {
+        return new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId("setConfigCustomID")
+            .setPlaceholder("𝐐ue veux-tu configurer d'autre ?")
+            .addOptions(
+              { label: "丨𝐋og", emoji: "📝", value: "LOG" },
+              { label: "丨𝐓witch", emoji: "🎥", value: "TWITCH" },
+              { label: "丨𝐑èglement", emoji: "📜", value: "REGLEMENT" },
+              { label: "丨𝐑ôles 𝐌enu", emoji: "🎭", value: "ROLECHANNEL" },
+              { label: "丨𝐖elcome", emoji: "👋", value: "WELCOME" },
+              { label: "丨𝐈mplications", emoji: "🏆", value: "IMPLICATION" },
+              { label: "丨𝐒uggestions", emoji: "💡", value: "SUGGESTION" },
+              { label: "丨𝐃aily", emoji: "💵", value: "DAILY" },
+              { label: "丨𝐑ôles des 𝐍iveaux", emoji: "🧪", value: "ROLES" },
+              { label: "丨𝐓icket", emoji: "🎫", value: "TICKET" },
+              { label: "丨𝐁ingo", emoji: "🎱", value: "BINGO" }
+            )
+        );
+      }
+      function buildConfigComponents(hasLogChannel = false) {
+        const logButton = new ButtonBuilder()
+          .setCustomId("LOG_BUTTON")
+          .setEmoji(hasLogChannel ? "📝" : "➕")
+          .setLabel(hasLogChannel ? "𝐌odifier 𝐒alon" : "𝐀jouter 𝐒alon")
+          .setStyle(hasLogChannel ? ButtonStyle.Primary : ButtonStyle.Primary);
+
+        const resetButton = new ButtonBuilder()
+          .setCustomId("LOG_DESAC")
+          .setEmoji("❌")
+          .setLabel("𝐑éinitialiser")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(!hasLogChannel);
+
+        const buttonsRow = new ActionRowBuilder().addComponents(
+          logButton,
+          resetButton
+        );
+
+        const mainSelectMenuRow = buildBaseSelectMenuRow();
+
+        return [buttonsRow, mainSelectMenuRow];
+      }
+      await ServerConfig.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          logChannelID: null,
+          logChannelName: "𝐍on défini"
+        }
+      );
+
+      await updateConfigEmbed(interaction, "𝐒alon actuel", "𝐍on défini");
+
+      await interaction.update({
+        components: buildConfigComponents(false)
+      });
+    }
+    if (interaction.customId === "LOG_SELECT_CHANNEL") { // Sélection du salon des logs dans le menu déroulant
+      function buildBaseSelectMenuRow() {
+        return new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId("setConfigCustomID")
+            .setPlaceholder("丨𝐐ue veux-tu configurer d'autre ?")
+            .addOptions(
+              { label: "丨𝐋og", emoji: "📝", value: "LOG" },
+              { label: "丨𝐓witch", emoji: "🎥", value: "TWITCH" },
+              { label: "丨𝐑èglement", emoji: "📜", value: "REGLEMENT" },
+              { label: "丨𝐑ôles 𝐌enu", emoji: "🎭", value: "ROLECHANNEL" },
+              { label: "丨𝐖elcome", emoji: "👋", value: "WELCOME" },
+              { label: "丨𝐈mplications", emoji: "🏆", value: "IMPLICATION" },
+              { label: "丨𝐒uggestions", emoji: "💡", value: "SUGGESTION" },
+              { label: "丨𝐃aily", emoji: "💵", value: "DAILY" },
+              { label: "丨𝐑ôles des 𝐍iveaux", emoji: "🧪", value: "ROLES" },
+              { label: "丨𝐓icket", emoji: "🎫", value: "TICKET" },
+              { label: "丨𝐁ingo", emoji: "🎱", value: "BINGO" }
+            )
+        );
+      }
+      function buildConfigComponents(hasLogChannel = false) {
+        const logButton = new ButtonBuilder()
+          .setCustomId("LOG_BUTTON")
+          .setEmoji(hasLogChannel ? "📝" : "➕")
+          .setLabel(hasLogChannel ? "丨𝐌odifier 𝐒alon" : "丨𝐀jouter 𝐒alon")
+          .setStyle(hasLogChannel ? ButtonStyle.Primary : ButtonStyle.Primary);
+
+        const resetButton = new ButtonBuilder()
+          .setCustomId("LOG_DESAC")
+          .setEmoji("❌")
+          .setLabel("丨𝐑éinitialiser")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(!hasLogChannel);
+
+        const buttonsRow = new ActionRowBuilder().addComponents(
+          logButton,
+          resetButton
+        );
+
+        const mainSelectMenuRow = buildBaseSelectMenuRow();
+
+        return [buttonsRow, mainSelectMenuRow];
+      }
+      const channelId = interaction.values[0];
+      const channel = interaction.guild.channels.cache.get(channelId);
+      if (!channel) return;
+
+      await ServerConfig.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          logChannelID: channelId,
+          logChannelName: channel.name
+        },
+        { upsert: true }
+      );
+
+      await updateConfigEmbed(interaction, "𝐒alon actuel", channel.name);
+
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id
+      });
+
+      await interaction.update({
+        components: buildConfigComponents(!!serverConfig?.logChannelID)
+      });
+    }
+
+    if (interaction.customId === "REGL_BUTTON") { // Bouton pour ajouter/modifier le salon du règlement
+      const textChannels = interaction.guild.channels.cache
+        .filter(c => c.type === ChannelType.GuildText)
+        .map(c => ({
+          label: c.name,
+          value: c.id
+        }))
+        .slice(0, 25);
+
+      if (!textChannels.length) return;
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("REGL_SELECT_CHANNEL")
+        .setPlaceholder("丨𝐒électionne le salon du règlement")
+        .addOptions(textChannels);
+
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+      const disabledRows = disableComponents(interaction.message.components);
+      const buttonsRow = disabledRows[0];
+
+      await interaction.update({
+        components: [buttonsRow, selectRow]
+      });
+    }
+    if (interaction.customId === "REGL_SELECT_CHANNEL") { // Sélection du salon du règlement
+      function buildBaseSelectMenuRow() {
+        return new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId("setConfigCustomID")
+            .setPlaceholder("丨𝐐ue veux-tu configurer d'autre ?")
+            .addOptions(
+              { label: "丨𝐋og", emoji: "📝", value: "LOG" },
+              { label: "丨𝐓witch", emoji: "🎥", value: "TWITCH" },
+              { label: "丨𝐑èglement", emoji: "📜", value: "REGLEMENT" },
+              { label: "丨𝐑ôles 𝐌enu", emoji: "🎭", value: "ROLECHANNEL" },
+              { label: "丨𝐖elcome", emoji: "👋", value: "WELCOME" },
+              { label: "丨𝐈mplications", emoji: "🏆", value: "IMPLICATION" },
+              { label: "丨𝐒uggestions", emoji: "💡", value: "SUGGESTION" },
+              { label: "丨𝐃aily", emoji: "💵", value: "DAILY" },
+              { label: "丨𝐑ôles des 𝐍iveaux", emoji: "🧪", value: "ROLES" },
+              { label: "丨𝐓icket", emoji: "🎫", value: "TICKET" },
+              { label: "丨𝐁ingo", emoji: "🎱", value: "BINGO" }
+            )
+        );
+      }
+      function buildConfigComponents(hasReglChannel = false) {
+        const reglButton = new ButtonBuilder()
+          .setCustomId("REGL_BUTTON")
+          .setEmoji(hasReglChannel ? "📝" : "➕")
+          .setLabel(hasReglChannel ? "丨𝐌odifier 𝐒alon" : "丨𝐀jouter 𝐒alon")
+          .setStyle(ButtonStyle.Primary);
+
+        const resetButton = new ButtonBuilder()
+          .setCustomId("REGL_DESAC")
+          .setEmoji("❌")
+          .setLabel("丨𝐑éinitialiser")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(!hasReglChannel);
+
+        const buttonsRow = new ActionRowBuilder().addComponents(
+          reglButton,
+          resetButton
+        );
+
+        return [buttonsRow, buildBaseSelectMenuRow()];
+      }
+
+      const channelId = interaction.values[0];
+      const channel = interaction.guild.channels.cache.get(channelId);
+      if (!channel) return;
+
+      await ServerConfig.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          reglementChannelID: channelId,
+          reglementChannelName: channel.name
+        },
+        { upsert: true }
+      );
+
+      await updateConfigEmbed(interaction, "𝐒alon actuel", channel.name);
+
+      const serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id
+      });
+
+      await interaction.update({
+        components: buildConfigComponents(!!serverConfig?.reglementChannelID)
+      });
+    }
+    if (interaction.customId === "REGL_PUSH") { 
+      let serverConfig = await ServerConfig.findOne({
+        serverID: interaction.guild.id,
+      });
+      if (!serverConfig || !serverConfig.reglementChannelID) {
+        return interaction.reply({
+          content:
+            "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salons`.",
+          ephemeral: true,
+        });
+      }
+
+      const Reglementembed = new EmbedBuilder()
+        .setColor("#b3c7ff")
+        .setTitle(
+          `*_~𝐑èglement de la ${interaction.guild.name} pour votre bonne formation~_*`
+        )
+        .setDescription(
+          `\n**Merci de bien vouloir lire toute les règles ainsi que de les respecter !**\n\n:wave:\`丨𝐁ienvenue :\` \nTout d'abord bienvenue parmi nous. Tu peux à présent lire et valider le règlement puis choisir tes rôles dans le salon \`Rôles\`. Si tu es un streamer, tu peux obtenir le rôle \`Streamer\` pour avoir les notifications de TES lives sur notre serveur ! Pour toute demande, informations ou signalement, tu peux ouvrir un ticket dans le \`salon prévu à cet effet\`, un modérateur se fera un plaisir de te répondre.\n\n:rotating_light:\`丨𝐌entions :\`\n Évitez les mentions inutiles et \`réfléchissez\` avant de poser une question. Vous n'êtes pas seuls et les réponses ont souvent déjà été données. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:warning:\`丨𝐏ublicités :\`\n Toute publicité \`non autorisé\` par un membre du staff est \`strictement interdite\` sur le serveur mais également par message privé. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:underage:\`丨𝐍SFW :\`\nNSFW, NSFL et le contenu malsain n'est \`pas autorisé\` sur le serveur. Il sera punissable d'un \`bannissement\` !\n\n:flag_fr:\`丨𝐅rançais :\`\nLa structure est \`francophone\`, veuillez donc écrire français uniquement pour une compréhension facile de tous les membres de la communauté. Il sera punissable si les avertissements sont répétés et non écoutés.`
+        )
+        .setThumbnail(interaction.guild.iconURL())
+        .setFooter({
+          text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
+          iconURL: interaction.guild.iconURL(),
+        });
+
+      const rowValidRegl = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("VALID_REGL")
+          .setLabel("📝丨𝐕alider le 𝐑èglement丨📝")
+          .setStyle(ButtonStyle.Success)
+      );
+      const ReglementChannel = bot.channels.cache.get(
+        serverConfig.reglementChannelID
+      );
+      if (ReglementChannel) {
+        ReglementChannel.send({
+          embeds: [Reglementembed],
+          components: [rowValidRegl],
+        });
+      }
+    }
+    if (interaction.customId === "VALID_REGL") {
+      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
+      if (!serverConfig?.roleReglementID) {
+        return interaction.reply({
+          content: "Aucun **rôle règlement** n’est configuré. Configure-le d’abord dans `Modifier Salons/Rôles`.",
+          ephemeral: true,
+        });
+      }
+
+      const member = interaction.member;
+      const role = interaction.guild.roles.cache.get(serverConfig.roleReglementID);
+      if (!role) {
+        return interaction.reply({ content: "Le rôle configuré n’existe plus.", ephemeral: true });
+      }
+
+      if (member.roles.cache.has(role.id)) {
+        return interaction.reply({ content: "Tu as déjà validé le règlement. Quelque chose à te reprocher ?", ephemeral: true });
+      }
+
+      await member.roles.add(role).catch(() => {});
+      await interaction.reply({ content: "✅ Règlement validé. Bienvenue !", ephemeral: true });
+    }
+    if (interaction.customId === "REGL_DESAC") { // Bouton pour réinitialiser le règlement
+      function buildBaseSelectMenuRow() {
+        return new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId("setConfigCustomID")
+            .setPlaceholder("𝐐ue veux-tu configurer d'autre ?")
+            .addOptions(
+              { label: "丨𝐋og", emoji: "📝", value: "LOG" },
+              { label: "丨𝐓witch", emoji: "🎥", value: "TWITCH" },
+              { label: "丨𝐑èglement", emoji: "📜", value: "REGLEMENT" },
+              { label: "丨𝐑ôles 𝐌enu", emoji: "🎭", value: "ROLECHANNEL" },
+              { label: "丨𝐖elcome", emoji: "👋", value: "WELCOME" },
+              { label: "丨𝐈mplications", emoji: "🏆", value: "IMPLICATION" },
+              { label: "丨𝐒uggestions", emoji: "💡", value: "SUGGESTION" },
+              { label: "丨𝐃aily", emoji: "💵", value: "DAILY" },
+              { label: "丨𝐑ôles des 𝐍iveaux", emoji: "🧪", value: "ROLES" },
+              { label: "丨𝐓icket", emoji: "🎫", value: "TICKET" },
+              { label: "丨𝐁ingo", emoji: "🎱", value: "BINGO" }
+            )
+        );
+      }
+
+      function buildConfigComponents(hasReglChannel = false) {
+        const reglButton = new ButtonBuilder()
+          .setCustomId("REGL_BUTTON")
+          .setEmoji(hasReglChannel ? "📝" : "➕")
+          .setLabel(hasReglChannel ? "丨𝐌odifier 𝐒alon" : "丨𝐀jouter 𝐒alon")
+          .setStyle(ButtonStyle.Primary);
+
+        const resetButton = new ButtonBuilder()
+          .setCustomId("REGL_DESAC")
+          .setEmoji("❌")
+          .setLabel("丨𝐑éinitialiser")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(!hasReglChannel);
+
+        const buttonsRow = new ActionRowBuilder().addComponents(
+          reglButton,
+          resetButton
+        );
+
+        return [buttonsRow, buildBaseSelectMenuRow()];
+      }
+
+      await ServerConfig.findOneAndUpdate(
+        { serverID: interaction.guild.id },
+        {
+          reglementChannelID: null,
+          reglementChannelName: "𝐍on défini",
+          roleReglementID: null,
+          roleReglementName: null
+        }
+      );
+
+      await updateConfigEmbed(interaction, "𝐒alon actuel", "𝐍on défini");
+
+      await interaction.update({
+        components: buildConfigComponents(false)
+      });
+    }
+
+
+
+
     if (interaction.customId === "ROLE_LISTE") {
       const badgeMap = { 1: "🥉", 2: "🥈", 3: "🥇", 4: "🏅", 5: "🎖️", 6: "🔰", 7: "💎", 8: "👑", 9: "⚜️", 10: "💠" };
 
@@ -1945,155 +2255,6 @@ module.exports = {
               });
           }, 1000);
       });
-    }
-    if (interaction.customId === "REGL_BUTTON") { // OK
-      let secondsRemaining = 60;
-      const originalContent = "🙏🏻丨𝐌erci de répondre l'**ID** du salon de `𝐑èglement` désiré (clique droit dessus ◟**Copier l'identifiant du salon**).";
-  
-      const replyMessage = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
-      });
-  
-      let followUpMessages = [];
-      let messageDeleted = false;
-  
-      const interval = setInterval(() => {
-          if (messageDeleted) { 
-              clearInterval(interval);
-              return;
-          }
-  
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-              replyMessage.edit(`${originalContent} ***${secondsRemaining}s***`).catch(error => {
-                  if (error.code === 10008) {
-                      messageDeleted = true;
-                      clearInterval(interval);
-                  } else {
-                      console.error('Erreur lors de la mise à jour du message :', error);
-                  }
-              });
-          } else {
-              clearInterval(interval);
-          }
-      }, 1000);
-  
-      const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 60000,
-          max: 1
-      });
-  
-      collector.on("collect", async (m) => {
-          clearInterval(interval);
-          followUpMessages.push(m);
-  
-          const channelId = m.content.trim();
-          const channel = interaction.guild.channels.cache.get(channelId);
-          if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
-              followUpMessages.push(errorMsg);
-              return;
-          }
-          await ServerConfig.findOneAndUpdate(
-              { serverID: interaction.guild.id },
-              {
-                  reglementChannelID: channelId,
-                  reglementChannelName: channel.name
-              },
-              { upsert: true, new: true }
-          );
-          const successMsg = await interaction.followUp({ content: `🤘🏻丨𝐋e salon pour le \`𝐑èglement\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
-          followUpMessages.push(successMsg);
-      });
-  
-      collector.on("end", async (collected, reason) => {
-          if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as fini de peindre la Joconde ?", ephemeral: true });
-              followUpMessages.push(timeoutMsg);
-          }
-          replyMessage.delete().catch(error => {
-              if (error.code === 10008) {
-                  messageDeleted = true;
-              } else {
-                  console.error('Erreur lors de la suppression du message initial :', error);
-              }
-          });
-          setTimeout(() => {
-              followUpMessages.forEach(msg => {
-                  msg.delete().catch(error => {
-                      if (error.code !== 10008) {
-                          console.error('Erreur lors de la suppression du message de suivi :', error);
-                      }
-                  });
-              });
-          }, 1000);
-      });
-    }
-    if (interaction.customId === "REGL_PUSH") { 
-      let serverConfig = await ServerConfig.findOne({
-        serverID: interaction.guild.id,
-      });
-      if (!serverConfig || !serverConfig.reglementChannelID) {
-        return interaction.reply({
-          content:
-            "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salons`.",
-          ephemeral: true,
-        });
-      }
-
-      const Reglementembed = new EmbedBuilder()
-        .setColor("#b3c7ff")
-        .setTitle(
-          `*_~𝐑èglement de la ${interaction.guild.name} pour votre bonne formation~_*`
-        )
-        .setDescription(
-          `\n**Merci de bien vouloir lire toute les règles ainsi que de les respecter !**\n\n:wave:\`丨𝐁ienvenue :\` \nTout d'abord bienvenue parmi nous. Tu peux à présent lire et valider le règlement puis choisir tes rôles dans le salon \`Rôles\`. Si tu es un streamer, tu peux obtenir le rôle \`Streamer\` pour avoir les notifications de TES lives sur notre serveur ! Pour toute demande, informations ou signalement, tu peux ouvrir un ticket dans le \`salon prévu à cet effet\`, un modérateur se fera un plaisir de te répondre.\n\n:rotating_light:\`丨𝐌entions :\`\n Évitez les mentions inutiles et \`réfléchissez\` avant de poser une question. Vous n'êtes pas seuls et les réponses ont souvent déjà été données. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:warning:\`丨𝐏ublicités :\`\n Toute publicité \`non autorisé\` par un membre du staff est \`strictement interdite\` sur le serveur mais également par message privé. Il sera punissable d'une \`exclusion\` et/ou d'un \`bannissement\` avec sursis.\n\n:underage:\`丨𝐍SFW :\`\nNSFW, NSFL et le contenu malsain n'est \`pas autorisé\` sur le serveur. Il sera punissable d'un \`bannissement\` !\n\n:flag_fr:\`丨𝐅rançais :\`\nLa structure est \`francophone\`, veuillez donc écrire français uniquement pour une compréhension facile de tous les membres de la communauté. Il sera punissable si les avertissements sont répétés et non écoutés.`
-        )
-        .setThumbnail(interaction.guild.iconURL())
-        .setFooter({
-          text: `𝐂ordialement l'équipe ${interaction.guild.name}`,
-          iconURL: interaction.guild.iconURL(),
-        });
-
-      const rowValidRegl = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("VALID_REGL")
-          .setLabel("📝丨𝐕alider le 𝐑èglement丨📝")
-          .setStyle(ButtonStyle.Success)
-      );
-      const ReglementChannel = bot.channels.cache.get(
-        serverConfig.reglementChannelID
-      );
-      if (ReglementChannel) {
-        ReglementChannel.send({
-          embeds: [Reglementembed],
-          components: [rowValidRegl],
-        });
-      }
-    }
-    if (interaction.customId === "VALID_REGL") {
-      const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
-      if (!serverConfig?.roleReglementID) {
-        return interaction.reply({
-          content: "Aucun **rôle règlement** n’est configuré. Configure-le d’abord dans `Modifier Salons/Rôles`.",
-          ephemeral: true,
-        });
-      }
-
-      const member = interaction.member;
-      const role = interaction.guild.roles.cache.get(serverConfig.roleReglementID);
-      if (!role) {
-        return interaction.reply({ content: "Le rôle configuré n’existe plus.", ephemeral: true });
-      }
-
-      if (member.roles.cache.has(role.id)) {
-        return interaction.reply({ content: "Tu as déjà validé le règlement. Quelque chose à te reprocher ?", ephemeral: true });
-      }
-
-      await member.roles.add(role).catch(() => {});
-      await interaction.reply({ content: "✅ Règlement validé. Bienvenue !", ephemeral: true });
     }
     if (interaction.customId === "REGL_ROLE") { //OK
     if (!interaction.guild) {
@@ -2970,116 +3131,150 @@ module.exports = {
     }
     if (interaction.customId === 'ROLECHANNEL_ADD') {
       if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans un serveur.", ephemeral: true });
+        return interaction.reply({
+          content: "Cette commande ne peut être utilisée que dans un serveur.",
+          ephemeral: true
+        });
       }
-  
-      const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
+
+      const botMember = await interaction.guild.members
+        .fetch(interaction.client.user.id)
+        .catch(() => null);
+
       if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans le serveur.", ephemeral: true });
+        return interaction.reply({
+          content: "Erreur : Impossible de récupérer les informations du bot dans le serveur.",
+          ephemeral: true
+        });
       }
-  
+
       let secondsRemaining = 60;
-      const originalContent = "🙏🏻丨𝐌erci de répondre le rôle et de fournir un nom pour le menu. (**exemple : @MONROLE NomDeMonRôle**). ~~Possibilité de mettre un emoji devant le nom.~~";
-  
+      const originalContent =
+        "🙏🏻丨𝐌erci de répondre le rôle et de fournir un nom pour le menu. (**exemple : @MONROLE NomDeMonRôle**). ~~Possibilité de mettre un emoji devant le nom.~~";
+
       const initialReply = await interaction.reply({
-          content: `${originalContent} ***${secondsRemaining}s***`,
-          fetchReply: true
+        content: `${originalContent} ***${secondsRemaining}s***`,
+        fetchReply: true
       });
-  
+
       let messageDeleted = false;
 
-    const interval = setInterval(async () => {
-        if (secondsRemaining > 0) {
-            secondsRemaining--;
-            if (initialReply && initialReply.editable) {
-                await initialReply.edit(`${originalContent} ***${secondsRemaining}s***`).catch((error) => {
-                    if (error.code === 10008) {
-                        clearInterval(interval);
-                        messageDeleted = true;
-                    } else {
-                        console.error('Erreur lors de l’édition du message:', error);
-                    }
-                });
-            } else {
-                clearInterval(interval);
-                messageDeleted = true;
-            }
-        } else {
-            clearInterval(interval);
-        }
-    }, 1000);
-  
-      const collector = interaction.channel.createMessageCollector({
-          filter: (m) => m.author.id === interaction.user.id,
-          time: 60000,
-          max: 1
-      });
-  
-      collector.on("collect", async (m) => {
+      const interval = setInterval(async () => {
+        if (secondsRemaining <= 0) {
           clearInterval(interval);
-          await deleteMessage(m)
-  
-          const role = m.mentions.roles.first();
-          const displayName = m.content.replace(`<@&${role.id}>`, "").trim();
-  
-          if (!role) {
-              await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐍'oublie pas l'arobase (*@*).", ephemeral: true });
-              return deleteMessage(initialReply);
-          }
-  
-          if (role.position >= botMember.roles.highest.position) {
-              await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
-              return deleteMessage(initialReply);
-          }
-  
-          const serverRoleMenu = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
-  
-          if (!serverRoleMenu) {
-              await ServerRoleMenu.create({
-                  serverID: interaction.guild.id,
-                  serverName: interaction.guild.name,
-                  menus: [{
-                      menuName: 'DefaultMenu',
-                      roles: [{
-                          roleName: role.name,
-                          roleId: role.id,
-                          displayName: displayName || role.name
-                      }]
-                  }]
-              });
-              await interaction.followUp({ content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`, ephemeral: true });
-              return deleteMessage(initialReply);
-          }
-  
-          const menu = serverRoleMenu.menus.find(m => m.menuName === 'DefaultMenu');
-          if (!menu) {
-              await interaction.followUp({ content: "🚫丨𝐀ucun menu de rôles trouvé.", ephemeral: true });
-              return deleteMessage(initialReply);
-          }
-  
-          const roleExists = menu.roles.find(r => r.roleId === role.id);
-          if (roleExists) {
-              await interaction.followUp({ content: "⚠️丨𝐂e rôle est déjà ajouté.", ephemeral: true });
-              return deleteMessage(initialReply);
-          }
-  
-          menu.roles.push({
-              roleName: role.name,
-              roleId: role.id,
-              displayName: displayName || role.name
-          });
-  
-          await serverRoleMenu.save();
-  
-          await interaction.followUp({ content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`, ephemeral: true });
-          await deleteMessage(initialReply);
-      });
-  
-      collector.on("end", async (collected, reason) => {
-        clearInterval(interval);
-        if (reason === "time" && !messageDeleted) {
-            await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse. 𝐌ême la confiture prend moins de temps à se figer.", ephemeral: true });
+          return;
         }
+
+        secondsRemaining--;
+
+        if (initialReply && !messageDeleted) {
+          try {
+            await initialReply.edit(
+              `${originalContent} ***${secondsRemaining}s***`
+            );
+          } catch (error) {
+            if (error.code === 10008) {
+              messageDeleted = true;
+              clearInterval(interval);
+            }
+          }
+        }
+      }, 1000);
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: (m) => m.author.id === interaction.user.id,
+        time: 60000,
+        max: 1
+      });
+
+      collector.on("collect", async (m) => {
+        clearInterval(interval);
+        await deleteMessage(m);
+
+        const role = m.mentions.roles.first();
+        if (!role) {
+          await interaction.followUp({
+            content: "😵丨𝐑ôle invalide/inexistant. 𝐍'oublie pas l'arobase (*@*).",
+            ephemeral: true
+          });
+          return deleteMessage(initialReply);
+        }
+
+        const displayName = m.content.replace(`<@&${role.id}>`, "").trim();
+
+        if (role.position >= botMember.roles.highest.position) {
+          await interaction.followUp({
+            content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.",
+            ephemeral: true
+          });
+          return deleteMessage(initialReply);
+        }
+
+        let serverRoleMenu = await ServerRoleMenu.findOne({
+          serverID: interaction.guild.id
+        });
+
+        // 🆕 Création du document s'il n'existe pas
+        if (!serverRoleMenu) {
+          serverRoleMenu = await ServerRoleMenu.create({
+            serverID: interaction.guild.id,
+            serverName: interaction.guild.name,
+            menus: []
+          });
+        }
+
+        // 🆕 Création automatique du menu DefaultMenu
+        let menu = serverRoleMenu.menus.find(
+          (m) => m.menuName === 'DefaultMenu'
+        );
+
+        if (!menu) {
+          menu = {
+            menuName: 'DefaultMenu',
+            roles: []
+          };
+          serverRoleMenu.menus.push(menu);
+        }
+
+        const roleExists = menu.roles.find(
+          (r) => r.roleId === role.id
+        );
+
+        if (roleExists) {
+          await interaction.followUp({
+            content: "⚠️丨𝐂e rôle est déjà ajouté.",
+            ephemeral: true
+          });
+          return deleteMessage(initialReply);
+        }
+
+        menu.roles.push({
+          roleName: role.name,
+          roleId: role.id,
+          displayName: displayName || role.name
+        });
+
+        await serverRoleMenu.save();
+
+        await interaction.followUp({
+          content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`,
+          ephemeral: true
+        });
+
+        await deleteMessage(initialReply);
+      });
+
+      collector.on("end", async (_, reason) => {
+        clearInterval(interval);
+
+        if (reason === "time" && !messageDeleted) {
+          await interaction.followUp({
+            content:
+              "⏳丨𝐓emps écoulé pour la réponse. 𝐌ême la confiture prend moins de temps à se figer.",
+            ephemeral: true
+          });
+        }
+
         await deleteMessage(initialReply);
       });
     }
@@ -3097,62 +3292,98 @@ module.exports = {
     }
     // DESACTIVATION BOUTON 
     if (interaction.customId === 'ROLECHANNEL_REMOVE') {
-      const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
-  
-      // Vérifiez si serverRoleMenus existe avant d'accéder à ses propriétés
-      if (!serverRoleMenus || !serverRoleMenus.menus || serverRoleMenus.menus.length === 0) {
-          return interaction.reply({ content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.", ephemeral: true });
+      const serverRoleMenus = await ServerRoleMenu.findOne({
+        serverID: interaction.guild.id
+      });
+
+      if (!serverRoleMenus || !serverRoleMenus.menus?.length) {
+        return interaction.update({
+          content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.",
+          components: interaction.message.components
+        });
       }
-  
-      const roleOptions = serverRoleMenus.menus.flatMap(menu => 
-          menu.roles.map(role => {
-              const roleObject = interaction.guild.roles.cache.get(role.roleId);
-              return roleObject ? { label: roleObject.name, value: roleObject.id } : null;
-          }).filter(option => option)
+
+      const roleOptions = serverRoleMenus.menus.flatMap(menu =>
+        menu.roles
+          .map(role => {
+            const roleObject = interaction.guild.roles.cache.get(role.roleId);
+            return roleObject
+              ? { label: roleObject.name, value: roleObject.id }
+              : null;
+          })
+          .filter(Boolean)
       );
-  
-      if (roleOptions.length === 0) {
-          return interaction.reply({ content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.", ephemeral: true });
+
+      if (!roleOptions.length) {
+        return interaction.update({
+          content: "丨𝐈l n'y a aucun rôle disponible pour la suppression sur ton serveur.",
+          components: interaction.message.components
+        });
       }
-  
+
       const roleSelectMenu = new StringSelectMenuBuilder()
-          .setCustomId('ROLECHANNEL_SELECT_REMOVE')
-          .setPlaceholder('丨𝐐uel rôle supprimer ?')
-          .addOptions(roleOptions);
-  
+        .setCustomId('ROLECHANNEL_SELECT_REMOVE')
+        .setPlaceholder('丨𝐐uel rôle supprimer ?')
+        .addOptions(roleOptions);
+
       const roleSelectRow = new ActionRowBuilder().addComponents(roleSelectMenu);
-  
-      await interaction.reply({ content: "丨𝐋'heure est grave ! 𝐐uel rôle va se faire éjecter du club des rôles ? 𝐀 toi de jouer !", components: [roleSelectRow], ephemeral: true });
+
+      await interaction.update({
+        components: [...interaction.message.components, roleSelectRow]
+      });
     }
     if (interaction.customId === 'ROLECHANNEL_SELECT_REMOVE') {
-        const selectedRoleId = interaction.values[0];
-        const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
-    
-        if (!serverRoleMenus || !serverRoleMenus.menus) {
-            return interaction.reply({ content: "🚫丨Aucun menu de rôles trouvé.", ephemeral: true });
-        }
-    
-        await ServerRoleMenu.updateOne(
-            { serverID: interaction.guild.id, "menus.roles.roleId": selectedRoleId },
-            { $pull: { "menus.$.roles": { roleId: selectedRoleId } } }
-        );
-    
-        await ServerRoleMenu.updateOne(
-            { serverID: interaction.guild.id },
-            { $pull: { menus: { roles: { $size: 0 } } } }
-        );
-    
-        const updatedServerRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
-        if (!updatedServerRoleMenus || updatedServerRoleMenus.menus.length === 0) {
-            await ServerRoleMenu.deleteOne({ serverID: interaction.guild.id });
-        }
-    
-        await interaction.update({
-            content: `丨𝐋e rôle et son nom ont été complètement supprimés de la base de données. 💾`,
-            components: [],
-            embeds: [],
-            ephemeral: true
-        });
+      const selectedRoleId = interaction.values[0];
+
+      const serverRoleMenus = await ServerRoleMenu.findOne({
+        serverID: interaction.guild.id
+      });
+      if (!serverRoleMenus) return;
+
+      // 🧹 Suppression du rôle
+      serverRoleMenus.menus.forEach(menu => {
+        menu.roles = menu.roles.filter(r => r.roleId !== selectedRoleId);
+      });
+
+      // 🧼 Nettoyage des menus vides
+      serverRoleMenus.menus = serverRoleMenus.menus.filter(
+        menu => menu.roles.length > 0
+      );
+
+      if (serverRoleMenus.menus.length === 0) {
+        await ServerRoleMenu.deleteOne({ serverID: interaction.guild.id });
+      } else {
+        await serverRoleMenus.save();
+      }
+
+      /* ============================
+        🔄 REBUILD DE L’EMBED
+        ============================ */
+
+      const baseEmbed = interaction.message.embeds[0];
+      const newEmbed = EmbedBuilder.from(baseEmbed);
+
+      const allRoles = serverRoleMenus.menus.flatMap(menu => menu.roles);
+
+      if (!allRoles.length) {
+        newEmbed.setDescription("📭丨𝐀ucun rôle configuré actuellement.");
+      } else {
+        const rolesText = allRoles
+          .map(r => {
+            const roleObj = interaction.guild.roles.cache.get(r.roleId);
+            return roleObj ? `• ${roleObj.name}` : null;
+          })
+          .filter(Boolean)
+          .join('\n');
+
+        newEmbed.setDescription(`📜丨𝐑ôles configurés :\n${rolesText}`);
+      }
+
+      // 👉 On retire le menu et on revient à l’état initial
+      await interaction.update({
+        embeds: [newEmbed],
+        components: interaction.message.components.slice(0, 1) // boutons uniquement
+      });
     }
     if (interaction.customId === "Role_Menu") { 
       const roleId = interaction.values[0];
@@ -3868,22 +4099,6 @@ module.exports = {
           await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du rôle et du salon Twitch.", ephemeral: true });
       }
     }
-    if (interaction.customId === "LOG_DESAC") {
-      await ServerConfig.findOneAndUpdate(
-        { serverID: interaction.guild.id },
-        {
-          logChannelID: null,
-          logChannelName: "𝐀ucun"
-        }
-      );
-
-      await updateConfigEmbed(interaction, "𝐒alon actuel", "𝐀ucun");
-
-      await interaction.reply({
-        content: 'Le __salon__ des 𝐋og a été réinitialisé avec succès !',
-        ephemeral: true
-      });
-    }
     if (interaction.customId === "ROLECHANNEL_DESAC") {
       const serverID = interaction.guild.id;
       
@@ -3900,27 +4115,6 @@ module.exports = {
       } catch (error) {
           console.error('Error handling ROLECHANNEL_DESAC:', error);
           await interaction.followUp({ content: "Une erreur est survenue lors de la réinitialisation.", ephemeral: true });
-      }
-    }
-    if (interaction.customId === "REGL_DESAC") {
-      const serverID = interaction.guild.id;
-      const serverConfig = await ServerConfig.findOne({ serverID: serverID });
-    
-      if (!serverConfig) {
-        console.error('ServerConfig not found for server ID:', serverID);
-        return;
-      }
-    
-      serverConfig.reglementChannelID = null;
-      serverConfig.reglementChannelName = null;
-      serverConfig.roleReglementID = null;
-      serverConfig.roleReglementName = null;
-    
-      try {
-        await serverConfig.save();
-        await interaction.reply('Le __salon__ ainsi que le __rôle__ du 𝐑èglement a été réinitialisé avec succès !');
-      } catch (error) {
-        console.error('Error updating ServerConfig:', error);
       }
     }
     if (interaction.customId === "WELCOME_DESAC") {

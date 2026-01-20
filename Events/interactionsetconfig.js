@@ -8,7 +8,6 @@ const {
 const ServerConfig = require("../models/serverConfig");
 const Bingo = require("../models/bingo");
 
-/* ================= SELECT MENU ================= */
 function buildBaseSelectMenuRow() {
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -30,7 +29,6 @@ function buildBaseSelectMenuRow() {
   );
 }
 
-/* ================= BINGO UTILS ================= */
 const ETAT_DB = { ACTIF: "𝐀𝐂𝐓𝐈𝐅", INACTIF: "𝐈𝐍𝐀𝐂𝐓𝐈𝐅" };
 
 function buildBingoConfigDescription(serverConfig, bingoDoc) {
@@ -69,7 +67,6 @@ function applyNextBingoFooter(embed, bingoDoc) {
   return embed;
 }
 
-/* ================= HANDLER ================= */
 module.exports = {
   name: "setConfigCustomID",
   async execute(interaction) {
@@ -106,32 +103,49 @@ module.exports = {
       );
     }
 
-    /* ================= SWITCH ================= */
     switch (selectedOption) {
 
       /* ========= LOG ========= */
       case "LOG": {
+        const hasLogChannel =
+          serverConfig.logChannelID &&
+          serverConfig.logChannelName &&
+          serverConfig.logChannelName !== "𝐍on défini";
+
         const embedLog = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐋og丨`")
           .setDescription(
-            `📜 **𝐁ienvenue dans le journal des secrets bien gardés !**
+            `📜丨**𝐁ienvenue dans le journal des secrets bien gardés !**
 
             - **𝐃aily ?** 𝐂'est ici qu'on les note !
             - **𝐃éparts du serveur ?** 𝐎h, on s'en souvient bien !
             - **𝐒uggestions ?** Tableau de post-it 💡
             - **𝐒ilences forcés ?** Tout est noté 🤫
 
-            📌 **𝐒alon actuel** : \`${serverConfig.logChannelName}\``
+            📌 **𝐒alon actuel** : \`${serverConfig.logChannelName || "𝐍on défini"}\``
           )
           .setThumbnail("https://i.postimg.cc/ZKGSMjhv/Capture.png")
           .setColor("#b3c7ff");
 
         const rowLog = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("LOG_BUTTON").setEmoji("📝").setLabel("𝐌odifier 𝐒alons").setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId("LOG_DESAC").setEmoji("❌").setLabel("𝐑éinitialiser").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId("LOG_BUTTON")
+            .setEmoji(hasLogChannel ? "📝" : "➕")
+            .setLabel(hasLogChannel ? "𝐌odifier 𝐒alon" : "𝐀jouter 𝐒alon")
+            .setStyle(hasLogChannel ? ButtonStyle.Primary : ButtonStyle.Success),
+
+          new ButtonBuilder()
+            .setCustomId("LOG_DESAC")
+            .setEmoji("❌")
+            .setLabel("𝐑éinitialiser")
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(!hasLogChannel)
         );
 
-        return interaction.update({ embeds: [embedLog], components: [rowLog, buildBaseSelectMenuRow("after")] });
+        return interaction.update({
+          embeds: [embedLog],
+          components: [rowLog, buildBaseSelectMenuRow("after")]
+        });
       }
 
       /* ========= TWITCH ========= */
@@ -163,19 +177,22 @@ module.exports = {
 
       /* ========= REGLEMENT ========= */
       case "REGLEMENT": {
-        const hasChannel = Boolean(serverConfig.reglementChannelName);
+        const hasReglChannel =
+          serverConfig.reglementChannelID &&
+          serverConfig.reglementChannelName &&
+          serverConfig.reglementChannelName !== "𝐍on défini";
 
         const embedReglement = new EmbedBuilder()
           .setTitle("`丨𝐂onfiguration 𝐑èglement丨`")
           .setDescription(
-        `📜丨**𝐋a loi sacrée du serveur (promis, c’est pas si chiant)**
+      `📜丨**𝐋a loi sacrée du serveur (promis, c’est pas si chiant)**
 
-        - **𝐋es règles ?** 𝐏our que tout le monde joue fair-play ⚖️
-        - **𝐔n clic, une validation** et c’est réglé ✔️
-        - **𝐑ôle automatique ?** 𝐎ui, pour les bons élèves 😇
+      - **𝐋es règles ?** 𝐏our que tout le monde joue fair-play ⚖️
+      - **𝐔n clic, une validation** et c’est réglé ✔️
+      - **𝐑ôle automatique ?** 𝐎ui, pour les bons élèves 😇
 
-        📌丨**𝐒alon actuel** : \`${serverConfig.reglementChannelName ?? "non défini"}\`
-        🎭丨**𝐑ôle donné** : \`${serverConfig.roleReglementName ?? "non défini"}\``
+      📌丨**𝐒alon actuel** : \`${serverConfig.reglementChannelName ?? "𝐍on défini"}\`
+      🎭丨**𝐑ôle donné** : \`${serverConfig.roleReglementName ?? "𝐍on défini"}\``
           )
           .setThumbnail("https://i.postimg.cc/c49Vphyw/Capture.png")
           .setColor("#b3c7ff");
@@ -186,13 +203,13 @@ module.exports = {
             .setEmoji("✔️")
             .setLabel("𝐄nvoyer")
             .setStyle(ButtonStyle.Success)
-            .setDisabled(!hasChannel),
+            .setDisabled(!hasReglChannel),
 
           new ButtonBuilder()
             .setCustomId("REGL_BUTTON")
-            .setEmoji("📝")
-            .setLabel("𝐌odifier 𝐒alons")
-            .setStyle(ButtonStyle.Primary),
+            .setEmoji(hasReglChannel ? "📝" : "➕")
+            .setLabel(hasReglChannel ? "𝐌odifier 𝐒alon" : "𝐀jouter 𝐒alon")
+            .setStyle(hasReglChannel ? ButtonStyle.Primary : ButtonStyle.Success),
 
           new ButtonBuilder()
             .setCustomId("REGL_ROLE")
@@ -204,7 +221,8 @@ module.exports = {
             .setCustomId("REGL_DESAC")
             .setEmoji("❌")
             .setLabel("𝐑éinitialiser")
-            .setStyle(ButtonStyle.Danger),
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(!hasReglChannel)
         );
 
         return interaction.update({

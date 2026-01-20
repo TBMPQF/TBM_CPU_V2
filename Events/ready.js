@@ -466,13 +466,14 @@ module.exports = {
     // Activité du bot
     const API_FOOTBALL_KEY = config.football_api;
     const PSG_TEAM_ID = 85;
-    const MATCH_CHECK_INTERVAL = 100 * 1000; // 1 min 40 sec
-    const ROTATION_INTERVAL = 30 * 1000; // 30 sec
-    const END_MATCH_DELAY = 20 * 60 * 1000; // 20 min
+    const MATCH_CHECK_INTERVAL = 90 * 1000;
+    const ROTATION_INTERVAL = 30 * 1000;
+    const END_MATCH_DELAY = 20 * 60 * 1000;
 
+    let psgFixtures = [];
     let mode = "normal";
-    let matchEndTimeout = null;
     let activityIndex = 0;
+    let matchEndTimeout = null;
 
     const activities = [
       { name: "🎮 𝐀pex 𝐋egends", type: ActivityType.Playing },
@@ -496,78 +497,121 @@ module.exports = {
       { name: "", type: ActivityType.Custom },
     ];
 
-    async function getPSGMatch() {
+    function getFootballSeasonForFixtures() {
+      const now = new Date();
+      const year = now.getFullYear();
+
+      return [year, year - 1, year - 2];
+    }
+    async function loadPSGFixtures() {
+      try {
+        const seasons = getFootballSeasonForFixtures();
+        let allFixtures = [];
+
+        for (const season of seasons) {
+          const res = await axios.get(
+            "https://v3.football.api-sports.io/fixtures",
+            {
+              headers: { "x-apisports-key": API_FOOTBALL_KEY },
+              params: {
+                team: PSG_TEAM_ID,
+                season,
+              },
+            }
+          );
+
+          allFixtures.push(...res.data.response);
+        }
+
+        psgFixtures = allFixtures.map(f => ({
+          id: f.fixture.id,
+          timestamp: f.fixture.timestamp,
+          home: f.teams.home.name,
+          away: f.teams.away.name,
+          date: new Date(f.fixture.timestamp * 1000),
+        }));
+
+        console.log(`[PSG] ${psgFixtures.length} matchs chargés`);
+
+        const next = getNextPSGMatch();
+        if (next) {
+          console.log(
+            `[PSG] Prochain match : ${next.home} vs ${next.away} le ${next.date.toLocaleString("fr-FR")}`
+          );
+        } else {
+          console.log("[PSG] Aucun match à venir trouvé");
+        }
+
+      } catch (err) {
+        console.error("❌ PSG calendrier error :", err.message);
+      }
+    }
+    function getNextPSGMatch() {
+      const now = Date.now();
+
+      return psgFixtures
+        .filter(m => m.timestamp * 1000 > now - 2 * 60 * 60 * 1000)
+        .sort((a, b) => a.timestamp - b.timestamp)[0] || null;
+    }
+    function shouldActivateLive(match) {
+      return Date.now() >= match.timestamp * 1000 - 5 * 60 * 1000;
+    }
+    async function smartPSGPresence(bot) {
+      const match = getNextPSGMatch();
+      if (!match) return;
+
+      if (!shouldActivateLive(match)) return;
+
       try {
         const res = await axios.get(
           "https://v3.football.api-sports.io/fixtures",
           {
-            headers: {
-              "x-apisports-key": API_FOOTBALL_KEY,
-            },
-            params: {
-              team: PSG_TEAM_ID,
-              live: "all",
-            },
+            headers: { "x-apisports-key": API_FOOTBALL_KEY },
+            params: { id: match.id },
           }
         );
 
-        if (res.data.response.length > 0) {
-          return res.data.response[0];
+        const data = res.data.response[0];
+        if (!data) return;
+
+        const status = data.fixture.status.short;
+
+        // ⛔ Mi-temps → pause
+        if (status === "HT") return;
+
+        // ⛔ Match terminé
+        if (["FT", "AET", "PEN"].includes(status)) {
+          if (!matchEndTimeout) {
+            matchEndTimeout = setTimeout(() => {
+              mode = "normal";
+              matchEndTimeout = null;
+            }, END_MATCH_DELAY);
+          }
+          return;
         }
 
-        return null;
-      } catch (err) {
-        console.error("❌ API-Football error :", err.message);
-        return null;
-      }
-    }
-    async function updateMatchPresence(bot) {
-      const match = await getPSGMatch();
-      if (!match) return;
-
-      const { fixture, teams, goals } = match;
-
-      const isPSGHome = teams.home.id === PSG_TEAM_ID;
-      const opponent = isPSGHome ? teams.away.name : teams.home.name;
-
-      const psgGoals = isPSGHome ? goals.home : goals.away;
-      const oppGoals = isPSGHome ? goals.away : goals.home;
-
-      const status = fixture.status.short;
-      const minute = fixture.status.elapsed;
-
-      let suffix = null;
-
-      if (["1H", "2H", "ET", "P"].includes(status)) {
-        suffix = `${minute}'`;
-        mode = "match";
-      } else if (status === "HT") {
-        suffix = "MT";
-        mode = "match";
-      } else if (status === "FT") {
-        suffix = "FT";
+        // ✅ Match en cours / prolongations
         mode = "match";
 
-        if (!matchEndTimeout) {
-          matchEndTimeout = setTimeout(() => {
-            mode = "normal";
-            matchEndTimeout = null;
-          }, END_MATCH_DELAY);
-        }
-      } else {
-        return;
-      }
+        const isHome = data.teams.home.id === PSG_TEAM_ID;
+        const opponent = isHome ? data.teams.away.name : data.teams.home.name;
+        const psgGoals = isHome ? data.goals.home : data.goals.away;
+        const oppGoals = isHome ? data.goals.away : data.goals.home;
+        const minute = data.fixture.status.elapsed;
 
-      bot.user.setPresence({
-        activities: [
-          {
-            name: `⚽丨PSG ${psgGoals} - ${oppGoals} ${opponent} (${suffix})`,
+        bot.user.setPresence({
+          activities: [{
+            name: `⚽丨PSG ${psgGoals} - ${oppGoals} ${opponent} (${minute}')`,
             type: ActivityType.Custom,
-          },
-        ],
-        status: "dnd",
-      });
+          }],
+          status: "dnd",
+        });
+
+      } catch (err) {
+        console.error("❌ PSG live error :", err.message);
+      }
     }
+
     setInterval(() => {
       if (mode !== "normal") return;
 
@@ -579,7 +623,7 @@ module.exports = {
 
       if (activityIndex === 18) {
         const totalMembers = bot.guilds.cache.reduce(
-          (acc, guild) => acc + guild.memberCount,
+          (acc, g) => acc + g.memberCount,
           0
         );
         activity.name = `👥丨${totalMembers} 𝐌embres`;
@@ -593,8 +637,10 @@ module.exports = {
       activityIndex = (activityIndex + 1) % activities.length;
     }, ROTATION_INTERVAL);
     setInterval(() => {
-      updateMatchPresence(bot);
+      smartPSGPresence(bot);
     }, MATCH_CHECK_INTERVAL);
+    await loadPSGFixtures();
+    console.log("[PSG] Saison utilisée :", getFootballSeasonForFixtures());
 
     // Même emoji lors d'un emoji react
     bot.on('messageReactionAdd', async (reaction, user) => {
@@ -619,6 +665,8 @@ module.exports = {
 let consecutiveFailures = 0;
 const MAX_RETRIES = 5;
 const BASE_DELAY = 180000; // 3 minutes
+const LOG_EVERY_N_FAILURES = 3;
+let lastErrorType = null;
 
 async function updateCategoryMinecraft(server, retryCount = 0) {
   try {
@@ -627,21 +675,20 @@ async function updateCategoryMinecraft(server, retryCount = 0) {
       channel.name.startsWith("丨MINECRAFT丨")
     );
 
-    if (!category) {
-      console.warn("[MINECRAFT] Catégorie introuvable sur le serveur.");
-      return;
-    }
+    if (!category) return;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(`https://api.mcsrvstat.us/3/${MINECRAFT_SERVER_DOMAIN}`, {
-      signal: controller.signal
-    });
+    const response = await fetch(
+      `https://api.mcsrvstat.us/3/${MINECRAFT_SERVER_DOMAIN}`,
+      { signal: controller.signal }
+    );
+
     clearTimeout(timeout);
 
     if (!response.ok) {
-      throw new Error(`[MINECRAFT] Erreur HTTP ${response.status}`);
+      throw new Error(`HTTP_${response.status}`);
     }
 
     const data = await response.json();
@@ -649,36 +696,53 @@ async function updateCategoryMinecraft(server, retryCount = 0) {
     if (data.online) {
       const playerCount = data.players?.online ?? 0;
       const maxPlayers = data.players?.max ?? "?";
+
       await category.setName(`丨MINECRAFT丨 ${playerCount} / ${maxPlayers}`);
-      if (consecutiveFailures > 0) console.log("[MINECRAFT] Mise à jour réussie après des erreurs précédentes.");
+
+      if (consecutiveFailures > 0) {
+        console.log("[MINECRAFT] Serveur de nouveau accessible, état rétabli.");
+      }
+
       consecutiveFailures = 0;
-    } else {
-      await category.setName(`丨MINECRAFT丨 OFFLINE`);
-      
+      lastErrorType = null;
+      return;
     }
+
+    await category.setName(`丨MINECRAFT丨 OFFLINE`);
+    consecutiveFailures = 0;
+    lastErrorType = null;
+
   } catch (error) {
     await handleFailure(server, retryCount, error);
   }
 }
-
 async function handleFailure(server, retryCount, error) {
-  if (error.name === "AbortError") {
-    console.warn("[MINECRAFT] Requête annulée après 10s de timeout.");
-  } else if (error.code === "ETIMEDOUT") {
-    console.warn("[MINECRAFT] Timeout lors de la récupération des données.");
-  } else {
-    console.error("[MINECRAFT] Erreur inconnue :", error.message || error);
-  }
+  let errorType = "UNKNOWN";
+
+  if (error.name === "AbortError") errorType = "TIMEOUT";
+  else if (error.code === "ETIMEDOUT") errorType = "ETIMEDOUT";
+  else if (error.message?.startsWith("HTTP_")) errorType = error.message;
+  else if (error.code === "ENOTFOUND") errorType = "DNS";
 
   consecutiveFailures++;
-  console.warn(`[MINECRAFT] Échecs consécutifs : ${consecutiveFailures}/${MAX_RETRIES}.`);
+
+  if (
+    consecutiveFailures === 1 ||
+    errorType !== lastErrorType ||
+    consecutiveFailures % LOG_EVERY_N_FAILURES === 0
+  ) {
+    console.warn(
+      `[MINECRAFT] Problème (${errorType}) — tentative ${consecutiveFailures}/${MAX_RETRIES}`
+    );
+  }
+
+  lastErrorType = errorType;
 
   if (retryCount < MAX_RETRIES) {
     const delay = BASE_DELAY * (retryCount + 1);
-    console.log(`[MINECRAFT] Nouvelle tentative dans ${Math.floor(delay / 1000)} secondes...`);
     setTimeout(() => updateCategoryMinecraft(server, retryCount + 1), delay);
   } else {
-    console.error("[MINECRAFT] Trop d’échecs, nouvelle tentative reportée dans 3h.");
+    console.warn("[MINECRAFT] Trop d’échecs, pause prolongée (3h).");
     setTimeout(() => updateCategoryMinecraft(server, 0), 3 * 60 * 60 * 1000);
   }
 }
