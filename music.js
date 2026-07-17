@@ -9,17 +9,18 @@ const Client = new Genius.Client(config.genius_api);
 
 module.exports = (bot) => {
   const distube = new DisTube(bot, {
-    plugins: [new YtDlpPlugin()],
+    plugins: [new YtDlpPlugin({ update: false })],
     emitNewSongOnly: true,
-  });
+});
   module.exports = distube;
 
   let EMBED_UPDATE_LOCK = false;
 
   const autoDjEnabled = new Map();
   const autoDjHistory = new Map();
+  const lastPlayedSong = new Map();
   const isAutoOn = (gid) => autoDjEnabled.get(gid) === true;
-  const setAuto  = (gid, v) => autoDjEnabled.set(gid, !!v);
+  const setAuto = (gid, v) => autoDjEnabled.set(gid, !!v);
 
   const DEFAULT_THUMB = "https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj";
 
@@ -29,7 +30,7 @@ module.exports = (bot) => {
 
     if (song) {
       url = song.thumbnail || song.thumbnailUrl || song.thumbnailURL ||
-            (Array.isArray(song.thumbnails) && song.thumbnails[0]?.url) || null;
+        (Array.isArray(song.thumbnails) && song.thumbnails[0]?.url) || null;
       if (!url && song.url) {
         const id = youtubeIdFromUrl(song.url);
         if (id) url = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
@@ -44,6 +45,7 @@ module.exports = (bot) => {
 
     return url || DEFAULT_THUMB;
   }
+
   function youtubeIdFromUrl(url = "") {
     try {
       if (!url) return null;
@@ -52,33 +54,40 @@ module.exports = (bot) => {
       const m2 = url.match(/[?&]v=([A-Za-z0-9_-]{6,})/i);
       if (m2) return m2[1];
       return null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
+
   function canonicalSongId(songOrUrl) {
     if (!songOrUrl) return null;
     if (typeof songOrUrl === 'string') return youtubeIdFromUrl(songOrUrl) || songOrUrl.trim();
     return youtubeIdFromUrl(songOrUrl.url) || songOrUrl.id || songOrUrl.streamURL || null;
   }
+
   function rememberPlay(gid, songOrUrl) {
     const id = canonicalSongId(songOrUrl);
     if (!id) return;
     if (!autoDjHistory.has(gid)) autoDjHistory.set(gid, new Set());
     autoDjHistory.get(gid).add(String(id));
   }
+
   const parseTsToSeconds = (ts) => {
     if (typeof ts === 'number') return ts;
     if (!ts || typeof ts !== 'string') return 0;
     const parts = ts.split(':').map(n => parseInt(n, 10) || 0);
-    if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
-    if (parts.length === 2) return parts[0]*60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
     return 0;
   };
+
   const looksLikeOfficialMusic = (title = "") => {
     const t = String(title).toLowerCase();
     const bad = /(live|cover|lyrics?|instrumental|remix|nightcore|sped ?up|slowed|8d|mix|compilation)/i;
     const good = /(official|audio|topic)/i;
     return !bad.test(t) || good.test(t);
   };
+
   function normalizeTitle(t = "") {
     return String(t)
       .toLowerCase()
@@ -87,11 +96,13 @@ module.exports = (bot) => {
       .replace(/\s+/g, " ")
       .trim();
   }
+
   const TITLE_STOP = new Set([
-    'official','lyrics','audio','topic','remix','mix','edit','version','live','cover',
-    'video','hd','4k','feat','ft','pt','part','instrumental',
-    'everyday','normal','guy','crew'
+    'official', 'lyrics', 'audio', 'topic', 'remix', 'mix', 'edit', 'version', 'live', 'cover',
+    'video', 'hd', '4k', 'feat', 'ft', 'pt', 'part', 'instrumental',
+    'everyday', 'normal', 'guy', 'crew'
   ]);
+
   function tokensFromTitle(t = "") {
     const base = normalizeTitle(t)
       .replace(/[^a-z0-9\s]/gi, " ")
@@ -102,20 +113,24 @@ module.exports = (bot) => {
     const toks = base.split(/\s+/).filter(Boolean);
     return toks.filter(tok => tok.length > 1 && !TITLE_STOP.has(tok));
   }
+
   function seriesKey(t = "") {
     return tokensFromTitle(t).join(' ');
   }
+
   function jaccardSim(aTokens, bTokens) {
     const A = new Set(aTokens), B = new Set(bTokens);
     let inter = 0; for (const x of A) if (B.has(x)) inter++;
     const union = A.size + B.size - inter;
     return union ? inter / union : 0;
   }
+
   function tooSimilarTitle(a = "", b = "") {
     const ta = tokensFromTitle(a), tb = tokensFromTitle(b);
     if (!ta.length || !tb.length) return false;
-    return jaccardSim(ta, tb) >= 0.5; // seuil strict
+    return jaccardSim(ta, tb) >= 0.5;
   }
+
   async function pickRelatedTrack(guildId, currentSong) {
     try {
       if (!currentSong) return null;
@@ -149,20 +164,21 @@ module.exports = (bot) => {
             if (vid && (vid === currentId || seen.has(String(vid)))) return false;
 
             const candTitle = v.title || "";
-            if (seriesKey(candTitle) === currentSeries) return false;      // même série
-            if (tooSimilarTitle(candTitle, currentTitle)) return false;    // trop similaire courant
+            if (seriesKey(candTitle) === currentSeries) return false;
+            if (tooSimilarTitle(candTitle, currentTitle)) return false;
             for (const t of recent) {
-              if (seriesKey(candTitle) === seriesKey(t)) return false;     // même série que récents
-              if (tooSimilarTitle(candTitle, t)) return false;             // trop similaire récents
+              if (seriesKey(candTitle) === seriesKey(t)) return false;
+              if (tooSimilarTitle(candTitle, t)) return false;
             }
             return true;
           });
 
         if (candidate) return { url: candidate.url, title: candidate.title };
       }
-    } catch (_) {}
+    } catch (_) { }
     return null;
   }
+
   function getRequesterId(song) {
     return (
       song?.user?.id ||
@@ -172,6 +188,7 @@ module.exports = (bot) => {
       null
     );
   }
+
   async function purgeLeaverSongs(guildId, userId) {
     const queue = distube.getQueue(guildId);
     if (!queue || !Array.isArray(queue.songs) || queue.songs.length === 0) return;
@@ -181,23 +198,28 @@ module.exports = (bot) => {
     if (kept.length === before) return;
 
     queue.songs = kept;
-    await updateMusicEmbed(queue.textChannel, guildId).catch(() => {});
+    await updateMusicEmbed(queue.textChannel, guildId).catch(() => { });
   }
+
   const formatDuration = (duration) => {
     const parts = duration.split(':');
     if (parts.length === 2) return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
     if (parts.length === 3) return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0') + ':' + parts[2].padStart(2, '0');
     return duration;
   };
+
   const pauseIcon = "⏸️";
+
   async function ackSilently(interaction) {
     if (!interaction.deferred && !interaction.replied) {
-      try { await interaction.deferUpdate(); } catch {}
+      try { await interaction.deferUpdate(); } catch { }
     }
   }
+
   async function ephemeralError(interaction, content) {
-    try { await interaction.followUp({ content, ephemeral: true }); } catch {}
+    try { await interaction.followUp({ content, ephemeral: true }); } catch { }
   }
+
   function normalizeTitleForLyrics(t) {
     return String(t || '')
       .replace(/\([^)]*\)/g, '')
@@ -207,6 +229,7 @@ module.exports = (bot) => {
       .replace(/\s{2,}/g, ' ')
       .trim();
   }
+
   function parseArtistAndTitle(song) {
     const raw = song?.name || "";
     const cleaned = normalizeTitleForLyrics(raw);
@@ -215,7 +238,7 @@ module.exports = (bot) => {
 
     if (dashSplit.length >= 2) {
       artistFromTitle = dashSplit[0].trim();
-      titleFromTitle  = dashSplit.slice(1).join(' - ').trim();
+      titleFromTitle = dashSplit.slice(1).join(' - ').trim();
     }
 
     const uploader = song?.uploader?.name || song?.uploader || song?.author || null;
@@ -227,6 +250,7 @@ module.exports = (bot) => {
       uploader
     };
   }
+
   function buildLyricsQueries(song) {
     const { cleanedTitle, artistFromTitle, titleFromTitle, uploader } = parseArtistAndTitle(song);
     const base = [cleanedTitle];
@@ -243,6 +267,7 @@ module.exports = (bot) => {
     }
     return Array.from(candidates).filter(Boolean);
   }
+
   async function fetchLyricsWithFallbacks(queries) {
     for (const q of queries) {
       try {
@@ -252,14 +277,16 @@ module.exports = (bot) => {
           let text = await res.lyrics();
           if (text && text.length > 0) return { text, title: res.fullTitle };
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     return null;
   }
+
   const lyricsState = new Map();
   function songKeyOf(song) {
     return canonicalSongId(song) || normalizeTitle(song?.name || song?.title || "");
   }
+
   async function precheckLyricsForCurrent(guildId, song, textChannel) {
     try {
       const key = songKeyOf(song);
@@ -275,17 +302,19 @@ module.exports = (bot) => {
         text: best?.text || null
       });
 
-      if (textChannel) await updateMusicEmbed(textChannel, guildId).catch(() => {});
+      if (textChannel) await updateMusicEmbed(textChannel, guildId).catch(() => { });
     } catch (e) {
       const key = songKeyOf(song);
       lyricsState.set(guildId, { songKey: key, available: false, title: null, text: null });
     }
   }
+
   function resetAutoDj(gid) {
     try {
       setAuto(gid, false);
       autoDjHistory.delete(gid);
-    } catch (_) {}
+      lastPlayedSong.delete(gid);
+    } catch (_) { }
   }
 
   distube
@@ -298,14 +327,14 @@ module.exports = (bot) => {
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      try { rememberPlay(queue.textChannel.guild.id, song); } catch {}
+      try { rememberPlay(queue.textChannel.guild.id, song); } catch { }
+      lastPlayedSong.set(queue.textChannel.guild.id, song);
 
       if (!EMBED_UPDATE_LOCK) {
         await updateMusicEmbed(queue.textChannel, queue.textChannel.guild.id);
       }
 
-      // Pré-check lyrics pour (dé)griser le bouton
-      precheckLyricsForCurrent(queue.textChannel.guild.id, song, queue.textChannel).catch(() => {});
+      precheckLyricsForCurrent(queue.textChannel.guild.id, song, queue.textChannel).catch(() => { });
     })
     .on('addSong', async (queue, song) => {
       song.name = song.name
@@ -325,7 +354,8 @@ module.exports = (bot) => {
 
       if (isAutoOn(guildId)) {
         try {
-          const last = (queue.previousSongs && queue.previousSongs[queue.previousSongs.length - 1]) || queue.songs?.[0] || null;
+          // ✅ On utilise notre Map fiable au lieu de queue.previousSongs
+          const last = lastPlayedSong.get(guildId) || queue.songs?.[0] || null;
           const next = await pickRelatedTrack(guildId, last);
           const guild = await bot.guilds.fetch(guildId).catch(() => null);
           const vc = guild?.members?.me?.voice?.channel;
@@ -334,6 +364,7 @@ module.exports = (bot) => {
             await distube.play(vc, next.url, { member: guild.members.me, textChannel: queue.textChannel });
             await updateMusicEmbed(queue.textChannel, guildId);
             return;
+          } else {
           }
         } catch (e) {
           console.error("[MUSIC] AutoDJ error:", e?.message);
@@ -347,10 +378,11 @@ module.exports = (bot) => {
       await updateMusicEmbed(queue.textChannel, queue.textChannel.guild.id);
       disconnectIfEmpty(queue);
     })
-    .on('disconnect', () => {
-    })
+    .on('disconnect', () => { })
     .on('error', (channel, error) => {
-      console.error(`[MUSIC] Error in ${channel?.name || 'unknown'}: ${error}`);
+      console.error(`[MUSIC] Error in ${channel?.name || "unknown"}:`, error);
+      if (error?.errorCode) console.error("[MUSIC] errorCode:", error.errorCode);
+      if (error?.stack) console.error("[MUSIC] stack:", error.stack);
     });
 
   bot.on('interactionCreate', async interaction => {
@@ -384,12 +416,27 @@ module.exports = (bot) => {
 
   async function handlePlayPauseToggle(interaction, serverId) {
     await ackSilently(interaction);
-    const voiceChannel    = interaction.member.voice.channel;
+
+    const voiceChannel = interaction.member.voice.channel;
     const botVoiceChannel = interaction.guild.members.me.voice.channel;
-    const queue           = distube.getQueue(serverId);
+    const queue = distube.getQueue(serverId);
 
-    if (!voiceChannel) return;
+    if (!voiceChannel) {
+      return ephemeralError(interaction, ":microphone2:丨𝐓u dois être dans un salon vocal !");
+    }
 
+    // ✅ permissions check
+    const perms = voiceChannel.permissionsFor(interaction.guild.members.me);
+    if (!perms?.has("Connect") || !perms?.has("Speak")) {
+      return ephemeralError(interaction, ":lock:丨Je n'ai pas les permissions nécessaires (**CONNECT** + **SPEAK**) dans ce vocal.");
+    }
+
+    // ✅ bot in other voice channel
+    if (botVoiceChannel && botVoiceChannel.id !== voiceChannel.id) {
+      return ephemeralError(interaction, ":lock:丨𝐋e bot joue **dans un autre salon vocal**.");
+    }
+
+    // Si pas de queue -> on lit les musiques stockées
     if (!queue || !queue.songs?.length) {
       const stored = songQueues.get(serverId);
       if (!stored || stored.length === 0) return;
@@ -401,11 +448,12 @@ module.exports = (bot) => {
         console.error("[MUSIC] Erreur lecture musiques stockées :", e);
       } finally {
         EMBED_UPDATE_LOCK = false;
-        await updateMusicEmbed(interaction.channel, serverId).catch(()=>{});
+        await updateMusicEmbed(interaction.channel, serverId).catch(() => { });
       }
       return;
     }
 
+    // Toggle pause/play normal
     try {
       if (queue.playing && !queue.paused) {
         distube.pause(queue);
@@ -418,19 +466,18 @@ module.exports = (bot) => {
       console.error("[MUSIC] Erreur toggle play/pause :", error);
     }
   }
+
   async function handleStopMusic(interaction, serverId) {
     await ackSilently(interaction);
 
-    const voiceChannel    = interaction.member.voice.channel;
+    const voiceChannel = interaction.member.voice.channel;
     const botVoiceChannel = interaction.guild.members.me.voice.channel;
-    const queue           = distube.getQueue(serverId);
+    const queue = distube.getQueue(serverId);
 
     if (!voiceChannel) {
       return ephemeralError(interaction, ":microphone2:丨𝐓u dois être dans un salon vocal pour **arrêter la musique** !");
     }
-    if (!botVoiceChannel) {
-      return;
-    }
+    if (!botVoiceChannel) return;
     if (botVoiceChannel.id !== voiceChannel.id) {
       return ephemeralError(interaction, ":lock:丨𝐋e bot joue **dans un autre salon vocal**. 𝐕iens dans le même pour **arrêter**.");
     }
@@ -439,7 +486,7 @@ module.exports = (bot) => {
       if (queue) {
         distube.stop(interaction.guild);
         resetAutoDj(serverId);
-        await updateMusicEmbedInitial(interaction.channel, serverId).catch(() => {});
+        await updateMusicEmbedInitial(interaction.channel, serverId).catch(() => { });
         disconnectIfEmpty(queue);
       }
     } catch (error) {
@@ -447,15 +494,16 @@ module.exports = (bot) => {
       return ephemeralError(interaction, "[MUSIC] :x: 𝐄rreur lors de l'arrêt de la musique.");
     }
   }
+
   async function handleNextMusic(interaction, serverId) {
     await ackSilently(interaction);
 
-    const voiceChannel    = interaction.member.voice.channel;
+    const voiceChannel = interaction.member.voice.channel;
     const botVoiceChannel = interaction.guild.members.me.voice.channel;
-    const queue           = distube.getQueue(serverId);
+    const queue = distube.getQueue(serverId);
 
     if (!voiceChannel) return ephemeralError(interaction, ":microphone2:丨𝐓u dois être dans un salon vocal pour **passer la musique** !");
-    if (!queue)        return ephemeralError(interaction, ":no_entry_sign:丨𝐈l n'y a **aucune musique**.");
+    if (!queue) return ephemeralError(interaction, ":no_entry_sign:丨𝐈l n'y a **aucune musique**.");
     if (!botVoiceChannel || botVoiceChannel.id !== voiceChannel.id) {
       return ephemeralError(interaction, ":lock:丨𝐋e bot joue **dans un autre salon vocal**.");
     }
@@ -487,14 +535,15 @@ module.exports = (bot) => {
       return ephemeralError(interaction, "[MUSIC] :x: 𝐄rreur lors du passage à la musique suivante.");
     }
   }
+
   async function handleLyricsMusic(interaction, serverId) {
     if (!interaction.deferred && !interaction.replied) {
-      try { await interaction.deferReply({ ephemeral: true }); } catch {}
+      try { await interaction.deferReply({ ephemeral: true }); } catch { }
     }
 
     const queue = distube.getQueue(serverId);
     if (!queue || queue.songs.length === 0) {
-      try { await interaction.editReply({ content: ":no_entry_sign:丨𝐀ucune musique n'est en cours de lecture." }); } catch {}
+      try { await interaction.editReply({ content: ":no_entry_sign:丨𝐀ucune musique n'est en cours de lecture." }); } catch { }
       return;
     }
 
@@ -511,7 +560,7 @@ module.exports = (bot) => {
       const queries = buildLyricsQueries(currentSong);
       const best = await fetchLyricsWithFallbacks(queries);
       if (!best) {
-        try { await interaction.editReply({ content: ":x:丨𝐈mpossible de trouver les paroles de cette chanson." }); } catch {}
+        try { await interaction.editReply({ content: ":x:丨𝐈mpossible de trouver les paroles de cette chanson." }); } catch { }
         return;
       }
       lyricsText = best.text;
@@ -584,7 +633,7 @@ module.exports = (bot) => {
 
     try {
       await interaction.editReply({ embeds: [makeEmbed(pageIndex)], components: [makeRow(pageIndex)] });
-    } catch {}
+    } catch { }
 
     const msg = await interaction.fetchReply().catch(() => null);
     if (!msg) return;
@@ -603,7 +652,7 @@ module.exports = (bot) => {
           pageIndex = Math.min(pages.length - 1, pageIndex + 1);
           await i.update({ embeds: [makeEmbed(pageIndex)], components: [makeRow(pageIndex)] });
         }
-      } catch {}
+      } catch { }
     });
 
     collector.on('end', async () => {
@@ -613,15 +662,16 @@ module.exports = (bot) => {
             ButtonBuilder.from(makeRow(pageIndex).components[0]).setDisabled(true),
             ButtonBuilder.from(makeRow(pageIndex).components[1]).setDisabled(true)
           )]
-        }).catch(()=>{});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     });
   }
+
   async function handleAutoDjToggle(interaction, serverId) {
     await ackSilently(interaction);
 
     const userVC = interaction.member.voice.channel;
-    const botVC  = interaction.guild.members.me.voice.channel;
+    const botVC = interaction.guild.members.me.voice.channel;
     if (botVC && userVC && botVC.id !== userVC.id) {
       return ephemeralError(interaction, ":lock:丨𝐕iens dans le même salon vocal que le bot pour changer le **mode Auto**.");
     }
@@ -639,8 +689,8 @@ module.exports = (bot) => {
     if (videos.length === 0) {
       await message.channel.send({
         embeds: [new EmbedBuilder().setColor("Purple").setDescription("丨𝐀ucun résultat trouvé.")]
-      }).then(msg => setTimeout(() => msg.delete().catch(()=>{}), 5000)).catch(()=>{});
-      await message.delete().catch(()=>{});
+      }).then(msg => setTimeout(() => msg.delete().catch(() => { }), 5000)).catch(() => { });
+      await message.delete().catch(() => { });
       return;
     }
 
@@ -657,15 +707,15 @@ module.exports = (bot) => {
       addedBy: message.author.id
     };
 
-    const voiceChannel    = message.member.voice.channel;
-    const queue           = distube.getQueue(message.guild.id);
+    const voiceChannel = message.member.voice.channel;
+    const queue = distube.getQueue(message.guild.id);
     const botVoiceChannel = message.guild.members.me.voice.channel;
 
     try {
       if (queue) {
         if (!botVoiceChannel || !voiceChannel || botVoiceChannel.id !== voiceChannel.id) {
-          await message.react('🔒').catch(()=>{});
-          setTimeout(() => message.delete().catch(()=>{}), 5000);
+          await message.react('🔒').catch(() => { });
+          setTimeout(() => message.delete().catch(() => { }), 5000);
           return;
         }
 
@@ -685,10 +735,10 @@ module.exports = (bot) => {
         embeds: [new EmbedBuilder()
           .setColor("Red")
           .setDescription(":x:丨𝐔n problème est survenu lors de l'ajout de la musique. 𝐎n regarde ça !")]
-      }).then(msg => setTimeout(() => msg.delete().catch(()=>{}), 5000)).catch(()=>{});
+      }).then(msg => setTimeout(() => msg.delete().catch(() => { }), 5000)).catch(() => { });
     }
 
-    await message.delete().catch(()=>{});
+    await message.delete().catch(() => { });
   });
 
   const songQueues = new Map();
@@ -700,7 +750,7 @@ module.exports = (bot) => {
   }
 
   const MAX_PLAYLIST_SIZE = 50;
-  const MAX_CHAR_LIMIT    = 5000;
+  const MAX_CHAR_LIMIT = 5000;
 
   async function updateMusicEmbed(channel, guildId, opts = {}) {
     try {
@@ -716,7 +766,7 @@ module.exports = (bot) => {
       const previewTitle = typeof opts.previewTitle === 'string' ? opts.previewTitle : null;
 
       const hasQueue = !!(queue && Array.isArray(queue.songs) && queue.songs.length > 0);
-      const hasTemp  = songQueues.has(guildId) && songQueues.get(guildId).length > 0;
+      const hasTemp = songQueues.has(guildId) && songQueues.get(guildId).length > 0;
 
       if (hasQueue) {
         if (previewIndex !== null && queue.songs[previewIndex]) {
@@ -784,10 +834,10 @@ module.exports = (bot) => {
 
       if (hasQueue) {
         const isPlaying = !!(queue.playing && !queue.paused);
-        const current   = queue.songs[0];
-        const key       = songKeyOf(current);
-        const lstate    = lyricsState.get(guildId);
-        const lyricsOk  = !!(lstate && lstate.songKey === key && lstate.available === true);
+        const current = queue.songs[0];
+        const key = songKeyOf(current);
+        const lstate = lyricsState.get(guildId);
+        const lyricsOk = !!(lstate && lstate.songKey === key && lstate.available === true);
 
         const rowMain = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -824,10 +874,10 @@ module.exports = (bot) => {
 
       const musicEntry = await Music.findOne({ guildId });
       if (musicEntry) {
-        const message = await channel.messages.fetch(musicEntry.messageId).catch(()=>null);
-        if (message) await message.edit({ embeds: [newEmbed], components }).catch(()=>{});
+        const message = await channel.messages.fetch(musicEntry.messageId).catch(() => null);
+        if (message) await message.edit({ embeds: [newEmbed], components }).catch(() => { });
       } else {
-        const msg = await channel.send({ embeds: [newEmbed], components }).catch(()=>null);
+        const msg = await channel.send({ embeds: [newEmbed], components }).catch(() => null);
         if (msg) {
           await Music.create({ guildId, channelId: channel.id, messageId: msg.id });
         }
@@ -836,23 +886,21 @@ module.exports = (bot) => {
       console.error("[MUSIC] Erreur lors de la mise à jour de l'embed :", error.message);
     }
   }
+
+  // =======================
+  // ✅ FIX DISCONNECT
+  // =======================
   async function disconnectIfEmpty(queue) {
     try {
       const serverId = queue.textChannel.guild.id;
-      const guild = await bot.guilds.fetch(serverId);
-      if (!guild) throw new Error(`[MUSIC] Impossible de récupérer la guilde : ${serverId}`);
+      distube.voices.leave(serverId);
 
-      const botMember = guild.members.me;
-      const voiceChannel = botMember?.voice?.channel;
-
-      if (voiceChannel) {
-        await botMember.voice.disconnect().catch(()=>{});
-        await updateMusicEmbedInitial(queue.textChannel, serverId);
-      }
+      await updateMusicEmbedInitial(queue.textChannel, serverId);
     } catch (error) {
       console.error("[MUSIC] Erreur dans disconnectIfEmpty :", error.message);
     }
   }
+
   async function updateMusicEmbedInitial(channel, serverId) {
     try {
       let guild = channel.guild || await bot.guilds.fetch(serverId);
@@ -864,8 +912,8 @@ module.exports = (bot) => {
       const initialEmbed = new EmbedBuilder()
         .setColor("Purple")
         .setTitle("――――――――∈ `MUSIQUES` ∋――――――――")
-        .setThumbnail("https://yt3.googleusercontent.com/ytc/APkrFKb-qzXQJhx650-CuoonHAnRXk2_wTgHxqcpXzxA_A=s900-c-k-c0x00ffffff-no-rj")
-        .setDescription("**𝐋a playlist est vide pour le moment**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.\n𝐔ne fois la playlist crée, n'oublie pas d'être dans le même salon que le BOT pour intéragir avec les différents boutons. (:")
+        .setThumbnail(DEFAULT_THUMB)
+        .setDescription("**丨𝐋a playlist est vide pour le moment**\n\n**Écrit** dans le chat le nom de ta __musique préférée__ pour l'ajouter dans la playlist.\n𝐔ne fois la playlist crée, n'oublie pas d'être dans le même salon que le BOT pour intéragir avec les différents boutons. (:")
         .setFooter({
           text: `𝐂ordialement, l'équipe ${guildName}`,
           iconURL: guildIcon,
@@ -877,12 +925,12 @@ module.exports = (bot) => {
 
       const musicEntry = await Music.findOne({ guildId: serverId });
       if (musicEntry) {
-        const ch = await guild.channels.fetch(musicEntry.channelId).catch(()=>null);
+        const ch = await guild.channels.fetch(musicEntry.channelId).catch(() => null);
         if (!ch) return;
-        const msg = await ch.messages.fetch(musicEntry.messageId).catch(()=>null);
-        if (msg) await msg.edit({ embeds: [initialEmbed], components: [rowPlayOnly] }).catch(()=>{});
+        const msg = await ch.messages.fetch(musicEntry.messageId).catch(() => null);
+        if (msg) await msg.edit({ embeds: [initialEmbed], components: [rowPlayOnly] }).catch(() => { });
       } else {
-        const msg = await channel.send({ embeds: [initialEmbed], components: [rowPlayOnly] }).catch(()=>null);
+        const msg = await channel.send({ embeds: [initialEmbed], components: [rowPlayOnly] }).catch(() => null);
         if (msg) {
           await Music.create({
             guildId: serverId,
@@ -895,22 +943,60 @@ module.exports = (bot) => {
       console.error("[MUSIC] Erreur lors de la remise à zéro de l'embed :", error.message);
     }
   }
+
+  // =======================
+  // ✅ FIX STORED SONGS JOIN
+  // =======================
   async function playStoredSongs(guildId, voiceChannel, member, textChannel) {
-    const queue = songQueues.get(guildId);
-    if (queue && queue.length > 0) {
-      for (const song of queue) {
-        try {
-          await distube.play(voiceChannel, song.url, {
-            member,
-            textChannel,
-          });
-        } catch (error) {
-          console.error(`[MUSIC] Error playing stored song (${song.title}):`, error);
+  const stored = songQueues.get(guildId);
+  if (!stored || stored.length === 0) return;
+
+  try {
+    let q = null;
+
+    // ✅ On essaie chaque chanson jusqu'à ce qu'une fonctionne
+    while (stored.length > 0 && !q) {
+      const first = stored.shift();
+      try {
+        await distube.play(voiceChannel, first.url, { member, textChannel });
+
+        for (let i = 0; i < 40; i++) {
+          q = distube.getQueue(guildId);
+          if (q && q.songs?.length && distube.voices.get(guildId)?.connection) break;
+          await new Promise(r => setTimeout(r, 500));
         }
+
+        if (!q) {
+          console.error(`[MUSIC] Queue non créée pour "${first.title}" -> on essaie la suivante`);
+        }
+      } catch (error) {
+        console.error(`[MUSIC] Erreur lecture "${first.title}":`, error?.message);
+        q = null; // on retente avec la chanson suivante
       }
-      songQueues.delete(guildId);
     }
+
+    if (!q) {
+      console.error("[MUSIC] Aucune chanson de la file n'a pu être lancée");
+      return;
+    }
+
+    for (let i = 0; i < stored.length; i++) {
+      const song = stored[i];
+      try {
+        const vc = voiceChannel.guild.members.me?.voice?.channel;
+        if (!vc) break;
+
+        await distube.play(vc, song.url, { member, textChannel });
+        await new Promise(r => setTimeout(r, 800));
+      } catch (error) {
+        console.warn(`[MUSIC] Skip "${song.title}":`, error?.message);
+        continue;
+      }
+    }
+  } finally {
+    songQueues.delete(guildId);
   }
+}
 
   bot.on('voiceStateUpdate', async (oldState, newState) => {
     try {
@@ -919,7 +1005,7 @@ module.exports = (bot) => {
         const guildId = oldState.guild.id;
         await purgeLeaverSongs(guildId, userId);
       }
-    } catch(e) {
+    } catch (e) {
       console.error("[MUSIC] voiceStateUpdate purge error:", e?.message);
     }
   });

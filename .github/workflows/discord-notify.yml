@@ -1,0 +1,35 @@
+name: Annonce mise à jour
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Envoyer l'annonce Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          TAG_MESSAGE=$(git tag -l --format='%(contents)' "$TAG_NAME")
+
+          DESCRIPTION=$(echo "$TAG_MESSAGE" | jq -Rs .)
+
+          curl -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "🚀 TBM_CPU vient d'\''être mis à jour !",
+                "description": '"$DESCRIPTION"',
+                "color": 15844367,
+                "footer": { "text": "Merci de votre fidélité 🦅" },
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }]
+            }' \
+            "$DISCORD_WEBHOOK_URL"

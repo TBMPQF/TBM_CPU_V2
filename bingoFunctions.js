@@ -54,10 +54,13 @@ async function ajouterFalconixUtilisateur(userId, guildId, elapsedSeconds = 0, t
     let finalFalconix = base * speedBonus * attemptMalus;
     finalFalconix = Math.max(0.0004, Math.min(finalFalconix, 0.0035));
 
-    user.falconix += finalFalconix;
+    finalFalconix = parseFloat(finalFalconix.toFixed(5));
+
+    const currentFalconix = Number(user.falconix) || 0;
+    user.falconix = parseFloat((currentFalconix + finalFalconix).toFixed(5));
     await user.save();
 
-    return parseFloat(finalFalconix.toFixed(5));
+    return finalFalconix;
   } catch (error) {
     console.error("Erreur lors de l'ajout des Falconix :", error);
     return null;
@@ -121,6 +124,45 @@ function generateNextAllowedBingo(minDays = 2, maxDays = 5) {
     next = new Date(Date.now() + intervalleAleatoire(minDays, maxDays));
   } while (isHourBlocked(next)); 
   return next;
+}
+function buildHints(bingoNumber, getClosest) {
+  return [
+    {
+      delay: 60000, // 1 min
+      make: () => {
+        const parity = bingoNumber % 2 === 0 ? "pair" : "impair";
+        return `💡**丨**𝐈ndice 1 : le nombre mystère est **${parity}**.`;
+      },
+    },
+    {
+      delay: 120000, // 2 min
+      make: () => {
+        const half = bingoNumber <= 250 ? "entre **1** et **250**" : "entre **251** et **500**";
+        return `💡**丨**𝐈ndice 2 : le nombre mystère est ${half}.`;
+      },
+    },
+    {
+      delay: 180000, // 3 min
+      make: () => {
+        const bucketStart = Math.floor((bingoNumber - 1) / 50) * 50 + 1;
+        const bucketEnd = bucketStart + 49;
+        return `💡**丨**𝐈ndice 3 : le nombre mystère est entre **\`${bucketStart}\`** et **\`${bucketEnd}\`**.`;
+      },
+    },
+    {
+      delay: 240000, // 4 min
+      make: () => {
+        const closest = getClosest();
+        if (closest?.guess != null) {
+          const direction = closest.guess < bingoNumber ? "plus grand" : "plus petit";
+          return `💡**丨**𝐈ndice 4 : la meilleure proposition jusqu'ici était **\`${closest.guess}\`** — le nombre mystère est **${direction}**.`;
+        }
+        const bucketStart = Math.floor((bingoNumber - 1) / 10) * 10 + 1;
+        const bucketEnd = bucketStart + 9;
+        return `💡**丨**𝐈ndice 4 : le nombre mystère est entre **\`${bucketStart}\`** et **\`${bucketEnd}\`**.`;
+      },
+    },
+  ];
 }
 
 const activeGuildRuns = new Set();
@@ -194,42 +236,66 @@ async function lancerJeuBingo(guildId, bot) {
   let bingoWinner = null;
 
   const messagesGagnant = [
-    `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère **\`${bingoNumber}\`**. 𝐓u gagnes X Falconix!`,
-    `🥳**丨**𝐁ravo, tu as le don de deviner, le nombre mystère était **\`${bingoNumber}\`**! 𝐓u récupères X Falconix!`,
-    `🎊**丨**𝐓u es un véritable devin! Le nombre mystère était **\`${bingoNumber}\`**. 𝐓u empoches X Falconix!`,
-    `🎉**丨**𝐅élicitations ! Le nombre était **\`${bingoNumber}\`**. 𝐓u gagnes X Falconix!`,
-    `🍀**丨**𝐋a chance t'appelle par ton prénom : **\`${bingoNumber}\`** ! 𝐄mpoche X Falconix!`,
-    `🧠**丨**𝐂alcul mental niveau grand maître : **\`${bingoNumber}\`**… ça tombe juste. X Falconix!`,
-    `🎯**丨**𝐂ible parfaite : **\`${bingoNumber}\`**. 𝐓ir groupé sur X Falconix!`,
-    `🚀**丨**𝐃écollage réussi, cap sur **\`${bingoNumber}\`** et X Falconix!`,
-    `🔮**丨**𝐋a boule de cristal était claire : **\`${bingoNumber}\`**. 𝐑écompense : X Falconix!`,
-    `🧩**丨**𝐃ernière pièce trouvée : **\`${bingoNumber}\`**. 𝐏uzzle complété, X Falconix!`,
-    `⚡**丨**𝐑éflexe éclair : **\`${bingoNumber}\`** ! 𝐓u ramasses X Falconix!`,
-    `🕵️**丨**𝐀bracadabra… **\`${bingoNumber}\`** ! 𝐄t hop, X Falconix dans la besace!`,
-    `🐱‍👤**丨**𝐀ttaque furtive réussie : **\`${bingoNumber}\`**. 𝐁utin : X Falconix!`,
-    `🏆**丨**𝐏odium réservé : **\`${bingoNumber}\`**. 𝐌édaille + X Falconix!`,
-    `🎰**丨**𝐉ackpot numérique : **\`${bingoNumber}\`** ! Ça paye X Falconix!`,
-    `📈**丨**𝐓es stats explosent : **\`${bingoNumber}\`**. 𝐃ividende : X Falconix!`,
-  ];
+  `🎉**丨**𝐈ncroyable, tu as trouvé le nombre mystère **\`${bingoNumber}\`**. 𝐓u gagnes X Falconix!`,
+  `🥳**丨**𝐁ravo, tu as le don de deviner, le nombre mystère était **\`${bingoNumber}\`**! 𝐓u récupères X Falconix!`,
+  `🎊**丨**𝐓u es un véritable devin! Le nombre mystère était **\`${bingoNumber}\`**. 𝐓u empoches X Falconix!`,
+  `🎉**丨**𝐅élicitations ! Le nombre était **\`${bingoNumber}\`**. 𝐓u gagnes X Falconix!`,
+  `🍀**丨**𝐋a chance t'appelle par ton prénom : **\`${bingoNumber}\`** ! 𝐄mpoche X Falconix!`,
+  `🧠**丨**𝐂alcul mental niveau grand maître : **\`${bingoNumber}\`**… ça tombe juste. X Falconix!`,
+  `🎯**丨**𝐂ible parfaite : **\`${bingoNumber}\`**. 𝐓ir groupé sur X Falconix!`,
+  `🚀**丨**𝐃écollage réussi, cap sur **\`${bingoNumber}\`** et X Falconix!`,
+  `🔮**丨**𝐋a boule de cristal était claire : **\`${bingoNumber}\`**. 𝐑écompense : X Falconix!`,
+  `🧩**丨**𝐃ernière pièce trouvée : **\`${bingoNumber}\`**. 𝐏uzzle complété, X Falconix!`,
+  `⚡**丨**𝐑éflexe éclair : **\`${bingoNumber}\`** ! 𝐓u ramasses X Falconix!`,
+  `🕵️**丨**𝐀bracadabra… **\`${bingoNumber}\`** ! 𝐄t hop, X Falconix dans la besace!`,
+  `🐱‍👤**丨**𝐀ttaque furtive réussie : **\`${bingoNumber}\`**. 𝐁utin : X Falconix!`,
+  `🏆**丨**𝐏odium réservé : **\`${bingoNumber}\`**. 𝐌édaille + X Falconix!`,
+  `🎰**丨**𝐉ackpot numérique : **\`${bingoNumber}\`** ! Ça paye X Falconix!`,
+  `📈**丨**𝐓es stats explosent : **\`${bingoNumber}\`**. 𝐃ividende : X Falconix!`,
+  `🐟**丨**𝐅erré du premier coup : **\`${bingoNumber}\`** ! 𝐏rise du jour : X Falconix!`,
+  `🎲**丨**𝐋e dé roulait pour toi : **\`${bingoNumber}\`**. 𝐌ise gagnante : X Falconix!`,
+  `👑**丨**𝐋e trône te revient : **\`${bingoNumber}\`** ! 𝐓résor royal : X Falconix!`,
+  `🍯**丨**𝐒ucré comme une victoire : **\`${bingoNumber}\`**. 𝐏ot de miel : X Falconix!`,
+  `🧲**丨**𝐀ttiré comme un aimant vers **\`${bingoNumber}\`** ! 𝐁utin magnétique : X Falconix!`,
+  `🥷**丨**𝐓echnique ninja imparable : **\`${bingoNumber}\`**. 𝐑écompense discrète : X Falconix!`,
+  `🎈**丨**𝐓u t'envoles avec **\`${bingoNumber}\`** ! 𝐋est largué, gain : X Falconix!`,
+  `🦊**丨**𝐑usé comme un renard, **\`${bingoNumber}\`** n'avait aucune chance. 𝐁utin : X Falconix!`,
+  `🌟**丨**𝐄toile filante repérée : **\`${bingoNumber}\`**. 𝐕œu exaucé, X Falconix!`,
+  `🥇**丨**𝐌édaille d'or méritée : **\`${bingoNumber}\`** ! 𝐏rime : X Falconix!`,
+  `🍾**丨**𝐎n débouche le champagne pour **\`${bingoNumber}\`** ! 𝐓ournée générale : X Falconix!`,
+  `🧨**丨**𝐄xplosion de chance sur **\`${bingoNumber}\`** ! 𝐑etombées : X Falconix!`,
+];
 
-  const messagesPerdant = [
-    `𝐓emps écoulé, le nombre mystère **\`${bingoNumber}\`** s'est éclipsé !`,
-    `𝐃ommage, le nombre mystère **\`${bingoNumber}\`** s'est volatilisé.`,
-    `𝐀ujourd'hui, la chance était en congé ! 𝐂'était **\`${bingoNumber}\`**.`,
-    `𝐃écidément… le nombre **\`${bingoNumber}\`** s'est fait la malle.`,
-    `𝐋e sablier est vide… c’était **\`${bingoNumber}\`**. 𝐎n remet une pièce ?`,
-    `𝐒oufflé comme une bougie : **\`${bingoNumber}\`** a disparu.`,
-    `𝐋e nombre **\`${bingoNumber}\`** était en planque. 𝐁elle filature, mais trop tard !`,
-    `𝐔n poil trop lent : **\`${bingoNumber}\`** t’a filé entre les doigts.`,
-    `𝐅roid, très froid… la bonne réponse était **\`${bingoNumber}\`**.`,
-    `𝐋a porte s’est refermée : **\`${bingoNumber}\`** est passé juste avant toi.`,
-    `𝐌asqué jusqu’au bout : **\`${bingoNumber}\`**. 𝐑ideau pour cette manche !`,
-    `𝐂omme une feuille au vent… **\`${bingoNumber}\`** s’est envolé.`,
-    `𝐈l a fondu sous tes yeux : **\`${bingoNumber}\`**. 𝐂ourage, ça revient !`,
-    `𝐏resque ! 𝐋a réponse était **\`${bingoNumber}\`**. 𝐎n retente ?`,
-    `𝐓endance baissière aujourd’hui… le bon chiffre : **\`${bingoNumber}\`**.`,
-    `𝐎n éteint les espoirs pour cette fois : **\`${bingoNumber}\`**. 𝐍ouveau tour bientôt !`,
-  ];
+const messagesPerdant = [
+  `⏳**丨**𝐓emps écoulé, le nombre mystère **\`${bingoNumber}\`** s'est éclipsé !`,
+  `😢**丨**𝐃ommage, le nombre mystère **\`${bingoNumber}\`** s'est volatilisé.`,
+  `🏖️**丨**𝐀ujourd'hui, la chance était en congé ! 𝐂'était **\`${bingoNumber}\`**.`,
+  `🏃**丨**𝐃écidément… le nombre **\`${bingoNumber}\`** s'est fait la malle.`,
+  `⌛**丨**𝐋e sablier est vide… c'était **\`${bingoNumber}\`**. 𝐎n remet une pièce ?`,
+  `🕯️**丨**𝐒oufflé comme une bougie : **\`${bingoNumber}\`** a disparu.`,
+  `🥷**丨**𝐋e nombre **\`${bingoNumber}\`** était en planque. 𝐁elle filature, mais trop tard !`,
+  `🐌**丨**𝐔n poil trop lent : **\`${bingoNumber}\`** t'a filé entre les doigts.`,
+  `🥶**丨**𝐅roid, très froid… la bonne réponse était **\`${bingoNumber}\`**.`,
+  `🚪**丨**𝐋a porte s'est refermée : **\`${bingoNumber}\`** est passé juste avant toi.`,
+  `🎭**丨**𝐌asqué jusqu'au bout : **\`${bingoNumber}\`**. 𝐑ideau pour cette manche !`,
+  `🍂**丨**𝐂omme une feuille au vent… **\`${bingoNumber}\`** s'est envolé.`,
+  `🍦**丨**𝐈l a fondu sous tes yeux : **\`${bingoNumber}\`**. 𝐂ourage, ça revient !`,
+  `😅**丨**𝐏resque ! 𝐋a réponse était **\`${bingoNumber}\`**. 𝐎n retente ?`,
+  `📉**丨**𝐓endance baissière aujourd'hui… le bon chiffre : **\`${bingoNumber}\`**.`,
+  `🕯️**丨**𝐎n éteint les espoirs pour cette fois : **\`${bingoNumber}\`**. 𝐍ouveau tour bientôt !`,
+  `🐢**丨**𝐋a tortue a fini avant toi : **\`${bingoNumber}\`**. 𝐋a prochaine sera la bonne !`,
+  `🎣**丨**𝐓u as pêché à côté : **\`${bingoNumber}\`** nageait plus loin.`,
+  `🌫️**丨**𝐍oyé dans le brouillard : **\`${bingoNumber}\`** t'a échappé.`,
+  `🎪**丨**𝐋e cirque est reparti sans toi : **\`${bingoNumber}\`** était le numéro gagnant.`,
+  `🧊**丨**𝐆elé sur la ligne de départ : **\`${bingoNumber}\`** est passé sans toi.`,
+  `🚂**丨**𝐋e train est parti sans toi : **\`${bingoNumber}\`** était à quai.`,
+  `🪁**丨**𝐓on cerf-volant s'est décroché : **\`${bingoNumber}\`** s'est envolé loin.`,
+  `🎁**丨**𝐌auvais paquet ouvert : **\`${bingoNumber}\`** était dans l'autre.`,
+  `🦥**丨**𝐔n peu trop paresseux cette fois : **\`${bingoNumber}\`** t'a devancé.`,
+  `🌪️**丨**𝐄mporté par le vent : **\`${bingoNumber}\`** a disparu dans la tempête.`,
+  `🔦**丨**𝐋a lampe s'est éteinte trop tôt : c'était **\`${bingoNumber}\`**.`,
+  `🎳**丨**𝐒trike manqué de peu : **\`${bingoNumber}\`** est resté debout.`,
+];
 
   const bingoEmbed = new EmbedBuilder()
     .setColor('#0099ff')
@@ -250,6 +316,24 @@ async function lancerJeuBingo(guildId, bot) {
     let closestGuessDifference = Infinity;
 
     const collector = channel.createMessageCollector({ time: 300000 });
+
+    const hintTimers = [];
+    const hintMessageIds = [];
+    const hints = buildHints(bingoNumber, () =>
+      closestGuessUser ? { guess: closestGuess } : null
+    );
+
+    for (const hint of hints) {
+      const timer = setTimeout(async () => {
+        if (bingoWinner) return;
+        const hintEmbed = new EmbedBuilder()
+          .setColor('#f5c243')
+          .setDescription(hint.make());
+        const sent = await channel.send({ embeds: [hintEmbed] }).catch(() => null);
+        if (sent) hintMessageIds.push(sent.id);
+      }, hint.delay);
+      hintTimers.push(timer);
+    }
 
     collector.on('collect', async (message) => {
       if (message.author.bot) return;
@@ -303,6 +387,7 @@ async function lancerJeuBingo(guildId, bot) {
     });
 
     collector.on('end', async () => {
+      hintTimers.forEach(t => clearTimeout(t));
       try {
         if (!bingoWinner) {
           const line = messagesPerdant[Math.floor(Math.random() * messagesPerdant.length)];
@@ -331,7 +416,10 @@ async function lancerJeuBingo(guildId, bot) {
           await ajouterXPUtilisateur(p.userId, guildId, 250, bot).catch(() => {});
         }
 
-        const toDelete = [...numericMsgIds].filter(id => id !== winnerMessageId);
+        const toDelete = [
+          ...[...numericMsgIds].filter(id => id !== winnerMessageId),
+          ...hintMessageIds,
+        ];
         for (const id of toDelete) {
           const m = await channel.messages.fetch(id).catch(() => null);
           if (m) await m.delete().catch(() => {});

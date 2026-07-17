@@ -1,3 +1,10 @@
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
 const { Client, IntentsBitField, Collection } = require("discord.js");
 const { DisTube } = require("distube");
 const { YtDlpPlugin } = require("@distube/yt-dlp");
@@ -36,7 +43,8 @@ mongoose.connect(bot.config.mongourl, {
 });
 
 const distube = new DisTube(bot, {
-  plugins: [new YtDlpPlugin()],
+    plugins: [new YtDlpPlugin({ update: false })],
+    emitNewSongOnly: true,
 });
 bot.distube = distube;
 

@@ -477,30 +477,28 @@ module.exports = {
 
     const activities = [
       { name: "🎮 𝐀pex 𝐋egends", type: ActivityType.Playing },
-      { name: "", type: ActivityType.Custom },
-      { name: "S'entraine au padel", type: ActivityType.Custom },
-      { name: "Cuit des pâtes", type: ActivityType.Custom },
-      { name: "Cherche le bouton mute", type: ActivityType.Custom },
-      { name: "Carry son équipe", type: ActivityType.Custom },
-      { name: "Spam des émotes", type: ActivityType.Custom },
-      { name: "Perd un duel qu'il maîtrisait", type: ActivityType.Custom },
-      { name: "Fait semblant de travailler", type: ActivityType.Custom },
-      { name: "Oublie pourquoi il est là", type: ActivityType.Custom },
-      { name: "Lag mentalement", type: ActivityType.Custom },
-      { name: "Rage silencieusement", type: ActivityType.Custom },
-      { name: "Attend que ça passe", type: ActivityType.Custom },
-      { name: "Réfléchit trop longtemps", type: ActivityType.Custom },
-      { name: "Gagne de l'XP imaginaire", type: ActivityType.Custom },
-      { name: "Écrit puis efface son message", type: ActivityType.Custom },
-      { name: "Regarde le chat sans répondre", type: ActivityType.Custom },
-      { name: "A une idée géniale (presque)", type: ActivityType.Custom },
-      { name: "", type: ActivityType.Custom },
+      { name: "", state: "", type: ActivityType.Custom },
+      { name: "S'entraine au padel", state: "S'entraine au padel", type: ActivityType.Custom },
+      { name: "Cuit des pâtes", state: "Cuit des pâtes", type: ActivityType.Custom },
+      { name: "Cherche le bouton mute", state: "Cherche le bouton mute", type: ActivityType.Custom },
+      { name: "Carry son équipe", state: "Carry son équipe", type: ActivityType.Custom },
+      { name: "Spam des émotes", state: "Spam des émotes", type: ActivityType.Custom },
+      { name: "Perd un duel qu'il maîtrisait", state: "Perd un duel qu'il maîtrisait", type: ActivityType.Custom },
+      { name: "Fait semblant de travailler", state: "Fait semblant de travailler", type: ActivityType.Custom },
+      { name: "Oublie pourquoi il est là", state: "Oublie pourquoi il est là", type: ActivityType.Custom },
+      { name: "Lag mentalement", state: "Lag mentalement", type: ActivityType.Custom },
+      { name: "Rage silencieusement", state: "Rage silencieusement", type: ActivityType.Custom },
+      { name: "Attend que ça passe", state: "Attend que ça passe", type: ActivityType.Custom },
+      { name: "Réfléchit trop longtemps", state: "Réfléchit trop longtemps", type: ActivityType.Custom },
+      { name: "Gagne de l'XP imaginaire", state: "Gagne de l'XP imaginaire", type: ActivityType.Custom },
+      { name: "Écrit puis efface son message", state: "Écrit puis efface son message", type: ActivityType.Custom },
+      { name: "Regarde le chat sans répondre", state: "Regarde le chat sans répondre", type: ActivityType.Custom },
+      { name: "A une idée géniale (presque)", state: "A une idée géniale (presque)", type: ActivityType.Custom },
+      { name: "", state: "", type: ActivityType.Custom },
     ];
-
     function getFootballSeasonForFixtures() {
       const now = new Date();
       const year = now.getFullYear();
-
       return [year, year - 1, year - 2];
     }
     async function loadPSGFixtures() {
@@ -513,13 +511,9 @@ module.exports = {
             "https://v3.football.api-sports.io/fixtures",
             {
               headers: { "x-apisports-key": API_FOOTBALL_KEY },
-              params: {
-                team: PSG_TEAM_ID,
-                season,
-              },
+              params: { team: PSG_TEAM_ID, season },
             }
           );
-
           allFixtures.push(...res.data.response);
         }
 
@@ -535,20 +529,16 @@ module.exports = {
 
         const next = getNextPSGMatch();
         if (next) {
-          console.log(
-            `[PSG] Prochain match : ${next.home} vs ${next.away} le ${next.date.toLocaleString("fr-FR")}`
-          );
+          console.log(`[PSG] Prochain match : ${next.home} vs ${next.away} le ${next.date.toLocaleString("fr-FR")}`);
         } else {
           console.log("[PSG] Aucun match à venir trouvé");
         }
-
       } catch (err) {
         console.error("❌ PSG calendrier error :", err.message);
       }
     }
     function getNextPSGMatch() {
       const now = Date.now();
-
       return psgFixtures
         .filter(m => m.timestamp * 1000 > now - 2 * 60 * 60 * 1000)
         .sort((a, b) => a.timestamp - b.timestamp)[0] || null;
@@ -559,7 +549,6 @@ module.exports = {
     async function smartPSGPresence(bot) {
       const match = getNextPSGMatch();
       if (!match) return;
-
       if (!shouldActivateLive(match)) return;
 
       try {
@@ -576,10 +565,8 @@ module.exports = {
 
         const status = data.fixture.status.short;
 
-        // ⛔ Mi-temps → pause
         if (status === "HT") return;
 
-        // ⛔ Match terminé
         if (["FT", "AET", "PEN"].includes(status)) {
           if (!matchEndTimeout) {
             matchEndTimeout = setTimeout(() => {
@@ -590,7 +577,6 @@ module.exports = {
           return;
         }
 
-        // ✅ Match en cours / prolongations
         mode = "match";
 
         const isHome = data.teams.home.id === PSG_TEAM_ID;
@@ -598,15 +584,16 @@ module.exports = {
         const psgGoals = isHome ? data.goals.home : data.goals.away;
         const oppGoals = isHome ? data.goals.away : data.goals.home;
         const minute = data.fixture.status.elapsed;
+        const liveText = `⚽丨PSG ${psgGoals} - ${oppGoals} ${opponent} (${minute}')`;
 
         bot.user.setPresence({
           activities: [{
-            name: `⚽丨PSG ${psgGoals} - ${oppGoals} ${opponent} (${minute}')`,
+            name: liveText,
+            state: liveText, // ✅ AJOUT — sans ça, rien ne s'affiche pour un type Custom
             type: ActivityType.Custom,
           }],
           status: "dnd",
         });
-
       } catch (err) {
         console.error("❌ PSG live error :", err.message);
       }
@@ -619,14 +606,13 @@ module.exports = {
 
       if (activityIndex === 1) {
         activity.name = `🌐丨${bot.guilds.cache.size} 𝐒erveurs`;
+        activity.state = activity.name; // ✅ AJOUT
       }
 
       if (activityIndex === 18) {
-        const totalMembers = bot.guilds.cache.reduce(
-          (acc, g) => acc + g.memberCount,
-          0
-        );
+        const totalMembers = bot.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
         activity.name = `👥丨${totalMembers} 𝐌embres`;
+        activity.state = activity.name; // ✅ AJOUT
       }
 
       bot.user.setPresence({

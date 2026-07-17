@@ -12,6 +12,7 @@ const {
   ChannelType,
   ButtonStyle,
   StringSelectMenuBuilder,
+  MessageFlags,
   Embed, Discord
 } = require("discord.js");
 const mongoose = require("mongoose");
@@ -172,7 +173,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion n'a pas été trouvée.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -186,7 +187,7 @@ module.exports = {
         
         return interaction.reply({
           content: alreadyVotedMessage,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -205,7 +206,7 @@ module.exports = {
         .addFields(embed.fields);
     
       await interaction.message.edit({ embeds: [updatedEmbed] });
-      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", ephemeral: true });
+      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", flags: MessageFlags.Ephemeral });
     
       await sendLogMessage(interaction, `✔️丨𝐕ient de voter **POUR** à la suggestion : \n\n\`${embed.description}\`.`);
     }
@@ -215,7 +216,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion n'a pas été trouvée.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -229,7 +230,7 @@ module.exports = {
         
         return interaction.reply({
           content: alreadyVotedMessage,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -248,7 +249,7 @@ module.exports = {
         .addFields(embed.fields);
     
       await interaction.message.edit({ embeds: [updatedEmbed] });
-      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", ephemeral: true });
+      await interaction.reply({ content: "**𝐌erci. 𝐓on vote a bien été pris en compte.** :bulb:", flags: MessageFlags.Ephemeral });
     
       await sendLogMessage(interaction, `❌丨𝐕ient de voter **CONTRE** à la suggestion : \n\n\`${embed.description}\`.`);
     }
@@ -258,7 +259,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion est introuvable dans la base de données.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -267,7 +268,7 @@ module.exports = {
       if (!suggestionMessage) {
         return interaction.reply({
           content: "❌丨𝐋e message de la suggestion est introuvable ou a déjà été supprimé.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -276,7 +277,7 @@ module.exports = {
     
       await interaction.reply({
         content: "✅丨𝐋a suggestion a été supprimée avec succès.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     
       await sendLogMessage(interaction, `🗑️丨La suggestion \`${suggestion.suggestionText}\` a été supprimée par **${interaction.user.tag}**.`);
@@ -287,7 +288,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion n'a pas été trouvée.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -296,7 +297,7 @@ module.exports = {
       if (!suggestionMessage) {
         return interaction.reply({
           content: "❌丨𝐋e message original de la suggestion est introuvable.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -319,7 +320,7 @@ module.exports = {
     
       await interaction.reply({
         content: "✅丨𝐋a suggestion a été marquée comme effectuée.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     
       await sendLogMessage(interaction, `✔️丨La suggestion \`${embed.description}\` a été marquée comme effectuée par **${interaction.user.tag}**.`);
@@ -333,7 +334,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion n'a pas été trouvée dans la base de données.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -342,7 +343,7 @@ module.exports = {
       if (!suggestionMessage) {
         return interaction.reply({
           content: "❌丨𝐋e message original de la suggestion est introuvable.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -356,7 +357,7 @@ module.exports = {
       if (isAlreadyZeroInEmbed && isAlreadyZeroInDB) {
         return interaction.reply({
           content: "⚠️丨𝐋es votes sont déjà à zéro.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -388,7 +389,7 @@ module.exports = {
     
       await interaction.reply({
         content: "♻️丨𝐋es votes ont été remis à zéro avec succès.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     
       await sendLogMessage(interaction, `♻️丨Les votes de la suggestion \`${embed.description}\` ont été réinitialisés par **${interaction.user.tag}**.`);
@@ -401,7 +402,7 @@ module.exports = {
       if (!serverConfig || !serverConfig.ticketAdminRoleID) {
         return interaction.reply({
           content: "**𝐀ction impossible car la configuration du rôle administrateur n'a pas été définie dans le `/setconfig`.**",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -411,7 +412,7 @@ module.exports = {
       if (!adminRole || !member.roles.cache.has(adminRole.id)) {
         return interaction.reply({
           content: "𝐌on petit... 𝐃ésolé, mais tu n'as pas la permission d'utiliser ce bouton.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -424,7 +425,7 @@ module.exports = {
       if (!suggestion) {
         return interaction.reply({
           content: "❌丨𝐋a suggestion est introuvable dans la base de données.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -446,7 +447,7 @@ module.exports = {
       await interaction.reply({
         content: "**𝐐ue veux-tu faire avec cette suggestion ?**\n𝐀ttention néanmoins à ne pas faire n'importe quoi. :no_pedestrians:",
         components: [row],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.customId && interaction.customId.startsWith("SUGG_")) {
@@ -469,7 +470,7 @@ module.exports = {
           default:
             return interaction.reply({
               content: "❌丨Action inconnue.",
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
         }
       } else if (customIdParts.length === 4) {
@@ -489,7 +490,7 @@ module.exports = {
           default:
             return interaction.reply({
               content: "❌丨Action inconnue.",
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
         }
       }
@@ -532,7 +533,7 @@ module.exports = {
 
     const server = await ServerRole.findOne({ serverID: interaction.guild.id });
     if (!server) {
-      return interaction.reply({ content: "❌丨Serveur introuvable.", ephemeral: true });
+      return interaction.reply({ content: "❌丨Serveur introuvable.", flags: MessageFlags.Ephemeral });
     }
 
     const prestigeRoles = await ensurePrestigeMap(server, selectedPrestige);
@@ -557,7 +558,7 @@ module.exports = {
 
       const rowButton = new ActionRowBuilder().addComponents(modifyButton);
 
-      await interaction.followUp({ embeds: [embed], components: [rowButton], ephemeral: true });
+      await interaction.followUp({ embeds: [embed], components: [rowButton], flags: MessageFlags.Ephemeral });
     };
 
     if (isBulk) {
@@ -576,13 +577,13 @@ module.exports = {
         const roles = msg.mentions.roles;
 
         if (roles.size === 0 || roles.size > 12) {
-          await interaction.followUp({ content: "❌丨Mentionne entre 1 et 12 rôles maximum.", ephemeral: true });
+          await interaction.followUp({ content: "❌丨Mentionne entre 1 et 12 rôles maximum.", flags: MessageFlags.Ephemeral });
           return;
         }
 
         const invalid = roles.some((role) => role.position >= botMember.roles.highest.position);
         if (invalid) {
-          await interaction.followUp({ content: "🚫丨Certains rôles sont au-dessus de mes permissions.", ephemeral: true });
+          await interaction.followUp({ content: "🚫丨Certains rôles sont au-dessus de mes permissions.", flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -596,7 +597,7 @@ module.exports = {
         await server.save();
 
         await sendUpdatedEmbed();
-        await interaction.followUp({ content: "✅丨Rôles mis à jour avec succès !", ephemeral: true });
+        await interaction.followUp({ content: "✅丨Rôles mis à jour avec succès !", flags: MessageFlags.Ephemeral });
 
         msg.delete().catch(() => {});
         promptMsg.delete().catch(() => {});
@@ -604,7 +605,7 @@ module.exports = {
 
       collector.on("end", async (_, reason) => {
         if (reason === "time") {
-          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence l’action.", ephemeral: true });
+          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence l’action.", flags: MessageFlags.Ephemeral });
           promptMsg.delete().catch(() => {});
         }
       });
@@ -629,12 +630,12 @@ module.exports = {
       collector.on("collect", async (msg) => {
         const role = msg.mentions.roles.first();
         if (!role) {
-          await interaction.followUp({ content: "❌丨Tu dois mentionner un rôle valide.", ephemeral: true });
+          await interaction.followUp({ content: "❌丨Tu dois mentionner un rôle valide.", flags: MessageFlags.Ephemeral });
           return;
         }
 
         if (role.position >= botMember.roles.highest.position) {
-          await interaction.followUp({ content: "🚫丨Ce rôle est au-dessus de mes permissions.", ephemeral: true });
+          await interaction.followUp({ content: "🚫丨Ce rôle est au-dessus de mes permissions.", flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -643,7 +644,7 @@ module.exports = {
         await server.save();
 
         await sendUpdatedEmbed();
-        await interaction.followUp({ content: `✅丨Le rôle du niveau **${level}** a été mis à jour !`, ephemeral: true });
+        await interaction.followUp({ content: `✅丨Le rôle du niveau **${level}** a été mis à jour !`, flags: MessageFlags.Ephemeral });
 
         msg.delete().catch(() => {});
         promptMsg.delete().catch(() => {});
@@ -651,7 +652,7 @@ module.exports = {
 
       collector.on("end", async (_, reason) => {
         if (reason === "time") {
-          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence.", ephemeral: true });
+          await interaction.followUp({ content: "⏳丨Temps écoulé. Recommence.", flags: MessageFlags.Ephemeral });
           promptMsg.delete().catch(() => {});
         }
       });
@@ -733,7 +734,7 @@ module.exports = {
         return interaction.reply({
           content:
             "𝐀vant de vouloir récupérer ton bonus, ne veux-tu pas d'abord faire un peu connaissance avec tes nouveaux camarades ?",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -744,10 +745,9 @@ module.exports = {
       const daysInWeek = 7;
 
       let resetConsecutiveDaily = false;
-      let lostBefore = 0; // on mémorise l'ancienne série si on la perd
+      let lostBefore = 0;
 
       if (lastClaim && now.getTime() - lastClaim.getTime() < msIn47Hours) {
-        // Fenêtre de 47h toujours valable → on vérifie le cooldown 23h
         const timeSinceLastClaim = now.getTime() - lastClaim.getTime();
         if (timeSinceLastClaim < msIn23Hours) {
           const timeRemaining = msIn23Hours - timeSinceLastClaim;
@@ -770,26 +770,22 @@ module.exports = {
 
           return interaction.reply({
             content: `丨𝐓u dois attendre encore **${timeRemainingMessage}** avant de pouvoir récupérer ton \`𝐃aily\` !`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
 
-        // Ok pour claim dans la même “fenêtre”
         user.consecutiveDaily += 1;
       } else {
-        // Série perdue (hors fenêtre 47h)
-        lostBefore = user.consecutiveDaily || 0;           // ancienne série
+        lostBefore = user.consecutiveDaily || 0;
         user.lostConsecutiveDaily = lostBefore;
         resetConsecutiveDaily = true;
-        user.consecutiveDaily = 1;                         // on repart à 1
+        user.consecutiveDaily = 1;
       }
 
-      // Maj record si besoin
       if (user.consecutiveDaily > user.maxDaily) {
         user.maxDaily = user.consecutiveDaily;
       }
 
-      // Message spécial toutes les 50 flammes (inchangé)
       const SPECIAL_DAILY_STREAK = 50;
       const selectedMessage = messagesRandom.DailyStreak[
         Math.floor(Math.random() * messagesRandom.DailyStreak.length)
@@ -810,6 +806,26 @@ module.exports = {
         }
       }
 
+      // ✅ AJOUT : Annonce publique en cas de grosse perte de série (≥10 jours)
+      const BIG_LOSS_THRESHOLD = 10;
+      if (resetConsecutiveDaily && lostBefore >= BIG_LOSS_THRESHOLD) {
+        const lossChannel = interaction.guild.channels.cache.get("717144491525406791");
+        if (lossChannel) {
+          const lossEmbed = new EmbedBuilder()
+            .setColor("Red")
+            .setAuthor({
+              name: interaction.user.username,
+              iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+            })
+            .setTitle("💀丨Grosse perte de série !")
+            .setDescription(
+              `**${interaction.user.username}** vient de perdre une série de \`${lostBefore}\` jours de 𝐃aily... 😱\n𝐔ne minute de silence pour cette flamme. 🕯️`
+            )
+            .setTimestamp();
+          lossChannel.send({ embeds: [lossEmbed] }).catch(() => {});
+        }
+      }
+
       // Calcul du gain XP + malus
       const baseXP = 200;
       const weeksConsecutive = Math.floor(user.consecutiveDaily / daysInWeek);
@@ -823,6 +839,20 @@ module.exports = {
         if (user.malusDuration === 0) user.malusDaily = 0;
       }
 
+      const FALCONIX_GIFT_CHANCE = 0.04;
+      const FALCONIX_GIFT_MIN = 0.250;
+      const FALCONIX_GIFT_MAX = 0.600;
+      let gotBonusFalconix = false;
+      let falconixGiftAmount = 0;
+
+      if (Math.random() < FALCONIX_GIFT_CHANCE) {
+        falconixGiftAmount = Math.round(
+          (Math.random() * (FALCONIX_GIFT_MAX - FALCONIX_GIFT_MIN) + FALCONIX_GIFT_MIN) * 1000
+        ) / 1000;
+        user.falconix = (Number(user.falconix) || 0) + falconixGiftAmount;
+        gotBonusFalconix = true;
+      }
+
       user.xp += totalXP;
       const currentCareer = Number.isFinite(user.careerXP)
         ? Number(user.careerXP)
@@ -832,7 +862,6 @@ module.exports = {
       user.lastDaily = now;
       await user.save();
 
-      // Level up/down avec l'XP fraîche
       levelUp(interaction, user, user.xp).catch(() => {});
 
       // ====== Embed + texte ======
@@ -842,7 +871,6 @@ module.exports = {
       if (lastClaim == null) {
         messageText = `✨丨𝐁onus quotidien activé ! Tu gagnes \`+${totalXP} 𝐗P\` 🎉`;
       } else if (resetConsecutiveDaily && lostBefore >= 2) {
-        // On ne parle de perte que si l'ancienne série >= 2
         messageText =
           `🎁丨𝐁onus récupéré ! Tu gagnes \`+${totalXP} 𝐗P\` 🧩\n` +
           `𝐌ais tu as __perdu__ ta série de flammes.. 🧯`;
@@ -867,7 +895,13 @@ module.exports = {
 
       if (footerText) dailyEmbed.setFooter({ text: footerText });
 
-      // Bouton de rattrapage → seulement si vraie perte (ancienne série ≥ 2)
+      if (gotBonusFalconix) {
+        dailyEmbed.addFields({
+          name: "🪙 Bonus surprise !",
+          value: `Tu as gagné \`${falconixGiftAmount.toFixed(3)} Falconix\` en plus de ton Daily ! 🎉`,
+        });
+      }
+
       const components = [];
       if (resetConsecutiveDaily && lastClaim != null && lostBefore >= 2) {
         const recoverRow = new ActionRowBuilder().addComponents(
@@ -883,10 +917,10 @@ module.exports = {
       await interaction.reply({
         embeds: [dailyEmbed],
         components,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
-      // 📋 LOG DAILY (fix: on log seulement si on a bien un channel)
+      // 📋 LOG DAILY
       const serverInfo = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (serverInfo && serverInfo.logChannelID) {
         const XPLOG = new EmbedBuilder()
@@ -898,15 +932,18 @@ module.exports = {
           .setTitle("丨𝐕ient de récupérer son bonus quotidien. 💸")
           .setTimestamp();
 
+        let footerLine = "";
         if (resetConsecutiveDaily && lastClaim && lostBefore >= 2) {
-          XPLOG.setFooter({
-            text: `⚠️ 𝐏𝐄𝐑𝐓𝐄 𝐃𝐄 𝐒𝐄𝐑𝐈𝐄 ◟ 𝐀ncienne série : ${lostBefore} jour${lostBefore > 1 ? "s" : ""}`,
-          });
+          footerLine = `⚠️ 𝐏𝐄𝐑𝐓𝐄 𝐃𝐄 𝐒𝐄𝐑𝐈𝐄 ◟ 𝐀ncienne série : ${lostBefore} jour${lostBefore > 1 ? "s" : ""}`;
         } else {
-          XPLOG.setFooter({
-            text: `🔥 𝐒érie actuelle : ${user.consecutiveDaily} jour${user.consecutiveDaily > 1 ? "s" : ""}`,
-          });
+          footerLine = `🔥 𝐒érie actuelle : ${user.consecutiveDaily} jour${user.consecutiveDaily > 1 ? "s" : ""}`;
         }
+
+        if (gotBonusFalconix) {
+          footerLine += ` 丨 +${falconixGiftAmount.toFixed(3)} 𝐅alconix`;
+        }
+
+        XPLOG.setFooter({ text: footerLine });
 
         const logChannel = bot.channels.cache.get(serverInfo.logChannelID);
         if (logChannel) logChannel.send({ embeds: [XPLOG] }).catch(() => {});
@@ -916,12 +953,23 @@ module.exports = {
     const FALCON_BG_URL = "https://i.postimg.cc/Zn88HV3f/Falcon23.png";
     const FALCONIX_EMOJI_URL = "https://cdn.discordapp.com/emojis/1186719745106513971.png?size=64&quality=lossless";
     const FLAME_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/1f525.png";
+    const CHECK_PNG = "https://twemoji.maxcdn.com/v/latest/72x72/2705.png";
 
     const XP_BLOCK = Math.pow(51 / 0.1, 2);
     const pf = (p) => 1 + 0.15 * Math.max(0, p || 0);
     const levelFrom = (xp, p) =>
       Math.min(50, Math.floor(0.1 * Math.sqrt(Math.max(0, xp) / pf(p))));
 
+    function formatFalconix(n, decimals = 3) {
+      const num = Number(n) || 0;
+      const factor = Math.pow(10, decimals);
+      const truncated = Math.trunc(num * factor) / factor;
+      return truncated.toString();
+    }
+    function formatXP(n) {
+      const num = Math.round(Number(n) || 0);
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    }
     function rebuildFromCareer(careerXP) {
       let rem = Math.max(0, Number(careerXP) || 0);
       let p = 0;
@@ -959,9 +1007,18 @@ module.exports = {
       const cap  = 0.35 * xpToNextPrestige(prestige);
       return Math.round(Math.min(base, cap));
     }
-    function malusFromStreakMiss(n) {
+    function malusFromStreakMiss(n, prestige = 0, level = 0) {
       const m = Math.max(0, Number(n) || 0);
-      return m < 7 ? 50 : 75;
+      // Malus de base : 10% du XP daily de base, scalé avec prestige/niveau
+      const baseDaily = 200;
+      const multiplier = costMultiplier(prestige, level); // même multiplicateur que le coût
+      const baseRate = m < 7 ? 0.10 : 0.15; // 10% ou 15% du daily selon la gravité
+      return Math.round(baseDaily * baseRate * multiplier);
+    }
+
+    function malusDaysFromStreakMiss(n) {
+      const m = Math.max(0, Number(n) || 0);
+      return Math.max(1, Math.floor(m / 7));
     }
     function malusDaysFromStreakMiss(n) {
       const m = Math.max(0, Number(n) || 0);
@@ -1018,6 +1075,9 @@ module.exports = {
       balanceCareer,
       balanceFalconix,
       preview,
+      title = "Conséquences du rattrapage",
+      showCheck = false,
+      costFalconix = 0,
     }) {
       const W = 920;
       const H = 260;
@@ -1036,23 +1096,14 @@ module.exports = {
 
       try {
         const falcon = await loadImage(FALCON_BG_URL);
-
         const fw = Math.min(W * 0.55, falcon.width);
         const fh = fw * (falcon.height / falcon.width);
 
         ctx.save();
         rrPath(ctx, 14, 14, W - 28, H - 28, 22);
         ctx.clip();
-
         ctx.globalAlpha = 0.12;
-        ctx.drawImage(
-          falcon,
-          W - fw - 40,
-          (H - fh) / 2,
-          fw,
-          fh
-        );
-
+        ctx.drawImage(falcon, W - fw - 40, (H - fh) / 2, fw, fh);
         ctx.globalAlpha = 1;
         ctx.restore();
       } catch {}
@@ -1086,21 +1137,15 @@ module.exports = {
       ctx.font = "500 15px FalconMath, Inter, Arial";
       ctx.fillStyle = "#c9d2e3";
       ctx.fillText(
-        prestige > 0
-          ? `Prestige ${prestige} • Niveau ${level}`
-          : `Niveau ${level}`,
+        prestige > 0 ? `Prestige ${prestige} • Niveau ${level}` : `Niveau ${level}`,
         textX,
         ay + 44
       );
 
+      // Flamme + streak (inchangé)
       const { size: flameSize, fontSize, label } =
         computeFlameSizeForValue(ctx, streak, {
-          base: 36,
-          step: 4,
-          min: 48,
-          max: 74,
-          ratio: 0.72,
-          fontScale: 0.4,
+          base: 36, step: 4, min: 48, max: 74, ratio: 0.72, fontScale: 0.4,
         });
 
       const fx = W - 36 - flameSize;
@@ -1130,9 +1175,20 @@ module.exports = {
 
       const midY = 120;
 
+      // --- Titre avec icône check en image (fix du carré) ---
+      let titleX = 36;
+      if (showCheck) {
+        const checkSize = 20;
+        try {
+          const check = await loadImage(CHECK_PNG);
+          ctx.drawImage(check, titleX, midY - checkSize + 4, checkSize, checkSize);
+          titleX += checkSize + 8;
+        } catch {}
+      }
+
       ctx.font = "600 18px FalconMath";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText("Conséquences du rattrapage", 36, midY);
+      ctx.fillText(title, titleX, midY);
 
       ctx.fillStyle = "rgba(255,255,255,0.1)";
       ctx.fillRect(36, midY + 8, W - 72, 1);
@@ -1149,9 +1205,14 @@ module.exports = {
         ctx.fillText(value, x, statY + 22);
       }
 
-      stat("Coût XP", `-${costCareer.toLocaleString("fr-FR")} XP`, 36);
-      stat("XP disponible", balanceCareer.toLocaleString("fr-FR"), 260);
-      stat("Falconix", balanceFalconix.toString(), 520);
+      // --- Coût : XP ou Falconix selon le mode de paiement ---
+      if (costFalconix > 0) {
+        stat("Coût", `-${costFalconix} Falconix`, 36);
+      } else {
+        stat("Coût XP", `-${formatXP(costCareer)} XP`, 36);
+      }
+      stat("XP disponible", formatXP(balanceCareer), 260);
+      stat("Falconix", formatFalconix(balanceFalconix), 520);
 
       if (preview) {
         ctx.font = "600 16px FalconMath";
@@ -1225,10 +1286,10 @@ module.exports = {
     }
     if (interaction.customId === "RECUPDAILY_BUTTON") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
-      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", flags: MessageFlags.Ephemeral });
 
       const streakMiss = Number(user.lostConsecutiveDaily) || 0;
-      if (streakMiss <= 0) return interaction.reply({ content: "𝐓u n'as aucun Daily manqué à récupérer.", ephemeral: true });
+      if (streakMiss <= 0) return interaction.reply({ content: "𝐓u n'as aucun Daily manqué à récupérer.", flags: MessageFlags.Ephemeral });
 
       const costXP = costFromStreakMiss(streakMiss, user.prestige, user.level);
       const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
@@ -1243,7 +1304,7 @@ module.exports = {
       );
 
       // Répond vite -> defer + edit (téléchargement images)
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const buffer = await renderDailyRecoveryCardRankStyle({
         avatarURL: interaction.user.displayAvatarURL({
@@ -1267,22 +1328,30 @@ module.exports = {
     }
     if (interaction.customId === "CONFIRM_RECUPDAILY_CAREER") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
-      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", flags: MessageFlags.Ephemeral });
 
       const streakMiss = Number(user.lostConsecutiveDaily) || 0;
-      if (streakMiss <= 0) return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
+      if (streakMiss <= 0) {
+        return interaction.reply({
+          content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
 
-      const costXP = costFromStreakMiss(streakMiss);
-      const malus = malusFromStreakMiss(streakMiss);
+      const costXP = costFromStreakMiss(streakMiss, user.prestige, user.level);
+      const malus = malusFromStreakMiss(streakMiss, user.prestige, user.level);
       const malusDuration = malusDaysFromStreakMiss(streakMiss);
 
       const currentCareer = Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user);
       if (currentCareer < costXP) {
         return interaction.reply({
           content: `Solde insuffisant : il faut \`${costXP.toLocaleString("fr-FR")} XP\`. Solde actuel: \`${currentCareer.toLocaleString("fr-FR")}\`.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
+
+      // On defer tout de suite : le rendu canvas prend un peu de temps (avatar + fond)
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       // Débit + rebuild
       const newCareer = currentCareer - costXP;
@@ -1304,49 +1373,76 @@ module.exports = {
       await syncRolesAfterStateChange(interaction.guild, interaction.member, prevPrestige, state.prestige, state.level);
 
       try {
-      const logChannel = await getLogChannel(interaction);
-      if (logChannel) {
-        const embed = new EmbedBuilder()
-          .setColor("Orange")
-          .setAuthor({
-            name: interaction.user.tag,
-            iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
-          })
-          .setTitle("Rattrapage du Daily en XP")
-          .addFields(
-            { name: "Série manquée", value: `\`${streakMiss}\` jour${streakMiss > 1 ? "s" : ""} 🔥`, inline: true },
-            { name: "Coût", value: `\`${costXP.toLocaleString("fr-FR")} XP\``, inline: true },
-            { name: "XP disponible", value: `\`${currentCareer.toLocaleString("fr-FR")} → ${newCareer.toLocaleString("fr-FR")}\``, inline: true },
-            { name: "Nouveau statut", value: `Prestige \`${state.prestige}\` • Niveau \`${state.level}\``, inline: true },
-            { name: "Malus", value: `\`${malus}\` XP pendant \`${malusDuration}\` jour${malusDuration > 1 ? "s" : ""}`, inline: true },
-          )
-          .setTimestamp();
+        const logChannel = await getLogChannel(interaction);
+        if (logChannel) {
+          const embed = new EmbedBuilder()
+            .setColor("Orange")
+            .setAuthor({
+              name: interaction.user.tag,
+              iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+            })
+            .setTitle("Rattrapage du Daily en XP")
+            .addFields(
+              { name: "Série manquée", value: `\`${streakMiss}\` jour${streakMiss > 1 ? "s" : ""} 🔥`, inline: true },
+              { name: "Coût", value: `\`${costXP.toLocaleString("fr-FR")} XP\``, inline: true },
+              { name: "XP restant", value: `\`${currentCareer.toLocaleString("fr-FR")} → ${newCareer.toLocaleString("fr-FR")}\``, inline: true },
+              { name: "Nouveau statut", value: `Prestige \`${state.prestige}\` • Niveau \`${state.level}\``, inline: true },
+              { name: "Malus", value: `\`${malus}\` XP pendant \`${malusDuration}\` jour${malusDuration > 1 ? "s" : ""}`, inline: true },
+            )
+            .setTimestamp();
 
-        await logChannel.send({ embeds: [embed] });
-      }
-    } catch {}
-      return interaction.reply({
-        content:
-          `✅ Daily récupéré en **XP** !\n` +
-          `• Débit: \`-${costXP.toLocaleString("fr-FR")} XP\` → Solde: \`${newCareer.toLocaleString("fr-FR")}\`\n` +
-          `• Nouveau statut: Prestige \`${state.prestige}\`, Niveau \`${state.level}\`\n` +
-          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
-        ephemeral: true,
+          await logChannel.send({ embeds: [embed] });
+        }
+      } catch {}
+
+      const buffer = await renderDailyRecoveryCardRankStyle({
+        avatarURL: interaction.user.displayAvatarURL({
+          extension: "png",
+          size: 128,
+          forceStatic: true,
+        }),
+        username: interaction.user.username,
+        prestige: state.prestige,
+        level: state.level,
+        roleColor: highestRoleColor,
+        streak: streakMiss,
+        costCareer: costXP,
+        balanceCareer: newCareer,
+        balanceFalconix: Number(user.falconix) || 0,
+        preview: null,
+        title: "Rattrapage effectué en XP",
+        showCheck: true,
       });
-      
+
+      const file = new AttachmentBuilder(buffer, { name: "recupdaily_success.png" });
+      return interaction.editReply({ files: [file], components: [] });
     }
     if (interaction.customId === "CONFIRM_RECUPDAILY_FALCONIX") {
       const user = await User.findOne({ serverID: interaction.guild.id, userID: interaction.user.id });
-      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+      if (!user) return interaction.reply({ content: "Utilisateur introuvable.", flags: MessageFlags.Ephemeral });
 
       const streakMiss = Number(user.lostConsecutiveDaily) || 0;
-      if (streakMiss <= 0) return interaction.reply({ content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.", ephemeral: true });
-      if ((Number(user.falconix) || 0) < 1) return interaction.reply({ content: "Il faut **1 Falconix** pour payer cette récupération.", ephemeral: true });
+      if (streakMiss <= 0) {
+        return interaction.reply({
+          content: "𝐓on Daily a déjà été récupéré ou tu n'en as pas manqué récemment.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      if ((Number(user.falconix) || 0) < 1) {
+        return interaction.reply({
+          content: "Il faut **1 Falconix** pour payer cette récupération.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
 
-      const malus = malusFromStreakMiss(streakMiss);
+      // On defer tout de suite : le rendu canvas prend un peu de temps (avatar + fond)
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      const malus = malusFromStreakMiss(streakMiss, user.prestige, user.level);
       const malusDuration = malusDaysFromStreakMiss(streakMiss);
 
-      user.falconix = (Number(user.falconix) || 0) - 1;
+      const falcBefore = Number(user.falconix) || 0;
+      user.falconix = falcBefore - 1;
       user.consecutiveDaily     = streakMiss;
       user.lostConsecutiveDaily = 0;
       user.malusDaily           = malus;
@@ -1357,8 +1453,7 @@ module.exports = {
       try {
         const logChannel = await getLogChannel(interaction);
         if (logChannel) {
-          const falcBefore = (Number(user.falconix) || 0) + 1;
-          const falcAfter  = Number(user.falconix) || 0;
+          const falcAfter = Number(user.falconix) || 0;
 
           const embed = new EmbedBuilder()
             .setColor("Blurple")
@@ -1382,24 +1477,39 @@ module.exports = {
         console.error("Erreur lors de l'envoi du log", interaction);
       }
 
-      return interaction.reply({
-        content:
-          `✅ Daily récupéré en dépensant **1 Falconix**.\n` +
-          `• Falconix restant: \`${user.falconix}\`\n` +
-          `• Malus: \`${malus}\` XP pendant \`${malusDuration}\` jour(s).`,
-        ephemeral: true,
+      const buffer = await renderDailyRecoveryCardRankStyle({
+        avatarURL: interaction.user.displayAvatarURL({
+          extension: "png",
+          size: 128,
+          forceStatic: true,
+        }),
+        username: interaction.user.username,
+        prestige: user.prestige,
+        level: user.level,
+        roleColor: highestRoleColor,
+        streak: streakMiss,
+        costCareer: 0,
+        costFalconix: 1,
+        balanceCareer: Number.isFinite(user.careerXP) ? Number(user.careerXP) : computeCareerFromUser(user),
+        balanceFalconix: user.falconix,
+        preview: null,
+        title: "Rattrapage effectué en Falconix",
+        showCheck: true,
       });
+
+      const file = new AttachmentBuilder(buffer, { name: "recupdaily_success_falconix.png" });
+      return interaction.editReply({ files: [file], components: [] });
     }
     if (interaction.customId === "CANCEL_RECUPDAILY_BUTTON") {
       const filter = { userID: interaction.user.id, serverID: interaction.guild.id };
       const updated = await User.findOneAndUpdate(filter, { $set: { lostConsecutiveDaily: 0 } }, { new: true });
       if (!updated) {
         console.error("Utilisateur non trouvé pour CANCEL_RECUPDAILY_BUTTON", filter);
-        return interaction.reply({ content: "Utilisateur introuvable.", ephemeral: true });
+        return interaction.reply({ content: "Utilisateur introuvable.", flags: MessageFlags.Ephemeral });
       }
       return interaction.reply({
         content: "丨𝐓u as décidé de ne pas récupérer ton __𝐃aily__. 𝐐uelle audace ! 😅",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -1409,7 +1519,7 @@ module.exports = {
 
       if (interaction.customId === "RoleCustomID") {
         let choice = interaction.values[0];
-        interaction.deferReply({ ephemeral: true }).then(() => {
+        interaction.deferReply({ flags: MessageFlags.Ephemeral }).then(() => {
           if (choice == "APEX") {
             const roleID = "811662603713511425";
             handleRole(interaction, member, roleID, "Apex Legends");
@@ -1442,12 +1552,12 @@ module.exports = {
     if (interaction.customId === "UNMUTE") {
       const memberId = unmuteRequests.get(interaction.message.id);
       if (!memberId) {
-        return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
+        return interaction.reply({ content: 'Membre non trouvé', flags: MessageFlags.Ephemeral });
       }
     
       const member = await interaction.guild.members.fetch(memberId);
       if (!member) {
-        return interaction.reply({ content: 'Membre non trouvé', ephemeral: true });
+        return interaction.reply({ content: 'Membre non trouvé', flags: MessageFlags.Ephemeral });
       }
     
       let secondsRemaining = 30;
@@ -1547,7 +1657,7 @@ module.exports = {
           .findOne({ serverID: interaction.guild.id });
       const DisboardBOTId = "302050872383242240";
       const AdminRoleID = serverConfig.ticketAdminRoleID;
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   
       const parentChannel = interaction.channel;
   
@@ -1645,7 +1755,7 @@ module.exports = {
       await interaction.reply({
         content: "**Es-tu sur de vouloir supprimer ce ticket ?**",
         components: [surbutton],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.customId === "VALID_DELETE") {
@@ -1915,7 +2025,7 @@ module.exports = {
         return interaction.reply({
           content:
             "Aucun salon de 𝐑èglement n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salons`.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -1954,22 +2064,22 @@ module.exports = {
       if (!serverConfig?.roleReglementID) {
         return interaction.reply({
           content: "Aucun **rôle règlement** n’est configuré. Configure-le d’abord dans `Modifier Salons/Rôles`.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       const member = interaction.member;
       const role = interaction.guild.roles.cache.get(serverConfig.roleReglementID);
       if (!role) {
-        return interaction.reply({ content: "Le rôle configuré n’existe plus.", ephemeral: true });
+        return interaction.reply({ content: "Le rôle configuré n’existe plus.", flags: MessageFlags.Ephemeral });
       }
 
       if (member.roles.cache.has(role.id)) {
-        return interaction.reply({ content: "Tu as déjà validé le règlement. Quelque chose à te reprocher ?", ephemeral: true });
+        return interaction.reply({ content: "Tu as déjà validé le règlement. Quelque chose à te reprocher ?", flags: MessageFlags.Ephemeral });
       }
 
       await member.roles.add(role).catch(() => {});
-      await interaction.reply({ content: "✅ Règlement validé. Bienvenue !", ephemeral: true });
+      await interaction.reply({ content: "✅ Règlement validé. Bienvenue !", flags: MessageFlags.Ephemeral });
     }
     if (interaction.customId === "REGL_DESAC") { // Bouton pour réinitialiser le règlement
       function buildBaseSelectMenuRow() {
@@ -2054,7 +2164,7 @@ module.exports = {
       await interaction.reply({
         content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
         components: [selectRow],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === "SELECT_PRESTIGE_ROLE") {
@@ -2168,7 +2278,7 @@ module.exports = {
         content: "🎯丨𝐒électionne un prestige pour voir ou modifier ses rôles :",
         embeds: [embed],
         components: [rowPrestige, rowSelect],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.customId === "WELCOME_BUTTON") { // OK
@@ -2217,7 +2327,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2229,13 +2339,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon de \`𝐁ienvenue\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon de \`𝐁ienvenue\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on est déjà à l'épisode suivant de la série.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2258,12 +2368,12 @@ module.exports = {
     }
     if (interaction.customId === "REGL_ROLE") { //OK
     if (!interaction.guild) {
-        return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+        return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", flags: MessageFlags.Ephemeral });
     }
 
       const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
       if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", flags: MessageFlags.Ephemeral });
       }
   
       let secondsRemaining = 60;
@@ -2300,13 +2410,13 @@ module.exports = {
   
           const role = m.mentions.roles.first();
           if (!role) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
   
           if (role.position >= botMember.roles.highest.position) {
-              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2317,13 +2427,13 @@ module.exports = {
               { upsert: true, new: true }
           );
   
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour le \`𝐑èglement\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour le \`𝐑èglement\` a été mis à jour avec succès : **${role.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même les glaciers fondent plus vite.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même les glaciers fondent plus vite.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2346,12 +2456,12 @@ module.exports = {
     }
     if (interaction.customId === "WELCOME_ROLE") { //OK
       if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", flags: MessageFlags.Ephemeral });
       }
   
       const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
       if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", flags: MessageFlags.Ephemeral });
       }
   
       let secondsRemaining = 60;
@@ -2388,13 +2498,13 @@ module.exports = {
   
           const role = m.mentions.roles.first();
           if (!role) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
   
           if (role.position >= botMember.roles.highest.position) {
-              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2405,13 +2515,13 @@ module.exports = {
               { upsert: true, new: true }
           );
   
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle de \`𝐁ienvenue\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle de \`𝐁ienvenue\` a été mis à jour avec succès : **${role.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse. Même la confiture prend moins de temps à se figer.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse. Même la confiture prend moins de temps à se figer.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2478,7 +2588,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2490,13 +2600,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐈mplications\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐈mplications\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et la pizza est encore au four ?", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et la pizza est encore au four ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2563,7 +2673,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaie avec un salon qui existe non ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2575,13 +2685,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐃aily\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour le \`𝐃aily\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
     
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) { // Vérifie si le message initial existe toujours
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a changé de président depuis.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, on a changé de président depuis.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2610,7 +2720,7 @@ module.exports = {
       if (!serverConfig || !serverConfig.dailyChannelID) {
           return interaction.reply({
               content: "Aucun salon pour le 𝐃aily n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
           });
       }
 
@@ -2643,7 +2753,7 @@ module.exports = {
   
       await interaction.reply({
           content: "丨𝐋e message pour récupérer l'𝐗𝐏 journalier a été envoyé dans le salon configuré.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.customId === "IDEE_BUTTON") { //OK
@@ -2687,7 +2797,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2699,13 +2809,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐒uggestions\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐒uggestions\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) { // Vérifie si le message initial a été supprimé
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps d'apprendre le chinois.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps d'apprendre le chinois.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2768,7 +2878,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐄ssaye avec un salon qui existe non ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2780,13 +2890,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐑ôles\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐑ôles\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
 
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu préparais un gâteau ouuuu un gratte-ciel ?", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu préparais un gâteau ouuuu un gratte-ciel ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2853,7 +2963,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐓u m'as mis quoi ton code de carte bleue ou quoi ?", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐓u m'as mis quoi ton code de carte bleue ou quoi ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2865,13 +2975,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐓ickets\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐓ickets\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
     
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et j'ai déjà oublié pourquoi j'attendais...", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, et j'ai déjà oublié pourquoi j'attendais...", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -2900,7 +3010,7 @@ module.exports = {
         return interaction.reply({
           content:
             "Aucun salon pour les 𝐓ickets n'est configuré pour ce serveur. Veuillez en __configurer__ un en séléctionnant `Modifié Salon`.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       const TicketEmbed = new EmbedBuilder()
@@ -2929,17 +3039,17 @@ module.exports = {
           embeds: [TicketEmbed],
           components: [rowPushTicket],
         });
-        return interaction.reply({ content: "Embed crée.", ephemeral: true });
+        return interaction.reply({ content: "Embed crée.", flags: MessageFlags.Ephemeral });
       }
     }
     if (interaction.customId === "TICKET_ROLE") { // OK
       if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", flags: MessageFlags.Ephemeral });
       }
   
       const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
       if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", flags: MessageFlags.Ephemeral });
       }
   
       let secondsRemaining = 60;
@@ -2977,13 +3087,13 @@ module.exports = {
       
           const role = m.mentions.roles.first();
           if (!role) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
       
           if (role.position >= botMember.roles.highest.position) {
-              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -2994,13 +3104,13 @@ module.exports = {
               { upsert: true, new: true }
           );
       
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle \`𝐀dministrateur\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle \`𝐀dministrateur\` a été mis à jour avec succès : **${role.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
       
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as démêlé tous les fils de tes écouteurs ?", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, tu as démêlé tous les fils de tes écouteurs ?", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -3025,17 +3135,17 @@ module.exports = {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
   
       if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
-          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", ephemeral: true });
+          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", flags: MessageFlags.Ephemeral });
       }
   
       const serverConfig = await ServerConfig.findOne({ serverID: interaction.guild.id });
       if (!serverConfig || !serverConfig.roleChannelID) {
-          return interaction.reply({ content: "Le channel des rôles n'est pas configuré.", ephemeral: true });
+          return interaction.reply({ content: "Le channel des rôles n'est pas configuré.", flags: MessageFlags.Ephemeral });
       }
   
       const roleChannel = interaction.guild.channels.cache.get(serverConfig.roleChannelID);
       if (!roleChannel) {
-          return interaction.reply({ content: "Le channel des rôles configuré est introuvable.", ephemeral: true });
+          return interaction.reply({ content: "Le channel des rôles configuré est introuvable.", flags: MessageFlags.Ephemeral });
       }
   
       const menuOptions = serverRoleMenus.menus.flatMap(menu => {
@@ -3080,7 +3190,7 @@ module.exports = {
           });
 
       await roleChannel.send({ embeds: [RoleEmbed], components: [MenuRoleSelect] });
-      await interaction.reply({ content: "丨𝐋e menu des rôles a été envoyé dans le salon de rôles configuré.", ephemeral: true });
+      await interaction.reply({ content: "丨𝐋e menu des rôles a été envoyé dans le salon de rôles configuré.", flags: MessageFlags.Ephemeral });
     }
     if (interaction.customId === "ROLECHANNEL_LISTE") { 
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
@@ -3103,7 +3213,7 @@ module.exports = {
           return interaction.reply({
               content: "丨𝐀ucune donnée pour le rôle menu n'a été configurée pour ce serveur. 𝐏our en ajouter un, utilise le bouton \`Ajouter rôle\` ! 𝐂ela te permettra de créer un nouveau menu et d’y associer les rôles souhaités. 𝐏rends quelques instants pour configurer cela et donner plus de choix à la communauté ! 𝐒i jamais tu as fais une erreur ou si tu souhaites apporter des modifications par la suite pas de panique, tu pourras toujours ajuster les paramètres !",
               components: [ActionButtons],
-              ephemeral: true
+              flags: MessageFlags.Ephemeral
           });
       }
   
@@ -3126,14 +3236,14 @@ module.exports = {
       await interaction.reply({
           embeds: [embed],
           components: [ActionButtons],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
       });
     }
     if (interaction.customId === 'ROLECHANNEL_ADD') {
       if (!interaction.guild) {
         return interaction.reply({
           content: "Cette commande ne peut être utilisée que dans un serveur.",
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -3144,7 +3254,7 @@ module.exports = {
       if (!botMember) {
         return interaction.reply({
           content: "Erreur : Impossible de récupérer les informations du bot dans le serveur.",
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -3195,7 +3305,7 @@ module.exports = {
         if (!role) {
           await interaction.followUp({
             content: "😵丨𝐑ôle invalide/inexistant. 𝐍'oublie pas l'arobase (*@*).",
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return deleteMessage(initialReply);
         }
@@ -3205,7 +3315,7 @@ module.exports = {
         if (role.position >= botMember.roles.highest.position) {
           await interaction.followUp({
             content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.",
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return deleteMessage(initialReply);
         }
@@ -3243,7 +3353,7 @@ module.exports = {
         if (roleExists) {
           await interaction.followUp({
             content: "⚠️丨𝐂e rôle est déjà ajouté.",
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return deleteMessage(initialReply);
         }
@@ -3258,7 +3368,7 @@ module.exports = {
 
         await interaction.followUp({
           content: `🤘丨𝐋e rôle a été ajouté avec succès : **${role.name}** sous le nom **${displayName || role.name}**.`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
 
         await deleteMessage(initialReply);
@@ -3271,7 +3381,7 @@ module.exports = {
           await interaction.followUp({
             content:
               "⏳丨𝐓emps écoulé pour la réponse. 𝐌ême la confiture prend moins de temps à se figer.",
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
         }
 
@@ -3391,11 +3501,11 @@ module.exports = {
       const serverRoleMenus = await ServerRoleMenu.findOne({ serverID: interaction.guild.id });
   
       if (!serverRoleMenus || serverRoleMenus.menus.length === 0) {
-          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", ephemeral: true });
+          return interaction.reply({ content: "Aucun menu déroulant pour les rôles n'a été configuré sur ce serveur.", flags: MessageFlags.Ephemeral });
       }
   
       if (!role) {
-          return interaction.reply({ content: "𝐋e rôle sélectionné est introuvable.", ephemeral: true });
+          return interaction.reply({ content: "𝐋e rôle sélectionné est introuvable.", flags: MessageFlags.Ephemeral });
       }
   
       const member = interaction.member;
@@ -3403,10 +3513,10 @@ module.exports = {
       try {
           if (member.roles.cache.has(roleId)) {
               await member.roles.remove(roleId);
-              await interaction.reply({ content: `丨𝐓on rôle **\`${role.name}\`** a été **supprimé**.`, ephemeral: true });
+              await interaction.reply({ content: `丨𝐓on rôle **\`${role.name}\`** a été **supprimé**.`, flags: MessageFlags.Ephemeral });
           } else {
               await member.roles.add(roleId);
-              await interaction.reply({ content: `丨𝐓u viens de **récupéré** le rôle **\`${role.name}\`**.`, ephemeral: true });
+              await interaction.reply({ content: `丨𝐓u viens de **récupéré** le rôle **\`${role.name}\`**.`, flags: MessageFlags.Ephemeral });
           }
 
           const menuOptions = serverRoleMenus.menus.flatMap(menu => {
@@ -3443,7 +3553,7 @@ module.exports = {
   
       } catch (error) {
           console.error("[ROLE MENU] Erreur lors de la gestion du rôle :", error);
-          await interaction.reply({ content: "Une erreur est survenue lors de la gestion du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", ephemeral: true });
+          await interaction.reply({ content: "Une erreur est survenue lors de la gestion du rôle. Veuillez contacter notre **grand** \`tbmpqf\`.", flags: MessageFlags.Ephemeral });
       }
     }
     if (interaction.customId === "BINGO_BUTTON") {
@@ -3473,7 +3583,7 @@ module.exports = {
           || await interaction.client.channels.fetch(channelId).catch(() => null);
 
         if (!channel) {
-          await interaction.followUp({ content: "😵丨𝐒alon invalide.", ephemeral: true });
+          await interaction.followUp({ content: "😵丨𝐒alon invalide.", flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -3516,14 +3626,14 @@ module.exports = {
         );
 
         await interaction.message.edit({ embeds: [newEmbed], components: [row] }).catch(() => {});
-        await interaction.followUp({ content: `🤘丨𝐒alon mis à jour : **${channel.name}**.`, ephemeral: true });
+        await interaction.followUp({ content: `🤘丨𝐒alon mis à jour : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
 
         m.delete().catch(() => {});
         promptMsg.delete().catch(() => {});
       });
 
       collector.on('end', async (_c, reason) => {
-        if (reason === 'time') await interaction.followUp({ content: '⏳ | Temps écoulé pour la réponse.', ephemeral: true });
+        if (reason === 'time') await interaction.followUp({ content: '⏳ | Temps écoulé pour la réponse.', flags: MessageFlags.Ephemeral });
         clearInterval(timer);
         promptMsg.delete().catch(() => {});
       });
@@ -3533,7 +3643,7 @@ module.exports = {
       if (!channel) {
         return interaction.reply({
           content: "Salon non enregistré. Clique d’abord sur **Modifier le salon** et choisis un salon valide.",
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -3651,7 +3761,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -3663,13 +3773,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon \`𝐓witch\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon \`𝐓witch\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) { 
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai lu une bibliothèque entière en t'attendant.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai lu une bibliothèque entière en t'attendant.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -3724,7 +3834,7 @@ module.exports = {
                   .setStyle(ButtonStyle.Danger)
           );
   
-      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+      await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
     }
     if (interaction.customId === "TWITCH_ADD_STREAMER") {
       let secondsRemaining = 60;
@@ -3761,7 +3871,7 @@ module.exports = {
   
           const [twitchUsername, discordUserID] = m.content.split(" ");
           if (!twitchUsername || !discordUserID) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐌auvaise syntaxe. Veuillez entrer un nom Twitch et un ID Discord.", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐌auvaise syntaxe. Veuillez entrer un nom Twitch et un ID Discord.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -3774,13 +3884,13 @@ module.exports = {
               serverName: interaction.guild.name,  // Ajout du nom du serveur
           });
   
-          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été ajouté avec succès pour le serveur **${interaction.guild.name}** !`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été ajouté avec succès pour le serveur **${interaction.guild.name}** !`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -3803,7 +3913,7 @@ module.exports = {
       const streamersList = await TwitchStreamers.find({ serverID: interaction.guild.id });
   
       if (streamersList.length === 0) {
-          return interaction.reply({ content: "❌丨𝐀ucun streamer enregistré sur ce serveur à supprimer.", ephemeral: true });
+          return interaction.reply({ content: "❌丨𝐀ucun streamer enregistré sur ce serveur à supprimer.", flags: MessageFlags.Ephemeral });
       }
   
       let secondsRemaining = 60;
@@ -3846,7 +3956,7 @@ module.exports = {
           });
   
           if (!streamer) {
-              const errorMsg = await interaction.followUp({ content: `😵丨𝐋e streamer **${twitchUsername}** n'existe pas dans la base de données pour ce serveur.`, ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: `😵丨𝐋e streamer **${twitchUsername}** n'existe pas dans la base de données pour ce serveur.`, flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -3856,13 +3966,13 @@ module.exports = {
               serverID: interaction.guild.id  // Assure que l'on supprime uniquement pour le serveur actuel
           });
   
-          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été supprimé avec succès !`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `✅丨𝐋e streamer **${twitchUsername}** a été supprimé avec succès !`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -3883,12 +3993,12 @@ module.exports = {
     }
     if (interaction.customId === "TWITCH_ROLE") {
       if (!interaction.guild) {
-          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", ephemeral: true });
+          return interaction.reply({ content: "Cette commande ne peut être utilisée que dans une guilde.", flags: MessageFlags.Ephemeral });
       }
   
       const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(console.error);
       if (!botMember) {
-          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", ephemeral: true });
+          return interaction.reply({ content: "Erreur : Impossible de récupérer les informations du bot dans la guilde.", flags: MessageFlags.Ephemeral });
       }
   
       let secondsRemaining = 60;
@@ -3926,13 +4036,13 @@ module.exports = {
   
           const role = m.mentions.roles.first();
           if (!role) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐑ôle invalide/inexistant. 𝐎ublie pas l'arobase (*@*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
   
           if (role.position >= botMember.roles.highest.position) {
-              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "↘️丨𝐋e rôle doit être inférieur à mon rôle le plus élevé.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -3943,13 +4053,13 @@ module.exports = {
               { upsert: true, new: true }
           );
   
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour \`𝐓witch\` a été mis à jour avec succès : **${role.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e rôle pour \`𝐓witch\` a été mis à jour avec succès : **${role.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time") {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps de changer de carrière et d'avoir une promotion.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, j'ai eu le temps de changer de carrière et d'avoir une promotion.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -4018,7 +4128,7 @@ module.exports = {
           const channelId = m.content.trim();
           const channel = interaction.guild.channels.cache.get(channelId);
           if (!channel) {
-              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", ephemeral: true });
+              const errorMsg = await interaction.followUp({ content: "😵丨𝐒alon invalide. 𝐘é pas trouvé ton salone (*accent espagnol*).", flags: MessageFlags.Ephemeral });
               followUpMessages.push(errorMsg);
               return;
           }
@@ -4030,13 +4140,13 @@ module.exports = {
               },
               { upsert: true, new: true }
           );
-          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐀nnonces\` a été mis à jour avec succès : **${channel.name}**.`, ephemeral: true });
+          const successMsg = await interaction.followUp({ content: `🤘丨𝐋e salon pour les \`𝐀nnonces\` a été mis à jour avec succès : **${channel.name}**.`, flags: MessageFlags.Ephemeral });
           followUpMessages.push(successMsg);
       });
   
       collector.on("end", async (collected, reason) => {
           if (reason === "time" && !messageDeleted) {
-              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même *Pythagore* a eu le temps de remettre en question son théorème.", ephemeral: true });
+              const timeoutMsg = await interaction.followUp({ content: "⏳丨𝐓emps écoulé pour la réponse, même *Pythagore* a eu le temps de remettre en question son théorème.", flags: MessageFlags.Ephemeral });
               followUpMessages.push(timeoutMsg);
           }
           replyMessage.delete().catch(error => {
@@ -4064,7 +4174,7 @@ module.exports = {
       const serverConfig = await ServerConfig.findOne({ serverID: serverID });
   
       if (!serverConfig) {
-          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", ephemeral: true });
+          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", flags: MessageFlags.Ephemeral });
       }
   
       serverConfig.AnnoucementChannelID = null;
@@ -4072,10 +4182,10 @@ module.exports = {
   
       try {
           await serverConfig.save();
-          await interaction.reply({ content: "Le __salon__ pour les 𝐀nnonces a été réinitialisé avec succès !", ephemeral: true });
+          await interaction.reply({ content: "Le __salon__ pour les 𝐀nnonces a été réinitialisé avec succès !", flags: MessageFlags.Ephemeral });
       } catch (error) {
           console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
-          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du salon Annonces.", ephemeral: true });
+          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du salon Annonces.", flags: MessageFlags.Ephemeral });
       }
     }
     if (interaction.customId === "TWITCH_DESAC") {
@@ -4083,7 +4193,7 @@ module.exports = {
       const serverConfig = await ServerConfig.findOne({ serverID: serverID });
   
       if (!serverConfig) {
-          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", ephemeral: true });
+          return interaction.reply({ content: "❌丨Configuration du serveur introuvable.", flags: MessageFlags.Ephemeral });
       }
   
       serverConfig.TwitchRoleID = null;
@@ -4093,10 +4203,10 @@ module.exports = {
   
       try {
           await serverConfig.save();
-          await interaction.reply({ content: "Le __salon__ et le __rôle__ pour 𝐓witch a été réinitialisé avec succès !", ephemeral: true });
+          await interaction.reply({ content: "Le __salon__ et le __rôle__ pour 𝐓witch a été réinitialisé avec succès !", flags: MessageFlags.Ephemeral });
       } catch (error) {
           console.error('Erreur lors de la mise à jour de la configuration du serveur:', error);
-          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du rôle et du salon Twitch.", ephemeral: true });
+          await interaction.reply({ content: "❌丨Erreur lors de la réinitialisation du rôle et du salon Twitch.", flags: MessageFlags.Ephemeral });
       }
     }
     if (interaction.customId === "ROLECHANNEL_DESAC") {
@@ -4114,7 +4224,7 @@ module.exports = {
           await interaction.reply('Le salon des 𝐑ôles a été réinitialisé avec succès et toutes les données de menus de rôles ont été supprimées.');
       } catch (error) {
           console.error('Error handling ROLECHANNEL_DESAC:', error);
-          await interaction.followUp({ content: "Une erreur est survenue lors de la réinitialisation.", ephemeral: true });
+          await interaction.followUp({ content: "Une erreur est survenue lors de la réinitialisation.", flags: MessageFlags.Ephemeral });
       }
     }
     if (interaction.customId === "WELCOME_DESAC") {
@@ -4227,7 +4337,7 @@ module.exports = {
           bingoChannelName: null
       }, { new: true }).then(updatedBingoConfig => {
           if (updatedBingoConfig) {
-              interaction.reply({content: '丨𝐋e \`𝐁ingo\` a été désactivé et le prochain temps de bingo enlevé.',  ephemeral: true });
+              interaction.reply({content: '丨𝐋e \`𝐁ingo\` a été désactivé et le prochain temps de bingo enlevé.',  flags: MessageFlags.Ephemeral });
           } else {
               interaction.reply('Configuration du bingo introuvable pour ce serveur.');
           }
@@ -4275,12 +4385,12 @@ module.exports = {
     async function launchSearch(interaction, { roleName, gameLabel }) {
       const existing = await getOrCleanExisting(interaction);
       if (existing) {
-        return interaction.reply({ content: "Doucement, attends tranquillement ! Prends toi un coca et respire.", ephemeral: true });
+        return interaction.reply({ content: "Doucement, attends tranquillement ! Prends toi un coca et respire.", flags: MessageFlags.Ephemeral });
       }
 
       const role = interaction.guild.roles.cache.find(r => r.name === roleName);
       if (!role) {
-        return interaction.reply({ content: `Je ne trouve pas le rôle **${roleName}**.`, ephemeral: true });
+        return interaction.reply({ content: `Je ne trouve pas le rôle **${roleName}**.`, flags: MessageFlags.Ephemeral });
       }
 
       const expiresAt = new Date(Date.now() + SEARCH_DURATION_MS);
@@ -4366,7 +4476,7 @@ module.exports = {
       if (existingChannel) {
         return await interaction.reply({
           content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -4399,10 +4509,10 @@ module.exports = {
           });
           await newVocalChannel.save();
     
-          await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', ephemeral: true });
+          await interaction.reply({ content: 'Ton salon vocal **Apex Legends** a été créé avec succès !', flags: MessageFlags.Ephemeral });
       } catch (error) {
           console.error('[APEX VOCAL] Erreur lors de la création du canal pour Apex Legends:', error);
-          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
+          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', flags: MessageFlags.Ephemeral });
       }
     }
     //Bouton pour crée un vocal pour Call of Duty
@@ -4413,7 +4523,7 @@ module.exports = {
       if (existingChannel) {
         return await interaction.reply({
           content: "Toi.. t'es un sacré coquin ! Tu as déjà un salon d'ouvert non ?",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     
@@ -4445,10 +4555,10 @@ module.exports = {
           });
           await newVocalChannel.save();
     
-          await interaction.reply({ content: 'Ton salon vocal **Call of Duty** a été créé avec succès !', ephemeral: true });
+          await interaction.reply({ content: 'Ton salon vocal **Call of Duty** a été créé avec succès !', flags: MessageFlags.Ephemeral });
       } catch (error) {
           console.error('[COD VOCAL] Erreur lors de la création du canal pour Call of Duty:', error);
-          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', ephemeral: true });
+          await interaction.reply({ content: '**Erreur lors de la création du canal. __Merci__ de patienter...**', flags: MessageFlags.Ephemeral });
       }
     }
 
@@ -4635,7 +4745,7 @@ module.exports = {
       if (!platform) {
         return interaction.reply({
           content: "Plateforme invalide (**PC / PS / XBOX / SWITCH**)",
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -4655,7 +4765,7 @@ module.exports = {
     }
     async function fetchAndReplyApexStats(interaction, user) {
       if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       }
 
       try {
@@ -4878,7 +4988,7 @@ module.exports = {
 
     // Bouton statistique Call of Duty
     if (interaction.customId === 'STATS_COD_BUTTON') {
-      await interaction.reply({ content: "Ceci n'est malheuresement pas encore disponible.", ephemeral: true });
+      await interaction.reply({ content: "Ceci n'est malheuresement pas encore disponible.", flags: MessageFlags.Ephemeral });
     }
 
     if (interaction.channel === null) return;
@@ -4892,7 +5002,7 @@ module.exports = {
       try {
         await interaction.reply({
           content: "**L'exécution de la commande prend plus de temps que prévu. Merci de patienter...**",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } catch (_) {}
     }, TIMEOUT_MS);
@@ -4905,12 +5015,12 @@ module.exports = {
         if (!interaction.deferred && !interaction.replied) {
           await interaction.reply({
             content: "**Une erreur est survenue lors de l'exécution de la commande -> contacte `tbmpqf`.**",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.followUp({
             content: "**Une erreur est survenue lors de l'exécution de la commande -> contacte `tbmpqf`.**",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       } catch (_) {}
